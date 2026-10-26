@@ -1,5 +1,79 @@
 # ChangeHistory
 
+## 2026.10.27 03:55 新增接手開發與部署入口文件
+
+**類型**: 文件 · **檔案**: `Docs/onboarding.md`、`README.md`、`Docs/deployment.md`、`testing/README.md`
+
+### 問題 - 文件分散在 README、部署手冊、測試工作區與進階參考，新接手者不知道該從本機開發、Docker 測試或正式部署哪一條開始
+
+### 修改 - 新增 onboarding 入口，依目標分流三條路徑並整理文件地圖與交接檢查清單
+
+- 說明前置需求、目前服務範圍與三種環境的資料位置
+- 補上程式建置時間、鏡像建置時間與 check:testing 的判讀方式
+- README、Docker 上手手冊與 testing 工作區頂部加入入口連結
+
+---
+
+## 2026.10.27 03:45 加入 image 建置時間、來源摘要與測試環境版本檢查
+
+**類型**: 新增 · **檔案**: `scripts/build-inputs.mjs`、`scripts/image.mjs`、`scripts/check-testing.mjs`、`scripts/testing-up.mjs`、`Dockerfile`、`pkg/buildinfo/buildinfo.go`、`web/admin/src/main.tsx`、`compose.yaml`、`testing/compose.yaml`、`testing/README.md`
+
+### 問題 - 本機 compose 啟動時無法從服務資訊判斷 image 是幾點建置、是否由目前原始碼產生；Docker 層快取也讓程式編譯時間與 image 建置時間混在一起
+
+### 修改 - 建置腳本注入建置時間、來源摘要與 OCI 標籤，新增測試環境檢查與一鍵建置啟動工具
+
+- `npm run image -- all` 一次建置三服務，寫入 image 建置時間、commit、dirty 與來源摘要
+- 服務資訊分開顯示程式建置時間與鏡像建置時間，並附來源摘要前 12 碼
+- `npm run check:testing` 比對 image 標籤、Git HEAD 與執行中容器，過期或使用舊 image 時回傳非 0
+- `npm run testing:up` 建置、啟動並自動執行版本檢查
+- 直接 `docker compose build` 未帶參數時明確標示 unknown，不假裝有建置資訊
+- 正式版本 workflow 同步注入建置時間與來源摘要
+
+---
+
+## 2026.10.27 03:32 加寬管理介面並以對話框播放與編輯影片
+
+**類型**: 改善 · **檔案**: `web/admin/src/style.css`、`web/admin/src/Library.tsx`、`web/admin/src/main.tsx`、`web/admin/index.html`
+
+### 問題 - 固定 1000px 容器與單欄堆疊讓服務資訊、儲存池及匯入表單需要長距離捲動；播放器接在整個影片庫之後，影片變多時必須捲到最底部才找得到
+
+### 修改 - 容器加寬至 1200px，儲存池與服務資訊自動分欄，匯入表單拆成來源與影片資料雙欄，播放與編輯改為原生 dialog 模態
+
+- 服務資訊的生效設定在寬螢幕以雙欄鍵值呈現，避免長路徑斷行
+- 播放器與編輯表單覆蓋目前頁面，關閉後保留原本的影片庫捲動位置
+- 匯入來源面板在寬螢幕保持可見，窄螢幕自動回到單欄
+- 補上 favicon，消除瀏覽器 404 紀錄
+
+---
+
+## 2026.10.27 03:09 修正測試手冊裸網址與表格格式
+
+**類型**: 文件 · **檔案**: `testing/README.md`
+
+### 問題 - 測試服務網址觸發 MD034，部分表格分隔列不符合 MD060 compact
+
+### 修改 - 將三服務與區網測試網址改為具名連結，修正部署手冊兩個表格分隔列
+
+- 使用 markdownlint 驗證 README、Docs 與測試手冊的 MD034 及 MD060 compact 規則
+
+---
+
+## 2026.10.27 03:07 補齊 Docker 多磁碟掛載操作手冊
+
+**類型**: 文件 · **檔案**: `Docs/docker-volumes.md`、`testing/compose.local.example.yaml`、`compose.override.example.yaml`、`.gitignore`
+
+### 問題 - 既有文件僅說明預設 media 掛載，缺少額外磁碟、多組 volumes 及欄位用途的完整引導
+
+### 修改 - 新增本機 compose.local.yaml / compose.override.yaml 疊加範例、多磁碟追加、主機與容器路徑對應、唯讀及 create_host_path 說明
+
+- 個人掛載由 example 複製並列入 .gitignore，不修改版控中的 compose.yaml
+- 說明選對 Compose 環境、執行 up 套用掛載、分別註冊儲存池與讀取權限診斷
+- 在部署手冊、測試工作區及 README 加入專用手冊連結，表格採 compact 格式
+
+**相關文件**: Docs/docker-volumes.md
+
+---
+
 ## 2026.10.27 02:58 保存最後成功端口並建立原子設定寫入底層
 
 **類型**: 新增 · **檔案**: `internal/runtime/state.go`

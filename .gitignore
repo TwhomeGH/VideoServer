@@ -8,3 +8,5 @@ dist/
 /local/
 /testing/local/
 /testing/.env
+/testing/compose.local.yaml
+/compose.override.yaml

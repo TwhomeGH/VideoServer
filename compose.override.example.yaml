@@ -1,0 +1,12 @@
+# 複製為 compose.override.yaml，加入自己的額外影片目錄。
+# 此範例檔會納入 Git；實際的 compose.override.yaml 已列入 .gitignore，不會提交。
+# 在專案根目錄執行 docker compose 時，Compose 會自動疊加這個檔案。
+services:
+  video-node:
+    volumes:
+      - type: bind
+        source: H:/Video
+        target: /storage/h-video
+        read_only: true
+        bind:
+          create_host_path: false

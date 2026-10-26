@@ -1,5 +1,7 @@
 # Docker 上手手冊：先跑起一個 Video Node
 
+> 第一次接手整個專案，還不確定該走本機開發、Docker 測試或正式部署？先看 [接手開發與部署：從這裡開始](onboarding.md)。
+
 完成後，你會得到一個可在瀏覽器管理、匯入及播放影片的節點。先只啟動 Video Node；Central 與 Worker 目前仍為骨架，暫時不用一起開。
 
 ## 1. 準備
@@ -30,7 +32,7 @@ Linux 將第一行改為 `DVN_MEDIA_PATH=/srv/videos`。路徑要改成你的實
 npm run image -- video-node
 ```
 
-成功後產生本機 `dvn/video-node:local`，包含後端與管理網頁。這一步只建置，尚未啟動服務，也不會上傳 image。
+成功後產生本機 `dvn/video-node:local`，包含後端與管理網頁。這一步只建置，尚未啟動服務，也不會上傳 image。建置時間、commit 與來源摘要會寫入 image 標籤；「服務資訊」頁可看到程式與鏡像的建置時間。
 
 ## 4. 啟動
 
@@ -60,8 +62,10 @@ docker compose ps
 
 ## 設定、資料庫、影片在哪裡？
 
+需要加入 H 槽、其他磁碟或多個影片目錄時，請看 [Docker 掛載與多磁碟影片庫](docker-volumes.md)，內有完整追加步驟、欄位解釋與註冊方式。
+
 | 內容 | 主機端 | 容器內 | 更新 image 後 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | 設定 | `deployments/docker/video-node.json` | `/app/config.json`，唯讀掛載 | 沿用主機檔案 |
 | SQLite、NodeID、影片描述 | Docker 資料卷 `dvn_node-data`（預設專案名稱） | `/data` | 保留 |
 | 影片原檔 | `.env` 指定的既有目錄 | `/media`，唯讀掛載 | 保留原檔 |
@@ -96,7 +100,7 @@ docker compose restart video-node
 ## 卡住時先看這裡
 
 | 現象 | 檢查方式 |
-|---|---|
+| --- | --- |
 | Docker 無法連線 | Docker Desktop 是否已啟動且使用 Linux containers |
 | image 找不到 | 先完成步驟 3，確認建置成功 |
 | 影片目錄不存在 | 檢查 `.env` 的實際路徑；Windows 改用 `/` |

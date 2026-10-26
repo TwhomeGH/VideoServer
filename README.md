@@ -4,6 +4,8 @@
 
 目前提供三服務基礎與 Video Node 的儲存池、影片匯入索引及原始檔播放；轉碼、Central 索引及遠端 Worker 尚未實作。
 
+> **第一次接手？先讀 [接手開發與部署：從這裡開始](Docs/onboarding.md)。** 它會帶你選本機開發、Docker 測試或正式部署，並列出下一步要看哪份文件。
+
 ## 開發啟動
 
 需求：Go 1.26 以上（SQLite 驅動需求）、Node.js 22.12 以上及 npm。SQLite 不需要額外安裝或 C 編譯器。
@@ -93,4 +95,5 @@ SQLite v3 使用獨立 Tag 索引與作品來源表，會自動升級 v1/v2；�
 本機建置 image 使用 `npm run image -- video-node`，無需 CI；三服務共用多階段 Dockerfile，各自獨立部署。Compose 由主機映射外部端口，影片與 SQLite 資料獨立持久保存。Linux 另提供原生交叉編譯與 systemd 範本。
 CI 只處理正式版本標籤；registry 目的地確認前僅檢查及建置，不自動發布。完整步驟見 [部署說明](Docs/deployment.md)。
 第一次操作請直接依照 [Docker 上手手冊](Docs/deployment.md) 的六個步驟。進階部署另見 [Linux 與發版參考](Docs/deployment-reference.md)；已驗證的範圍見 [部署驗收紀錄](Docs/deployment-test-results.md)。
-持續開發測試建議使用 [testing 工作區](testing/README.md)：根目錄執行 `npm run setup:test`，再到 `testing/` 使用專用 Compose。預設外部端口為 18710／18720／18730，資料不與開發或根目錄部署共用。
+持續開發測試建議使用 [testing 工作區](testing/README.md)：根目錄執行 `npm run testing:up` 會建置、啟動並檢查版本；也可先 `npm run setup:test`，再到 `testing/` 使用專用 Compose。`npm run check:testing` 可隨時確認 image 建置時間、來源摘要與執行中容器是否為目前版本。預設外部端口為 18710／18720／18730，資料不與開發或根目錄部署共用。
+主機磁碟、容器路徑、volumes 欄位與多影片目錄的設定，見 [Docker 掛載手冊](Docs/docker-volumes.md)。

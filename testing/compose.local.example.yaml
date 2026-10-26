@@ -1,0 +1,12 @@
+# 複製為 testing/compose.local.yaml，加入自己的額外影片目錄。
+# 此範例檔會納入 Git；實際的 compose.local.yaml 已列入 .gitignore，不會提交。
+# 執行 npm run testing:up 時會自動疊加這個檔案。
+services:
+  video-node:
+    volumes:
+      - type: bind
+        source: H:/Video
+        target: /storage/h-video
+        read_only: true
+        bind:
+          create_host_path: false

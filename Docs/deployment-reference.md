@@ -13,22 +13,27 @@ CI 僅在推送 `vX.Y.Z` 正式版本標籤時檢查與建置。目前不會推�
 在專案根目錄執行（需要 Docker Engine + Compose，Windows 使用 Linux containers）：
 
 ```sh
-npm run image -- video-node
-npm run image -- central
-npm run image -- transcode-worker
+npm run image -- all
 node scripts/test-images.mjs
 ```
 
-這個 npm 入口只用 Node 標準庫呼叫 Docker，不需要先 npm install。它會注入目前 commit、dirty 狀態，產生 `dvn/video-node:local` 等本機標籤，不推送任何 registry。
+`all` 會依序建置三個 target；也可只指定 `video-node`、`central` 或 `transcode-worker`。
+這個 npm 入口只用 Node 標準庫呼叫 Docker，不需要先 npm install。它會注入目前 commit、dirty 狀態、建置時間與來源摘要，產生 `dvn/video-node:local` 等本機標籤，不推送任何 registry。
+建置時間與來源摘要也會寫入 image 標籤和容器環境變數，服務資訊頁可看到「鏡像建置時間」；來源摘要用於判斷 image 是否由目前工作目錄建置。
 不想安裝 Node，也可直接：
 
 ```sh
 docker build --target video-node -t dvn/video-node:local .
 ```
 
-直接建置若未提供 VCS_REF / DIRTY，版本資訊會明確顯示 unknown / true；正式版本另提供 VERSION / CHANNEL 建置參數。Dockerfile 採多階段建置，依序打包前端、編譯 Go、組裝執行層，使用方式參見 [Docker 官方說明](https://docs.docker.com/build/building/multi-stage/)。
+直接建置若未提供 VCS_REF / DIRTY / BUILD_TIME / SOURCE_DIGEST，版本資訊會明確顯示 unknown / true，服務資訊也不會顯示鏡像建置時間；正式版本另提供 VERSION / CHANNEL 建置參數。Dockerfile 採多階段建置，依序打包前端、編譯 Go、組裝執行層，使用方式參見 [Docker 官方說明](https://docs.docker.com/build/building/multi-stage/)。
+「程式建置時間」來自 Go 編譯，「鏡像建置時間」來自 image 建置標籤；Docker 層快取命中時兩者可能不同。
+
+測試工作區可用 `npm run check:testing` 確認 image 建置時間、來源摘要與執行中容器是否一致；需要重建時會回傳非 0。建置與啟動測試環境也可直接用 `npm run testing:up`。詳見 [固定測試工作區](../testing/README.md)。
 
 ## Compose 啟動
+
+額外磁碟與多組 volumes 掛載請見 [掛載專用手冊](docker-volumes.md)。
 
 將 `deployments/docker/.env.example` 複製為專案根目錄 `.env`，設定已存在的影片目錄，例如 Windows 的 `DVN_MEDIA_PATH=D:/Videos` 或 Linux 的 `DVN_MEDIA_PATH=/srv/videos`。預設的 `./media` 需自行先建立；來源不存在時明確報錯，不會悄悄建立空目錄。
 
@@ -86,5 +91,5 @@ systemd 範本尚需在實際 Linux 主機驗證；Docker Linux 啟動測試不�
 
 ## 正式發版 CI
 
-`.github/workflows/release.yml` 只監聽 vX.Y.Z 標籤，執行 Go 測試／檢查、前端打包及三個 image 的 linux/amd64 + linux/arm64 建置。版本、commit、channel=release、dirty=false 注入 image。
+`.github/workflows/release.yml` 只監聽 vX.Y.Z 標籤，執行 Go 測試／檢查、前端打包及三個 image 的 linux/amd64 + linux/arm64 建置。版本、commit、channel=release、dirty=false、建置時間與來源摘要注入 image。
 目前 OCI 產物只留在 runner 的暫存路徑，不上傳、不發布，工作結束後不保留。待確認 registry／命名空間／可見性後，再接上登入與推送，以及 Linux 發行檔封裝；本機建置完全不受這項待決策影響。
