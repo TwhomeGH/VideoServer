@@ -1,5 +1,20 @@
 # ChangeHistory
 
+## 2026.10.27 04:05 完成 v0.1.0 首次發版本機驗收
+
+**類型**: 驗證 · **檔案**: `Docs/deployment-test-results.md`
+
+### 問題 - 首次發版流程尚未在本機完整演練，無法確認雙架構 OCI、release 標籤與實際啟動結果
+
+### 修改 - 依 release workflow 參數建置三個服務的 amd64/arm64 OCI，並啟動 amd64 release image 檢查狀態
+
+- Go 測試、vet、腳本測試、npm ci 與前端正式建置全部通過
+- 三個 OCI tar 均為雙架構，version=0.1.0、dirty=false、channel=release 與來源摘要正確
+- release image 的 `/api/v1/status` 與管理頁可讀；尚未觸發 GitHub Actions 或推送 registry
+- 本地 tag `v0.1.0` 指向 `ac05ded`，尚未 push
+
+---
+
 ## 2026.10.27 03:55 新增接手開發與部署入口文件
 
 **類型**: 文件 · **檔案**: `Docs/onboarding.md`、`README.md`、`Docs/deployment.md`、`testing/README.md`

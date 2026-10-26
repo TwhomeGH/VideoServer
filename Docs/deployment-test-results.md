@@ -24,6 +24,28 @@
 
 範圍限制：尚未驗證瀏覽器實際解碼／播放器互動、ARM64、原生 Linux systemd 安裝、NAS 斷線與權限、真實網路環境及轉碼。HTTP Range 傳輸通過不代表所有影片編碼均可在瀏覽器播放。
 
+## v0.1.0 首次發版本機驗收
+
+2026-10-27 04:00（Asia/Taipei）在 Windows Docker Desktop（buildx 0.38.1、BuildKit docker driver）模擬 `.github/workflows/release.yml` 的 image job。
+
+| 項目 | 結果 |
+| --- | --- |
+| `npm --prefix web/admin ci` 與前端正式建置 | 通過 |
+| `go test ./...`、`go vet ./...` | 通過 |
+| `node --test scripts/*.test.mjs`（5 項） | 通過 |
+| 三個 service 的 linux/amd64 + linux/arm64 OCI 建置 | 通過 |
+| OCI index 同時包含 amd64 與 arm64 manifest | 通過 |
+| Image 標籤 version=0.1.0、commit、dirty=false、channel=release、建置時間與來源摘要 | 通過 |
+| 以 release 參數啟動 linux/amd64 image，`/api/v1/status` 與靜態 HTML | 通過 |
+
+建置來源：commit `ac05dedb69ba7ae325e68e5ab48c8cc250d4fc25`，本地 tag `v0.1.0`。
+建置時間：`2026-10-26T19:58:56Z`；來源摘要：`f69c43aac5a38f965ca059682bab3384254821e0801352f53c7a76275ecd0819`。
+產物：`data/release-test/video-node-image.tar`、`central-image.tar`、`transcode-worker-image.tar`，各約 26 MB，未提交。
+
+實際 release image 回報：version `0.1.0`、channel `release`、dirty `false`、image build time 與來源摘要一致；容器內 `/api/v1/status` 與管理頁均可讀取。
+
+範圍限制：本次是 Windows 本機模擬，尚未觸發 GitHub Actions 實跑；OCI 產物未推送任何 registry。ARM64 只驗證建置與 manifest，未在 ARM64 主機執行。tag 尚未 push origin。
+
 ## 固定測試工作區與自動掃描補測
 
 2026-10-27 在 `testing/compose.yaml` 的 dvn-testing 工作區完成：三服務健康檢查、設定來源 API、範例影片匯入，以及重建 Video Node 後資料保留。
