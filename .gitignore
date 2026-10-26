@@ -5,3 +5,6 @@ dist/
 *.exe
 /media/
 /.env
+/local/
+/testing/local/
+/testing/.env

@@ -1,0 +1,65 @@
+name: dvn-testing
+services:
+  video-node:
+    image: dvn/video-node:local
+    build:
+      context: ..
+      target: video-node
+    ports:
+      - "${DVN_TEST_BIND_ADDRESS:-0.0.0.0}:${DVN_TEST_NODE_PORT:-18710}:18610"
+    volumes:
+      - node-data:/data
+      - type: bind
+        source: ./local/config/video-node.json
+        target: /app/config.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
+        source: ./local/media
+        target: /media
+        read_only: true
+        bind:
+          create_host_path: false
+    init: true
+    restart: unless-stopped
+  central:
+    profiles: [all]
+    image: dvn/central:local
+    build:
+      context: ..
+      target: central
+    ports:
+      - "${DVN_TEST_BIND_ADDRESS:-0.0.0.0}:${DVN_TEST_CENTRAL_PORT:-18720}:18620"
+    volumes:
+      - central-data:/data
+      - type: bind
+        source: ./local/config/central.json
+        target: /app/config.json
+        read_only: true
+        bind:
+          create_host_path: false
+    init: true
+    restart: unless-stopped
+  transcode-worker:
+    profiles: [all]
+    image: dvn/transcode-worker:local
+    build:
+      context: ..
+      target: transcode-worker
+    ports:
+      - "${DVN_TEST_BIND_ADDRESS:-0.0.0.0}:${DVN_TEST_WORKER_PORT:-18730}:18630"
+    volumes:
+      - worker-data:/data
+      - type: bind
+        source: ./local/config/transcode-worker.json
+        target: /app/config.json
+        read_only: true
+        bind:
+          create_host_path: false
+    init: true
+    restart: unless-stopped
+volumes:
+  node-data:
+  central-data:
+  worker-data:

@@ -3,6 +3,7 @@ package runtime
 import (
 	"encoding/json"
 	"net"
+	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -55,5 +56,22 @@ func TestStatusAndUnknownAPI(t *testing.T) {
 func TestConfigRejectsInvalidPort(t *testing.T) {
 	if _, err := LoadConfig("", 65535); err == nil {
 		t.Fatal("invalid fallback ports accepted")
+	}
+}
+
+func TestEffectiveConfigSource(t *testing.T) {
+	config := Config{Host: "0.0.0.0", PreferredPort: 18610, DataDirectory: "/data/test", WebDirectory: "/app/web", FallbackPorts: []int{}}
+	handler := Handler(buildinfo.Current("video-node"), "0.0.0.0:18610", t.TempDir(), func(mux *http.ServeMux) { registerConfig(mux, config, "/config/video-node.json") })
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/config", nil))
+	var body struct {
+		Source    string `json:"source"`
+		Effective Config `json:"effective"`
+	}
+	if err := json.Unmarshal(response.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if response.Code != 200 || body.Source != "/config/video-node.json" || body.Effective.DataDirectory != config.DataDirectory {
+		t.Fatalf("unexpected config: %s", response.Body)
 	}
 }

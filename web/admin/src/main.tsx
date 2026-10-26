@@ -5,6 +5,11 @@ import { Library } from './Library';
 import { pages, usePage, type Page } from './navigation';
 
 type Theme = 'system' | 'light' | 'dark';
+type RuntimeConfig = {
+  source: string;
+  network?: { stateFile: string; rememberEnabled: boolean; previousPort: number; activePort: number; saved: boolean; warning?: string };
+  effective: { host: string; preferredPort: number; fallbackPorts: number[] | null; dataDirectory: string; webDirectory: string; autoScan: boolean; scanIntervalSeconds: number; fileStableSeconds: number };
+};
 type Status = {
   status: string;
   listenAddress: string;
@@ -27,6 +32,8 @@ function App() {
   const [theme, setTheme] = useState<Theme>(initialTheme);
   const [status, setStatus] = useState<Status | null>(null);
   const [error, setError] = useState('');
+  const [runtimeConfig, setRuntimeConfig] = useState<RuntimeConfig | null>(null);
+  const [configError, setConfigError] = useState('');
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -43,6 +50,17 @@ function App() {
       .catch((reason: Error) => { if (!controller.signal.aborted) setError(reason.message); });
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (page !== 'diagnostics') return;
+    const controller = new AbortController();
+    setConfigError('');
+    fetch('/api/v1/config', { signal: controller.signal }).then(async response => {
+      if (!response.ok) throw new Error(`設定資訊回應 ${response.status}，請確認後端已更新並重啟`);
+      setRuntimeConfig(await response.json() as RuntimeConfig);
+    }).catch((reason: Error) => { if (!controller.signal.aborted) setConfigError(reason.message); });
+    return () => controller.abort();
+  }, [page]);
 
   return <main>
     <header><div><p className="eyebrow">DISTRIBUTED VIDEO NETWORK</p><h1>DVN 管理中心</h1></div>
@@ -68,6 +86,29 @@ function App() {
           '協定版本': status.build.protocolVersion, '未提交變更': status.build.dirty ? '是' : '否',
           '本機監聽': status.listenAddress,
         }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
+    </section>}
+    {page === 'diagnostics' && status && <section><h2>目前生效設定</h2>
+      {configError ? <p role="alert">{configError}</p> : !runtimeConfig ? <p role="status">正在取得設定…</p> : <dl>{Object.entries({
+        '設定來源': runtimeConfig.source,
+        '監聽介面': runtimeConfig.effective.host,
+        '優先端口': runtimeConfig.effective.preferredPort,
+        '遞補端口': runtimeConfig.effective.fallbackPorts?.join(', ') || '未啟用',
+        '資料目錄': runtimeConfig.effective.dataDirectory,
+        '網頁目錄': runtimeConfig.effective.webDirectory,
+        ...(runtimeConfig.network ? {
+          '沿用上次端口': runtimeConfig.network.rememberEnabled ? '啟用' : '停用（固定端口）',
+          '上次成功端口': runtimeConfig.network.previousPort || '無記錄',
+          '本次實際端口': runtimeConfig.network.activePort,
+          '狀態檔': runtimeConfig.network.stateFile,
+          '狀態保存': runtimeConfig.network.saved ? '已保存' : '未保存',
+          ...(runtimeConfig.network.warning ? { '狀態提醒': runtimeConfig.network.warning } : {}),
+        } : {}),
+        ...(status.build.service === 'video-node' ? {
+          '自動掃描': runtimeConfig.effective.autoScan ? '啟用' : '停用',
+          '掃描間隔': `${runtimeConfig.effective.scanIntervalSeconds} 秒`,
+          '檔案穩定時間': `${runtimeConfig.effective.fileStableSeconds} 秒`,
+        } : {}),
+      }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>}
     </section>}
   </main>;
 }

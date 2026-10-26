@@ -2,6 +2,7 @@
   "host": "0.0.0.0",
   "preferredPort": 18620,
   "fallbackPorts": [],
+  "rememberLastSuccessfulPort": false,
   "webDirectory": "/app/web",
   "dataDirectory": "/data"
 }

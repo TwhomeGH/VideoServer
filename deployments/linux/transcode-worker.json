@@ -2,6 +2,7 @@
   "host": "0.0.0.0",
   "preferredPort": 18630,
   "fallbackPorts": [18631, 18632, 18633],
+  "rememberLastSuccessfulPort": true,
   "webDirectory": "/opt/dvn/web",
   "dataDirectory": "/var/lib/dvn/transcode-worker"
 }

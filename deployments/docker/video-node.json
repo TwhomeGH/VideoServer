@@ -2,6 +2,10 @@
   "host": "0.0.0.0",
   "preferredPort": 18610,
   "fallbackPorts": [],
+  "rememberLastSuccessfulPort": false,
   "webDirectory": "/app/web",
-  "dataDirectory": "/data"
+  "dataDirectory": "/data",
+  "autoScan": true,
+  "scanIntervalSeconds": 30,
+  "fileStableSeconds": 10
 }

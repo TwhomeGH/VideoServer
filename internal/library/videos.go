@@ -51,9 +51,7 @@ func (s *Store) Import(ctx context.Context, poolID, relative, title string, meta
 	if err != nil {
 		return v, err
 	}
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".mp4", ".webm", ".mkv", ".mov", ".avi", ".m4v":
-	default:
+	if !supportedVideo(path) {
 		return v, fmt.Errorf("不支援的影片副檔名")
 	}
 	file, err := os.Open(path)

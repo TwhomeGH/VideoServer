@@ -8,7 +8,11 @@ type Video = VideoMetadata & {
   available: boolean; importedAt: string;
   description: string; category: string; adult: boolean; license: string;
 };
-type LibraryData = { nodeId: string; pools: Pool[]; videos: Video[] };
+type ScanStatus = {
+  automatic: boolean; intervalSeconds: number; stableSeconds: number; running: boolean; queued: boolean;
+  last: { completedAt: string; imported: number; pending: number; failed: number; offlinePools: number; errors: string[] } | null;
+};
+type LibraryData = { nodeId: string; pools: Pool[]; videos: Video[]; scan: ScanStatus | null };
 
 async function request<T>(path: string, body?: object, method = 'POST'): Promise<T> {
   const response = await fetch(`/api/v1/${path}`, body ? {
@@ -23,6 +27,7 @@ async function request<T>(path: string, body?: object, method = 'POST'): Promise
 export function Library({ page }: { page: Page }) {
   const [data, setData] = useState<LibraryData | null>(null);
   const [error, setError] = useState('');
+  const [loadError, setLoadError] = useState('');
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
   const [root, setRoot] = useState('');
@@ -37,11 +42,24 @@ export function Library({ page }: { page: Page }) {
     const result = await request<LibraryData>('library');
     result.videos = result.videos.map(video => ({ ...emptyMetadata(), ...video }));
     setData(result);
+    setLoadError('');
     setSelected(current => current ? result.videos.find(video => video.id === current.id) || null : null);
     setPoolId(current => current || result.pools[0]?.id || '');
   }
 
-  useEffect(() => { void refresh().catch(reason => setError(String(reason.message))); }, []);
+  useEffect(() => {
+    let active = true;
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      if (active) {
+        try { await refresh(); }
+        catch (reason) { if (active) setLoadError(reason instanceof Error ? reason.message : String(reason)); }
+        if (active) timer = setTimeout(poll, 5000);
+      }
+    };
+    void poll();
+    return () => { active = false; clearTimeout(timer); };
+  }, []);
 
   async function submit(action: () => Promise<void>) {
     setBusy(true); setError('');
@@ -51,7 +69,7 @@ export function Library({ page }: { page: Page }) {
   }
 
   return <>
-    {error && <section><p role="alert">{error}</p><button disabled={busy} onClick={() => void submit(async () => {})}>重試</button></section>}
+    {(error || loadError) && <section><p role="alert">{error || loadError}</p><button disabled={busy} onClick={() => void submit(async () => {})}>重試</button></section>}
     {page === 'overview' && <>
       <div className="summary-grid">
         <a href="#videos"><span>影片總數</span><strong>{data?.videos.length ?? '—'}</strong></a>
@@ -94,6 +112,12 @@ export function Library({ page }: { page: Page }) {
       }); }}><MetadataFields value={editDraft} onChange={setEditDraft} editing /><button disabled={busy}>儲存資料</button></form>
     </section>}
       {page === 'pools' && <section><h2>儲存目錄與狀態</h2><p className="muted">登錄伺服器上的既有目錄，原始檔案維持原位。</p>
+        {data?.scan && <div>
+          <p>{data.scan.automatic ? `自動檢查已開啟，每 ${data.scan.intervalSeconds} 秒掃描一次` : '自動檢查已停用，可手動掃描'}；新增檔案需連續觀察穩定至少 {data.scan.stableSeconds} 秒才匯入。</p>
+          <button disabled={busy || data.scan.running || data.scan.queued} onClick={() => void submit(async () => { await request('library/scan', {}); })}>{data.scan.running ? '正在掃描…' : data.scan.queued ? '掃描已排程' : '立即掃描新增影片'}</button>
+          {data.scan.last && <p className="muted">上次完成：{new Date(data.scan.last.completedAt).toLocaleString()} · 新增 {data.scan.last.imported} · 等待穩定 {data.scan.last.pending} · 失敗 {data.scan.last.failed} · 離線池 {data.scan.last.offlinePools}</p>}
+          {data.scan.last?.errors.length ? <details><summary>掃描錯誤</summary><ul>{data.scan.last.errors.map((message, index) => <li key={index}>{message}</li>)}</ul></details> : null}
+        </div>}
         <button disabled={busy} onClick={() => void submit(async () => {})}>重新檢查狀態</button>
         {data?.pools.length === 0 && <p>尚未註冊儲存池，請先新增影片所在的目錄。</p>}
         <ul className="pool-list">{data?.pools.map(pool => <li key={pool.id}><strong>{pool.name}</strong><span className={pool.online ? 'badge' : ''}>{pool.online ? '在線' : '離線'}</span><code>{pool.path}</code></li>)}</ul>
@@ -107,6 +131,7 @@ export function Library({ page }: { page: Page }) {
         </form>
       </section>}
       {page === 'import' && <section><h2>匯入既有影片</h2><p className="muted">建立 SHA-256 索引，不複製檔案。大型影片計算雜湊需要一些時間。</p>
+        <p className="muted">已註冊的儲存池可自動發現新增影片；自動匯入使用檔名作為標題，作品類型保留「未確認」，其他描述可在影片庫補填。</p>
         {data?.pools.length === 0 && <p>尚無儲存池。<a href="#pools">先註冊影片目錄</a></p>}
         {busy && <p role="status">正在處理，請等待完成。</p>}
         <form onSubmit={event => { event.preventDefault(); void submit(async () => {

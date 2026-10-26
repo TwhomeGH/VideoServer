@@ -3,11 +3,13 @@ import { mkdirSync } from 'node:fs';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { createServer } from '../web/admin/node_modules/vite/dist/node/index.js';
+import { ensureWorkspace } from './workspaces.mjs';
 
 process.chdir(fileURLToPath(new URL('..', import.meta.url)));
 const children = new Set();
 let vite;
 let stopping = false;
+let workspace;
 const input = createInterface({ input: process.stdin });
 input.on('line', line => { if (line.trim().toLowerCase() === 'q') void stop(); });
 
@@ -65,7 +67,9 @@ async function startService(service) {
   const output = `bin/${service}${process.platform === 'win32' ? '.exe' : ''}`;
   await build(service, output);
   if (stopping) throw new Error('啟動已取消');
-  const child = launch(service, `./${output}`, []);
+  const config = workspace.configs[service];
+  console.log(`[${service}] 設定檔：${config}`);
+  const child = launch(service, `./${output}`, ['-config', config]);
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`${service} 啟動逾時`));
@@ -93,6 +97,8 @@ process.on('SIGINT', () => void stop());
 process.on('SIGTERM', () => void stop());
 
 try {
+  workspace = ensureWorkspace('development');
+  console.log(`[dev] 工作區：${workspace.directory}；設定路徑與資料目錄可在「服務資訊」查看。`);
   mkdirSync('bin', { recursive: true });
   const target = await startService('video-node');
   const response = await fetch(`${target}/api/v1/status`, { signal: AbortSignal.timeout(5000) });

@@ -2,6 +2,10 @@
   "host": "0.0.0.0",
   "preferredPort": 18610,
   "fallbackPorts": [18611, 18612, 18613],
+  "rememberLastSuccessfulPort": true,
   "webDirectory": "/opt/dvn/web",
-  "dataDirectory": "/var/lib/dvn/video-node"
+  "dataDirectory": "/var/lib/dvn/video-node",
+  "autoScan": true,
+  "scanIntervalSeconds": 30,
+  "fileStableSeconds": 10
 }

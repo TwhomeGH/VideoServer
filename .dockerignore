@@ -3,6 +3,8 @@
 bin
 data
 media
+local
+testing/local
 **/node_modules
 **/dist
 *.exe

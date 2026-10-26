@@ -63,7 +63,11 @@ func (s *Store) Register(mux *http.ServeMux) {
 			failure(w, 500, "無法讀取影片索引")
 			return
 		}
-		respond(w, 200, map[string]any{"nodeId": s.nodeID, "pools": pools, "videos": videos})
+		var scan any
+		if s.scanner != nil {
+			scan = s.scanner.Status()
+		}
+		respond(w, 200, map[string]any{"nodeId": s.nodeID, "pools": pools, "videos": videos, "scan": scan})
 	})
 	mux.HandleFunc("POST /api/v1/pools", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
@@ -79,6 +83,9 @@ func (s *Store) Register(mux *http.ServeMux) {
 			return
 		}
 		respond(w, 201, pool)
+		if s.scanner != nil && s.scanner.Status().Automatic {
+			s.scanner.Request()
+		}
 	})
 	mux.HandleFunc("POST /api/v1/videos/import", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
@@ -124,6 +131,16 @@ func (s *Store) Register(mux *http.ServeMux) {
 		}
 		respond(w, 200, video)
 	})
+	if s.scanner != nil {
+		mux.HandleFunc("POST /api/v1/library/scan", func(w http.ResponseWriter, r *http.Request) {
+			var request struct{}
+			if !decode(w, r, &request) {
+				return
+			}
+			s.scanner.Request()
+			respond(w, 202, s.scanner.Status())
+		})
+	}
 	mux.HandleFunc("GET /api/v1/videos/{id}/content", s.play)
 }
 

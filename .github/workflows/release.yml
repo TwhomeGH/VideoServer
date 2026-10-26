@@ -25,6 +25,7 @@ jobs:
           cache: npm
           cache-dependency-path: web/admin/package-lock.json
       - run: go test ./...
+      - run: node --test scripts/workspaces.test.mjs
       - run: go vet ./...
       - run: npm --prefix web/admin ci
       - run: npm --prefix web/admin run build

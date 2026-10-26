@@ -14,8 +14,9 @@ import (
 
 // Store 持有單一節點的 SQLite 索引；使用完畢需呼叫 Close。
 type Store struct {
-	db     *sql.DB
-	nodeID string
+	db      *sql.DB
+	nodeID  string
+	scanner *Scanner
 }
 
 // Pool 表示已註冊的儲存根目錄；Online 每次查詢時重新檢查。

@@ -16,6 +16,8 @@ npm run dev
 ```
 
 單一終端機會建置並啟動 Video Node 與 Vite，自動將 API 代理指向後端實際取得的端口，日誌附上服務名稱。按 Ctrl+C 一次關閉整組服務。修改 Go 後重新啟動，前端保留 Vite 熱更新。
+開發模式自動建立並載入 `local/development/config/服務名.json`，修改後重啟即可生效；既有設定不會被覆蓋。設定與資料位置詳見 [設定管理](Docs/configuration.md)。
+啟用端口記憶時，下次啟動優先沿用仍在候選清單內的上次成功端口。執行結果另存資料目錄的 `runtime.json`，不改寫 config；Docker 無遞補端口時自動停用記憶，仍維持固定容器端口。
 開發與正式建置共用固定執行檔路徑：`bin/video-node.exe`、`bin/central.exe`、`bin/transcode-worker.exe`（Linux 無 `.exe`）。每次啟動不再產生帶程序 ID 的名稱，讓防火牆規則可沿用相同路徑。重新啟動前請先關閉上一組服務，避免 Windows 鎖住正在執行的檔案。
 需要同時開發三服務時使用：
 
@@ -62,6 +64,7 @@ Vite 開發介面同樣監聽所有 IPv4 介面，其 API 代理仍透過本機�
 儲存池離線會保留影片紀錄。原始檔案大小或修改時間改變後，該副本會標示不可用，以免提供失準的雜湊與內容。
 目前支援 mp4、webm、mkv、mov、avi、m4v 副檔名的索引；這不是編碼或影片內容驗證，FFprobe 驗證與轉碼將另行加入。
 匯入屬同步操作，大型檔案請等待完成；目前尚無匯入佇列、分頁與刪除／重新索引介面。
+已註冊儲存池預設每 30 秒自動檢查新增影片，等待至少 10 秒穩定觀察後背景匯入；儲存池頁面可手動排程與查看結果。已有影片不重複匯入，不會覆蓋你填寫的描述。詳見 [掃描設定](Docs/configuration.md)。
 
 匯入描述欄位包含標題、內容簡介（最多 10000 字）、分類（最多 80 字）、18+ 標記、授權資訊（最多 500 字）。分類可選建議值或自行輸入；授權是發布者提供的文字聲明，留空顯示「未提供」，不能推導轉載權利。18+ 僅為內容標記，尚未實作年齡驗證與存取限制。SQLite v2 會自動升級 v1 並保留原有影片；舊資料描述為空且未標示 18+，不代表通過普遍級審核。
 
@@ -90,3 +93,4 @@ SQLite v3 使用獨立 Tag 索引與作品來源表，會自動升級 v1/v2；�
 本機建置 image 使用 `npm run image -- video-node`，無需 CI；三服務共用多階段 Dockerfile，各自獨立部署。Compose 由主機映射外部端口，影片與 SQLite 資料獨立持久保存。Linux 另提供原生交叉編譯與 systemd 範本。
 CI 只處理正式版本標籤；registry 目的地確認前僅檢查及建置，不自動發布。完整步驟見 [部署說明](Docs/deployment.md)。
 第一次操作請直接依照 [Docker 上手手冊](Docs/deployment.md) 的六個步驟。進階部署另見 [Linux 與發版參考](Docs/deployment-reference.md)；已驗證的範圍見 [部署驗收紀錄](Docs/deployment-test-results.md)。
+持續開發測試建議使用 [testing 工作區](testing/README.md)：根目錄執行 `npm run setup:test`，再到 `testing/` 使用專用 Compose。預設外部端口為 18710／18720／18730，資料不與開發或根目錄部署共用。
