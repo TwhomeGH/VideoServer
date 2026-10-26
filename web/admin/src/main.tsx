@@ -16,6 +16,7 @@ type Status = {
   build: {
     service: string; version: string; commit: string; buildTime: string;
     channel: string; dirty: boolean; protocolVersion: number;
+    imageBuildTime: string; imageSourceDigest: string;
   };
 };
 
@@ -27,6 +28,12 @@ function initialTheme(): Theme {
   return 'system';
 }
 
+/** formatTime 將建置時間轉為瀏覽器本地時間；無法解析時保留原始值。 */
+function formatTime(value: string): string {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString('zh-TW', { hour12: false });
+}
+
 function App() {
   const page = usePage();
   const [theme, setTheme] = useState<Theme>(initialTheme);
@@ -34,6 +41,7 @@ function App() {
   const [error, setError] = useState('');
   const [runtimeConfig, setRuntimeConfig] = useState<RuntimeConfig | null>(null);
   const [configError, setConfigError] = useState('');
+  const [nodeId, setNodeId] = useState('');
 
   useEffect(() => {
     document.documentElement.dataset.theme = theme;
@@ -75,20 +83,25 @@ function App() {
     <div className="page-heading"><h2>{pages[page]}</h2><p className="muted">{status?.build.service || '正在連線'}</p></div>
     {error && <section><p role="alert">無法連線：{error}。請確認服務已啟動後重新整理。</p></section>}
     {!status && !error && <p role="status">正在取得服務資訊…</p>}
-    {status?.build.service === 'video-node' && <Library page={page} />}
+    {status?.build.service === 'video-node' && <Library page={page} onNodeId={setNodeId} />}
     {status && page === 'overview' && <section><h2>節點服務</h2><p className="badge">服務運作中 · {status.build.service}</p><p>版本 {status.build.version}</p><a href="#diagnostics">查看完整服務資訊</a></section>}
     {status && status.build.service !== 'video-node' && page !== 'overview' && page !== 'diagnostics' && <section><p>這個分頁僅適用於 Video Node。</p><a href="#overview">返回總覽</a></section>}
-    {page === 'diagnostics' && status && <section><h2>建置與連線資訊</h2>
+    {page === 'diagnostics' && status && <div className="split-layout">
+    <section><h2>建置與連線資訊</h2>
         <p className="badge">服務運作中 · {status.build.service}</p>
         <dl>{Object.entries({
+          ...(nodeId ? { '節點識別': nodeId } : {}),
           '版本': status.build.version, 'Commit': status.build.commit,
-          '建置時間': status.build.buildTime, '發佈通道': status.build.channel,
+          '程式建置時間': formatTime(status.build.buildTime),
+          '鏡像建置時間': !status.build.imageBuildTime || status.build.imageBuildTime === 'unknown' ? '未提供（建置時未寫入版本資訊）'
+            : `${formatTime(status.build.imageBuildTime)} · 來源 ${!status.build.imageSourceDigest || status.build.imageSourceDigest === 'unknown' ? '未提供' : status.build.imageSourceDigest.slice(0, 12)}`,
+          '發佈通道': status.build.channel,
           '協定版本': status.build.protocolVersion, '未提交變更': status.build.dirty ? '是' : '否',
           '本機監聽': status.listenAddress,
         }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>
-    </section>}
-    {page === 'diagnostics' && status && <section><h2>目前生效設定</h2>
-      {configError ? <p role="alert">{configError}</p> : !runtimeConfig ? <p role="status">正在取得設定…</p> : <dl>{Object.entries({
+    </section>
+    <section><h2>目前生效設定</h2>
+      {configError ? <p role="alert">{configError}</p> : !runtimeConfig ? <p role="status">正在取得設定…</p> : <dl className="dl-columns">{Object.entries({
         '設定來源': runtimeConfig.source,
         '監聽介面': runtimeConfig.effective.host,
         '優先端口': runtimeConfig.effective.preferredPort,
@@ -109,7 +122,8 @@ function App() {
           '檔案穩定時間': `${runtimeConfig.effective.fileStableSeconds} 秒`,
         } : {}),
       }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>}
-    </section>}
+    </section>
+    </div>}
   </main>;
 }
 

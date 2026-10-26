@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Attribution, emptyMetadata, MetadataFields, type VideoMetadata } from './VideoMetadata';
 import type { Page } from './navigation';
 
@@ -24,7 +24,7 @@ async function request<T>(path: string, body?: object, method = 'POST'): Promise
 }
 
 /** Library 依 page 顯示管理分頁，切換時保留尚未送出的表單資料。 */
-export function Library({ page }: { page: Page }) {
+export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: string) => void }) {
   const [data, setData] = useState<LibraryData | null>(null);
   const [error, setError] = useState('');
   const [loadError, setLoadError] = useState('');
@@ -37,11 +37,14 @@ export function Library({ page }: { page: Page }) {
   const [editing, setEditing] = useState<Video | null>(null);
   const [editDraft, setEditDraft] = useState<VideoMetadata>(emptyMetadata);
   const [selected, setSelected] = useState<Video | null>(null);
+  const playerDialog = useRef<HTMLDialogElement>(null);
+  const editDialog = useRef<HTMLDialogElement>(null);
 
   async function refresh() {
     const result = await request<LibraryData>('library');
     result.videos = result.videos.map(video => ({ ...emptyMetadata(), ...video }));
     setData(result);
+    onNodeId?.(result.nodeId);
     setLoadError('');
     setSelected(current => current ? result.videos.find(video => video.id === current.id) || null : null);
     setPoolId(current => current || result.pools[0]?.id || '');
@@ -61,6 +64,24 @@ export function Library({ page }: { page: Page }) {
     return () => { active = false; clearTimeout(timer); };
   }, []);
 
+  useEffect(() => {
+    if (page !== 'videos') { setSelected(null); setEditing(null); }
+  }, [page]);
+
+  useEffect(() => {
+    const dialog = playerDialog.current;
+    if (!dialog) return;
+    if (selected && !dialog.open) dialog.showModal();
+    else if (!selected && dialog.open) dialog.close();
+  }, [selected]);
+
+  useEffect(() => {
+    const dialog = editDialog.current;
+    if (!dialog) return;
+    if (editing && !dialog.open) dialog.showModal();
+    else if (!editing && dialog.open) dialog.close();
+  }, [editing]);
+
   async function submit(action: () => Promise<void>) {
     setBusy(true); setError('');
     try { await action(); await refresh(); }
@@ -78,7 +99,6 @@ export function Library({ page }: { page: Page }) {
       </div>
       <section><h2>開始管理</h2><p>先登錄影片目錄，再匯入目錄內的檔案。</p><div className="quick-links"><a href="#pools">管理儲存池</a><a href="#import">匯入影片</a><a href="#videos">瀏覽影片庫</a></div></section>
     </>}
-    {page === 'diagnostics' && data && <section><h2>節點識別</h2><p className="node-id">NodeID · {data.nodeId}</p></section>}
     {page === 'videos' && <section><div className="section-heading"><div><h2>已匯入影片</h2><p className="muted">{data ? `${data.videos.length} 部影片` : '正在讀取影片庫…'}</p></div>
       <button disabled={busy} onClick={() => void submit(async () => {})}>重新整理</button></div>
       {data?.videos.length === 0 && <div className="empty-state">影片庫還是空的。<a href="#import">匯入第一部影片</a></div>}
@@ -93,56 +113,63 @@ export function Library({ page }: { page: Page }) {
         <button disabled={busy} onClick={() => { setEditing(video); setEditDraft({ ...video }); }}>編輯資料</button>
       </article>)}</div>
     </section>}
-    {page === 'videos' && selected && <section><div className="section-heading"><h2>{selected.title}</h2><button onClick={() => setSelected(null)}>關閉播放器</button></div>
-      <p>{selected.category || '未分類'} · {selected.adult ? '18+ 內容' : '未標示 18+'} · 授權：{selected.license || '未提供'}</p>
-      {selected.description && <p className="description">{selected.description}</p>}
-      <Attribution video={selected} />
-      <video key={selected.id} controls autoPlay preload="metadata" src={`/api/v1/videos/${selected.id}/content`} />
-      <p className="muted">此階段直接播放原始檔。是否能播放取決於瀏覽器支援的編碼，尚未提供自動轉碼。</p>
-    </section>}
-    {page === 'videos' && editing && <section><div className="section-heading"><h2>編輯影片資料</h2><button disabled={busy} onClick={() => setEditing(null)}>取消編輯</button></div>
-      <form onSubmit={event => { event.preventDefault(); void submit(async () => {
-        await request(`videos/${editing.id}/metadata`, {
-          title: editDraft.title, description: editDraft.description, category: editDraft.category,
-          adult: editDraft.adult, license: editDraft.license, tags: editDraft.tags, creators: editDraft.creators,
-          workType: editDraft.workType, sourceUrl: editDraft.sourceUrl, sourcePlatform: editDraft.sourcePlatform,
-          sourcePending: editDraft.sourcePending, repostNote: editDraft.repostNote, language: editDraft.language,
-        }, 'PUT');
-        setEditing(null);
-      }); }}><MetadataFields value={editDraft} onChange={setEditDraft} editing /><button disabled={busy}>儲存資料</button></form>
-    </section>}
-      {page === 'pools' && <section><h2>儲存目錄與狀態</h2><p className="muted">登錄伺服器上的既有目錄，原始檔案維持原位。</p>
-        {data?.scan && <div>
-          <p>{data.scan.automatic ? `自動檢查已開啟，每 ${data.scan.intervalSeconds} 秒掃描一次` : '自動檢查已停用，可手動掃描'}；新增檔案需連續觀察穩定至少 {data.scan.stableSeconds} 秒才匯入。</p>
-          <button disabled={busy || data.scan.running || data.scan.queued} onClick={() => void submit(async () => { await request('library/scan', {}); })}>{data.scan.running ? '正在掃描…' : data.scan.queued ? '掃描已排程' : '立即掃描新增影片'}</button>
-          {data.scan.last && <p className="muted">上次完成：{new Date(data.scan.last.completedAt).toLocaleString()} · 新增 {data.scan.last.imported} · 等待穩定 {data.scan.last.pending} · 失敗 {data.scan.last.failed} · 離線池 {data.scan.last.offlinePools}</p>}
-          {data.scan.last?.errors.length ? <details><summary>掃描錯誤</summary><ul>{data.scan.last.errors.map((message, index) => <li key={index}>{message}</li>)}</ul></details> : null}
-        </div>}
-        <button disabled={busy} onClick={() => void submit(async () => {})}>重新檢查狀態</button>
-        {data?.pools.length === 0 && <p>尚未註冊儲存池，請先新增影片所在的目錄。</p>}
-        <ul className="pool-list">{data?.pools.map(pool => <li key={pool.id}><strong>{pool.name}</strong><span className={pool.online ? 'badge' : ''}>{pool.online ? '在線' : '離線'}</span><code>{pool.path}</code></li>)}</ul>
-        <form onSubmit={event => { event.preventDefault(); void submit(async () => {
-          const pool = await request<Pool>('pools', { name, path: root });
-          setPoolId(pool.id); setName(''); setRoot('');
-        }); }}>
-          <label>儲存池名稱<input required value={name} onChange={event => setName(event.target.value)} placeholder="例如：主影片庫" /></label>
-          <label>伺服器絕對目錄<input required value={root} onChange={event => setRoot(event.target.value)} placeholder="例如：D:\Videos 或 /srv/videos" /></label>
-          <button disabled={busy}>註冊儲存池</button>
-        </form>
-      </section>}
-      {page === 'import' && <section><h2>匯入既有影片</h2><p className="muted">建立 SHA-256 索引，不複製檔案。大型影片計算雜湊需要一些時間。</p>
-        <p className="muted">已註冊的儲存池可自動發現新增影片；自動匯入使用檔名作為標題，作品類型保留「未確認」，其他描述可在影片庫補填。</p>
-        {data?.pools.length === 0 && <p>尚無儲存池。<a href="#pools">先註冊影片目錄</a></p>}
-        {busy && <p role="status">正在處理，請等待完成。</p>}
-        <form onSubmit={event => { event.preventDefault(); void submit(async () => {
-          await request('videos/import', { poolId, path, ...draft });
-          setPath(''); setDraft(emptyMetadata());
-        }); }}>
+      {page === 'pools' && <div className="split-layout">
+        <section><h2>儲存目錄與狀態</h2><p className="muted">登錄伺服器上的既有目錄，原始檔案維持原位。</p>
+          {data?.scan && <p>{data.scan.automatic ? `自動檢查已開啟，每 ${data.scan.intervalSeconds} 秒掃描一次` : '自動檢查已停用，可手動掃描'}；新增檔案需連續觀察穩定至少 {data.scan.stableSeconds} 秒才匯入。</p>}
+          <div className="button-row">
+            {data?.scan && <button disabled={busy || data.scan.running || data.scan.queued} onClick={() => void submit(async () => { await request('library/scan', {}); })}>{data.scan.running ? '正在掃描…' : data.scan.queued ? '掃描已排程' : '立即掃描新增影片'}</button>}
+            <button disabled={busy} onClick={() => void submit(async () => {})}>重新檢查狀態</button>
+          </div>
+          {data?.scan?.last && <p className="muted">上次完成：{new Date(data.scan.last.completedAt).toLocaleString()} · 新增 {data.scan.last.imported} · 等待穩定 {data.scan.last.pending} · 失敗 {data.scan.last.failed} · 離線池 {data.scan.last.offlinePools}</p>}
+          {data?.scan?.last?.errors.length ? <details><summary>掃描錯誤</summary><ul>{data.scan.last!.errors.map((message, index) => <li key={index}>{message}</li>)}</ul></details> : null}
+          {data?.pools.length === 0 && <p>尚未註冊儲存池，請先新增影片所在的目錄。</p>}
+          <ul className="pool-list">{data?.pools.map(pool => <li key={pool.id}><strong>{pool.name}</strong><span className={pool.online ? 'badge' : ''}>{pool.online ? '在線' : '離線'}</span><code>{pool.path}</code></li>)}</ul>
+        </section>
+        <section><h2>新增儲存池</h2><p className="muted">註冊新的影片目錄，之後可透過掃描或手動匯入加入影片。</p>
+          <form onSubmit={event => { event.preventDefault(); void submit(async () => {
+            const pool = await request<Pool>('pools', { name, path: root });
+            setPoolId(pool.id); setName(''); setRoot('');
+          }); }}>
+            <label>儲存池名稱<input required value={name} onChange={event => setName(event.target.value)} placeholder="例如：主影片庫" /></label>
+            <label>伺服器絕對目錄<input required value={root} onChange={event => setRoot(event.target.value)} placeholder="例如：D:\Videos 或 /srv/videos" /></label>
+            <button disabled={busy}>註冊儲存池</button>
+          </form>
+        </section>
+      </div>}
+      {page === 'import' && <form className="import-layout" onSubmit={event => { event.preventDefault(); void submit(async () => {
+        await request('videos/import', { poolId, path, ...draft });
+        setPath(''); setDraft(emptyMetadata());
+      }); }}>
+        <section className="import-source form-stack"><h2>匯入既有影片</h2><p className="muted">建立 SHA-256 索引，不複製檔案。大型影片計算雜湊需要一些時間。</p>
+          {data?.pools.length === 0 && <p>尚無儲存池。<a href="#pools">先註冊影片目錄</a></p>}
           <label>儲存池<select required value={poolId} onChange={event => setPoolId(event.target.value)}><option value="">選擇儲存池</option>{data?.pools.map(pool => <option key={pool.id} value={pool.id} disabled={!pool.online}>{pool.name}{pool.online ? '' : '（離線）'}</option>)}</select></label>
           <label>池內相對路徑<input required value={path} onChange={event => setPath(event.target.value)} placeholder="例如：旅行/第一天.mp4" /></label>
+        </section>
+        <section className="import-metadata form-stack"><h2>影片資料</h2><p className="muted">自動匯入使用檔名作為標題，作品類型保留「未確認」；其他描述可稍後在影片庫補填。</p>
           <MetadataFields value={draft} onChange={setDraft} />
           <button disabled={busy || !poolId}>{busy ? '處理中…' : '匯入影片'}</button>
-        </form>
-      </section>}
+          {busy && <p role="status">正在處理，請等待完成。</p>}
+        </section>
+      </form>}
+    <dialog ref={playerDialog} className="modal" aria-label="影片播放器" onClose={() => setSelected(null)} onClick={event => { if (event.target === event.currentTarget) setSelected(null); }}>
+      {selected && <><div className="modal-heading"><h2>{selected.title}</h2><button onClick={() => setSelected(null)}>關閉播放器</button></div>
+        <video key={selected.id} controls autoPlay preload="metadata" src={`/api/v1/videos/${selected.id}/content`} />
+        <p>{selected.category || '未分類'} · {selected.adult ? '18+ 內容' : '未標示 18+'} · 授權：{selected.license || '未提供'}</p>
+        {selected.description && <p className="description">{selected.description}</p>}
+        <Attribution video={selected} />
+        <p className="muted">此階段直接播放原始檔。是否能播放取決於瀏覽器支援的編碼，尚未提供自動轉碼。</p></>}
+    </dialog>
+    <dialog ref={editDialog} className="modal edit-modal" aria-label="編輯影片資料" onClose={() => setEditing(null)} onClick={event => { if (event.target === event.currentTarget) setEditing(null); }}>
+      {editing && <><div className="modal-heading"><h2>編輯影片資料</h2><button disabled={busy} onClick={() => setEditing(null)}>取消編輯</button></div>
+        <form onSubmit={event => { event.preventDefault(); void submit(async () => {
+          await request(`videos/${editing.id}/metadata`, {
+            title: editDraft.title, description: editDraft.description, category: editDraft.category,
+            adult: editDraft.adult, license: editDraft.license, tags: editDraft.tags, creators: editDraft.creators,
+            workType: editDraft.workType, sourceUrl: editDraft.sourceUrl, sourcePlatform: editDraft.sourcePlatform,
+            sourcePending: editDraft.sourcePending, repostNote: editDraft.repostNote, language: editDraft.language,
+          }, 'PUT');
+          setEditing(null);
+        }); }}><MetadataFields value={editDraft} onChange={setEditDraft} editing /><button disabled={busy}>儲存資料</button></form></>}
+    </dialog>
   </>;
 }
