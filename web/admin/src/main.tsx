@@ -5,6 +5,7 @@ import { api } from './api';
 import { Library } from './Library';
 import { Login } from './Login';
 import { Settings } from './Settings';
+import { Monitor } from './Monitor';
 import { pages, usePage, type Page } from './navigation';
 
 type Theme = 'system' | 'light' | 'dark';
@@ -116,14 +117,15 @@ function App() {
     {authenticated === true && <>
       <nav className="main-nav" aria-label="管理分頁">
         {(Object.entries(pages) as [Page, string][]).filter(([key]) => !status || status.build.service === 'video-node'
-          || key === 'overview' || key === 'settings' || key === 'diagnostics').map(([key, label]) =>
+          || key === 'overview' || key === 'monitor' || key === 'settings' || key === 'diagnostics').map(([key, label]) =>
           <a key={key} href={`#${key}`} aria-current={page === key ? 'page' : undefined}>{label}</a>)}
       </nav>
       <div className="page-heading"><h2>{pages[page]}</h2><p className="muted">{status?.build.service || '正在連線'}</p></div>
       {page === 'settings' && <Settings service={status?.build.service} />}
+      {page === 'monitor' && <Monitor />}
       {status?.build.service === 'video-node' && <Library page={page} onNodeId={setNodeId} />}
       {status && page === 'overview' && <section><h2>節點服務</h2><p className="badge">服務運作中 · {status.build.service}</p><p>版本 {status.build.version}</p><a href="#diagnostics">查看完整服務資訊</a></section>}
-      {status && status.build.service !== 'video-node' && page !== 'overview' && page !== 'diagnostics' && page !== 'settings' && <section><p>這個分頁僅適用於 Video Node。</p><a href="#overview">返回總覽</a></section>}
+      {status && status.build.service !== 'video-node' && page !== 'overview' && page !== 'monitor' && page !== 'diagnostics' && page !== 'settings' && <section><p>這個分頁僅適用於 Video Node。</p><a href="#overview">返回總覽</a></section>}
       {page === 'diagnostics' && status && <div className="split-layout">
         <section><h2>建置與連線資訊</h2>
           <p className="badge">服務運作中 · {status.build.service}</p>

@@ -47,7 +47,7 @@ Video Node 使用 modernc SQLite 驅動（Go 1.26 以上，免 CGO），以交�
 NodeID 保存在資料庫，影片目前是一部邏輯影片、一筆發布與一份原始副本的精簡資料模型；多版本／多副本分表將在轉碼與分散式階段遷移。
 既有影片以池內相對路徑索引，不搬移原檔；FileHash / SourceHash 記錄匯入當下 SHA-256。
 播放前重新檢查路徑邊界、檔案大小與修改時間，來源離線或變更回傳 503，未知影片回傳 404。
-管理介面呈現池在線狀態、背景匯入、清單及直接播放。SQLite v4 加入持久匯入工作與 FFprobe 中繼資料；轉碼與分頁仍待實作。詳見[背景匯入說明](import-processing.md)。
+管理介面呈現池在線狀態、背景匯入、清單及直接播放。SQLite v4 加入持久匯入工作與 FFprobe 中繼資料；影片庫支援[分頁與搜尋篩選](video-library.md)，轉碼仍待實作。詳見[背景匯入說明](import-processing.md)。
 
 影片描述使用 schema v2：description、category、adult、license。分類與授權先保留可擴充文字，18+ 是內容標記，不能替代後續年齡與存取政策。v1 升級保留既有 ID、雜湊與 NodeID，新增描述預設空值；授權空白不能視為允許轉載。
 

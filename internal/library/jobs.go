@@ -18,7 +18,7 @@ import (
 // ErrImportExists 表示檔案已索引或已有工作，避免新請求覆寫既有描述。
 var ErrImportExists = errors.New("此檔案已索引或已有匯入工作；請查看工作清單、重試失敗工作，或編輯已匯入影片")
 
-// ImportJob 是持久化的匯入狀態；完成前不會提供影片播放入口。
+// ImportJob 是持久化的匯入或重新探測狀態；新匯入完成前不提供播放入口。
 type ImportJob struct {
 	ID             string `json:"id"`
 	PoolID         string `json:"poolId"`
@@ -246,11 +246,14 @@ func (q *ImportQueue) Run(ctx context.Context) {
 		if _, saveErr := q.store.db.ExecContext(ctx, `UPDATE import_jobs SET status='failed',phase='failed',error=?,updated_at=? WHERE id=? AND status='running'`, err.Error(), timestamp(), job.ID); saveErr != nil {
 			q.logger.Error("保存失敗工作狀態失敗", "jobId", job.ID, "error", saveErr)
 		}
-		q.logger.Warn("影片匯入失敗", "jobId", job.ID, "error", err)
+		q.logger.Warn("影片背景工作失敗", "jobId", job.ID, "source", job.Source, "error", err)
 	}
 }
 
 func (q *ImportQueue) process(ctx context.Context, job ImportJob) error {
+	if job.Source == "reprobe" {
+		return q.processProbe(ctx, job)
+	}
 	root, err := q.store.poolPath(job.PoolID)
 	if err != nil {
 		return err

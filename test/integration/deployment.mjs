@@ -72,6 +72,18 @@ function authorizedFetch(route, init = {}) {
   return fetch(route, { ...init, headers: { ...(init.headers || {}), ...(cookie ? { Cookie: cookie } : {}) } });
 }
 
+/** waitJob 等待背景工作成功或失敗，逾時時保留最近狀態供診斷。 */
+async function waitJob(id) {
+  let job;
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    job = await api(`import-jobs/${id}`);
+    if (job.status === 'completed' || job.status === 'failed') return job;
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  assert.fail(`工作逾時：${JSON.stringify(job)}`);
+}
+
 mkdirSync(media, { recursive: true });
 writeFileSync(config, JSON.stringify({ host: '0.0.0.0', preferredPort: 18610, fallbackPorts: [], webDirectory: '/app/web', dataDirectory: '/data/acceptance' }, null, 2));
 writeFileSync(envFile, `DVN_BIND_ADDRESS=127.0.0.1\nDVN_NODE_PORT=${port}\nDVN_MEDIA_PATH=${media.replaceAll('\\', '/')}\nDVN_NODE_CONFIG=${config.replaceAll('\\', '/')}\nDVN_ADMIN_PASSWORD=${adminPassword}\n`);
@@ -90,6 +102,8 @@ try {
   compose('up', '-d', '--no-build', '--pull', 'never', '--wait', '--wait-timeout', '60');
   pass('Compose 以外掛 config、資料卷及唯讀影片目錄啟動');
   assert.equal((await fetch(`${base}/api/v1/import-jobs/nonexistent`)).status, 401);
+  assert.equal((await fetch(`${base}/api/v1/monitor`)).status, 401);
+  assert.equal((await fetch(`${base}/api/v1/videos/nonexistent/probe`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 401);
   assert.equal((await fetch(`${base}/api/v1/videos/import`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 401);
   pass('匯入工作與建立工作 API 均要求登入');
   await login();
@@ -107,13 +121,7 @@ try {
   const details = { title: '部署測試影片', description: '測試專用，自行產生的色塊與聲音。', category: '測試', tags: ['Docker', 'docker', '部署測試'],
     workType: 'original', creators: [{ name: 'DVN 測試產生器', url: '' }], language: '無語音', adult: false, license: '測試素材' };
   const job = await api('videos/import', { poolId: pool.id, path: '範例影片.mp4', ...details });
-  let finished;
-  const deadline = Date.now() + 30000;
-  while (Date.now() < deadline) {
-    finished = await api(`import-jobs/${job.id}`);
-    if (finished.status === 'completed' || finished.status === 'failed') break;
-    await new Promise(resolve => setTimeout(resolve, 250));
-  }
+  const finished = await waitJob(job.id);
   assert.equal(finished?.status, 'completed', finished?.error || '匯入工作逾時');
   const video = (await api('library')).videos.find(item => item.id === finished.videoId);
   assert.ok(video, '完成工作後找不到影片');
@@ -137,6 +145,30 @@ try {
   await api(`videos/${video.id}/metadata`, { ...details, title: '已編輯的測試影片' }, 'PUT');
   compose('exec', '-T', 'video-node', 'test', '-f', '/data/acceptance/library.sqlite');
   pass('編輯資料成功，資料庫位置由外掛 config 控制');
+  const probeJob = await api(`videos/${video.id}/probe`, {});
+  const probed = await waitJob(probeJob.id);
+  assert.equal(probed.status, 'completed', probed.error);
+  const refreshed = (await api('library')).videos.find(item => item.id === video.id);
+  assert.equal(refreshed.title, '已編輯的測試影片');
+  assert.equal(refreshed.fileHash, video.fileHash);
+  assert.deepEqual(refreshed.tags, video.tags);
+  assert.deepEqual(refreshed.creators, video.creators);
+  assert.equal(refreshed.media.width, 320);
+  pass('重新讀取影片資訊並保留影片識別、雜湊、標題與描述');
+  let monitor = await api('monitor');
+  for (let attempt = 0; monitor.cpuPercent === null && attempt < 10; attempt++) {
+    await new Promise(resolve => setTimeout(resolve, 500));
+    monitor = await api('monitor');
+  }
+  assert.equal(monitor.service, 'video-node');
+  assert.equal(typeof monitor.cpuPercent, 'number');
+  assert.ok(monitor.cpuPercent >= 0);
+  assert.ok(monitor.heapAllocBytes > 0);
+  assert.ok(monitor.sentBytes >= 1024);
+  assert.ok(monitor.receivedBytes > 0);
+  assert.ok(monitor.tasks.jobs.counts.completed >= 2);
+  assert.equal(typeof monitor.tasks.scan.running, 'boolean');
+  pass('已授權監看 API 提供 Linux CPU、Go 記憶體、HTTP 流量與工作統計');
   const previousContainer = compose('ps', '-q', 'video-node');
   compose('up', '-d', '--force-recreate', '--no-build', '--pull', 'never', '--wait', '--wait-timeout', '60');
   assert.notEqual(compose('ps', '-q', 'video-node'), previousContainer);
@@ -155,8 +187,15 @@ try {
     assert.equal(offline.videos.length, 1);
     assert.equal(offline.videos[0].available, false);
     assert.equal((await authorizedFetch(content)).status, 503);
+    const offlineProbe = await api(`videos/${video.id}/probe`, {});
+    const failedProbe = await waitJob(offlineProbe.id);
+    assert.equal(failedProbe.status, 'failed');
+    assert.deepEqual((await api('library')).videos[0].media, refreshed.media);
   } finally { renameSync(sample + '.offline', sample); }
   assert.equal((await api('library')).videos[0].available, true);
+  await api(`import-jobs/${probeJob.id}/retry`, {});
+  assert.equal((await waitJob(probeJob.id)).status, 'completed');
+  pass('來源離線時探測失敗保留技術資訊，恢復後可重試');
   pass('來源離線保留索引並拒絕播放，恢復檔案後重新可用');
   writeFileSync(path.join(directory, 'result.json'), JSON.stringify({ project, completedAt: new Date().toISOString(), steps, nodeId: before.nodeId, videoId: video.id }, null, 2));
   console.log(`測試紀錄與範例資料：${directory}`);

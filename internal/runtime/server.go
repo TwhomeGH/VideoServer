@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/TwhomeGH/VideoServer/internal/auth"
+	"github.com/TwhomeGH/VideoServer/internal/diagnostics"
 	"github.com/TwhomeGH/VideoServer/internal/library"
 	"github.com/TwhomeGH/VideoServer/pkg/buildinfo"
 )
@@ -174,9 +175,23 @@ func Main(service string, port int) int {
 			network.Saved = true
 		}
 	}
-	server := &http.Server{Handler: authManager.Middleware(Handler(identity, listener.Addr().String(), config.WebDirectory, extensions...)), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
+	monitor := diagnostics.New(service, func(ctx context.Context) (any, error) {
+		if queue == nil {
+			return nil, nil
+		}
+		work, err := queue.WorkStatus(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"jobs": work, "scan": scanner.Status()}, nil
+	})
+	extensions = append(extensions, monitor.Register)
+	server := &http.Server{Handler: monitor.Middleware(authManager.Middleware(Handler(identity, listener.Addr().String(), config.WebDirectory, extensions...))), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	monitorDone := make(chan struct{})
+	go func() { defer close(monitorDone); monitor.Run(ctx) }()
+	defer func() { stop(); <-monitorDone }()
 	go func() {
 		select {
 		case <-restartCh:

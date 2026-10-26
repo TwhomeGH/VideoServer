@@ -2,12 +2,9 @@ package library
 
 import (
 	"context"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -83,31 +80,13 @@ func (s *Store) importVideo(ctx context.Context, poolID, relative, title string,
 	if options != nil && options.expected != nil && (!os.SameFile(before, options.expected) || before.Size() != options.expected.Size() || !before.ModTime().Equal(options.expected.ModTime())) {
 		return v, fmt.Errorf("來源已變更，請重新匯入")
 	}
-	hash := sha256.New()
-	buffer := make([]byte, 1024*1024)
-	var processed int64
-	lastProgress := time.Time{}
-	for {
-		if err := ctx.Err(); err != nil {
-			return v, err
-		}
-		n, err := file.Read(buffer)
-		if n > 0 {
-			hash.Write(buffer[:n])
-			processed += int64(n)
-			if options != nil && options.jobID != "" && (time.Since(lastProgress) > 250*time.Millisecond || processed == before.Size()) {
-				if _, err := s.db.ExecContext(ctx, "UPDATE import_jobs SET bytes_processed=?,updated_at=? WHERE id=? AND status='running'", processed, timestamp(), options.jobID); err != nil {
-					return v, err
-				}
-				lastProgress = time.Now()
-			}
-		}
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return v, err
-		}
+	jobID := ""
+	if options != nil {
+		jobID = options.jobID
+	}
+	digest, err := s.hashSource(ctx, file, before.Size(), jobID)
+	if err != nil {
+		return v, err
 	}
 	after, err := file.Stat()
 	if err != nil {
@@ -127,7 +106,6 @@ func (s *Store) importVideo(ctx context.Context, poolID, relative, title string,
 	if err != nil {
 		return v, err
 	}
-	digest := hex.EncodeToString(hash.Sum(nil))
 	v = Video{ID: identifier(), PublicationID: identifier(), ReplicaID: identifier(), PoolID: poolID, Title: strings.TrimSpace(title), FileHash: digest, SourceHash: digest, Size: before.Size(), ImportedAt: time.Now().UTC().Format(time.RFC3339Nano), Available: true, relativePath: relative, modifiedAt: before.ModTime().UnixNano()}
 	v.Metadata = details
 	tx, err := s.db.BeginTx(ctx, nil)
@@ -172,7 +150,11 @@ func (s *Store) importVideo(ctx context.Context, poolID, relative, title string,
 
 // Videos 回傳匯入清單及來源可用狀態，來源離線不會移除索引。
 func (s *Store) Videos() ([]Video, error) {
-	rows, err := s.db.Query("SELECT " + videoColumns + " FROM videos ORDER BY imported_at DESC,id")
+	return s.listVideos(context.Background(), "SELECT "+videoColumns+" FROM videos ORDER BY imported_at DESC,id")
+}
+
+func (s *Store) listVideos(ctx context.Context, query string, args ...any) ([]Video, error) {
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}

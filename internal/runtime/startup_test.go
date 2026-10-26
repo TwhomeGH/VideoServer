@@ -138,6 +138,14 @@ func TestStartupPersistsFallbackAndKeepsConfigUnchanged(t *testing.T) {
 		t.Fatal(err)
 	}
 	client.Jar = jar
+	unauthorized, err := client.Get("http://127.0.0.1:" + strconv.Itoa(port) + "/api/v1/monitor")
+	if err != nil {
+		t.Fatal(err)
+	}
+	unauthorized.Body.Close()
+	if unauthorized.StatusCode != http.StatusUnauthorized {
+		t.Fatal("monitor did not require login")
+	}
 	login, err := client.Post("http://127.0.0.1:"+strconv.Itoa(port)+"/api/v1/auth/login",
 		"application/json", strings.NewReader(`{"password":"test-password-123"}`))
 	if err != nil {
@@ -146,6 +154,14 @@ func TestStartupPersistsFallbackAndKeepsConfigUnchanged(t *testing.T) {
 	login.Body.Close()
 	if login.StatusCode != http.StatusOK {
 		t.Fatalf("login status = %d", login.StatusCode)
+	}
+	monitor, err := client.Get("http://127.0.0.1:" + strconv.Itoa(port) + "/api/v1/monitor")
+	if err != nil {
+		t.Fatal(err)
+	}
+	monitor.Body.Close()
+	if monitor.StatusCode != http.StatusOK {
+		t.Fatal("authorized monitor unavailable")
 	}
 	response, err := client.Get("http://127.0.0.1:" + strconv.Itoa(port) + "/api/v1/config")
 	if err != nil {

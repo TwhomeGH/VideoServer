@@ -53,12 +53,22 @@ func decode(w http.ResponseWriter, r *http.Request, value any) bool {
 // 登入授權由 runtime 的 auth middleware 統一執行；寫入另檢查 Origin。
 func (s *Store) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/library", func(w http.ResponseWriter, r *http.Request) {
+		values, err := url.ParseQuery(r.URL.RawQuery)
+		if err != nil {
+			failure(w, 400, "查詢參數格式無效")
+			return
+		}
+		query, err := parseVideoQuery(values)
+		if err != nil {
+			failure(w, 400, err.Error())
+			return
+		}
 		pools, err := s.Pools()
 		if err != nil {
 			failure(w, 500, "無法讀取儲存池")
 			return
 		}
-		videos, err := s.Videos()
+		videoPage, err := s.QueryVideos(r.Context(), query)
 		if err != nil {
 			failure(w, 500, "無法讀取影片索引")
 			return
@@ -75,7 +85,7 @@ func (s *Store) Register(mux *http.ServeMux) {
 				return
 			}
 		}
-		respond(w, 200, map[string]any{"nodeId": s.nodeID, "pools": pools, "videos": videos, "scan": scan, "jobs": jobs})
+		respond(w, 200, map[string]any{"nodeId": s.nodeID, "pools": pools, "videos": videoPage.Videos, "pagination": map[string]int{"page": videoPage.Page, "pageSize": videoPage.PageSize, "total": videoPage.Total, "totalVideos": videoPage.TotalVideos}, "scan": scan, "jobs": jobs})
 	})
 	mux.HandleFunc("POST /api/v1/pools", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
@@ -158,6 +168,22 @@ func (s *Store) Register(mux *http.ServeMux) {
 		})
 	}
 	if s.queue != nil {
+		mux.HandleFunc("POST /api/v1/videos/{id}/probe", func(w http.ResponseWriter, r *http.Request) {
+			var request struct{}
+			if !decode(w, r, &request) {
+				return
+			}
+			job, err := s.queue.EnqueueProbe(r.Context(), r.PathValue("id"))
+			if errors.Is(err, sql.ErrNoRows) {
+				failure(w, 404, "找不到影片")
+				return
+			}
+			if err != nil {
+				failure(w, 500, "無法排程影片資訊檢查")
+				return
+			}
+			respond(w, 202, job)
+		})
 		mux.HandleFunc("GET /api/v1/import-jobs/{id}", func(w http.ResponseWriter, r *http.Request) {
 			job, err := s.queue.Job(r.PathValue("id"))
 			if errors.Is(err, sql.ErrNoRows) {

@@ -1,5 +1,13 @@
 # Docker 部署驗收紀錄
 
+## 重新探測與工作監看驗收
+
+2026-10-27（Asia/Taipei）在獨立 Docker 專案執行 `npm run test:deployment` 通過。確認重新探測更新 FFprobe 資訊並保留影片識別、SHA-256、標題、Tag 與作者；來源離線時工作失敗且保留舊技術資訊，恢復後可重試完成。
+
+確認監看與重新探測 API 均需登入，Linux 監看回傳有效 CPU、Go 記憶體、HTTP 收送計數及完整工作狀態；Range／HEAD 播放與容器重建資料保留仍通過。固定 testing 環境未更新。
+
+同批 Windows `go test ./...`、`go vet ./...`、Node 單元測試與前端建置通過。單元測試另覆蓋處理期間修改描述、重複排程、來源異動、完整佇列統計與流量計數。
+
 ## 背景匯入與 FFprobe 驗收
 
 2026-10-27（Asia/Taipei）執行 `npm run test:deployment`，以獨立 Docker 專案驗證通過：未登入 API 拒絕存取、登入後建立匯入工作、FFprobe 解析 320×180 H.264/AAC 影片與片長、SHA-256、Range／HEAD 播放、描述編輯、容器重建後資料保留及來源離線恢復。

@@ -3,6 +3,7 @@ import { api } from './api';
 import { Attribution, emptyMetadata, MetadataFields, type VideoMetadata } from './VideoMetadata';
 import type { Page } from './navigation';
 import { ImportJobs, type ImportJob } from './ImportJobs';
+import { VideoFilters, defaultVideoFilters } from './VideoFilters';
 
 type Pool = { id: string; name: string; path: string; online: boolean };
 type Video = VideoMetadata & {
@@ -15,7 +16,8 @@ type ScanStatus = {
   automatic: boolean; intervalSeconds: number; stableSeconds: number; running: boolean; queued: boolean;
   last: { completedAt: string; imported: number; enqueued: number; pending: number; failed: number; offlinePools: number; errors: string[] } | null;
 };
-type LibraryData = { nodeId: string; pools: Pool[]; videos: Video[]; scan: ScanStatus | null; jobs: ImportJob[] };
+type LibraryData = { nodeId: string; pools: Pool[]; videos: Video[]; scan: ScanStatus | null; jobs: ImportJob[];
+  pagination: { page: number; pageSize: number; total: number; totalVideos: number } };
 
 function mediaSummary(video: Video): string {
   if (!video.media) return '尚無影片技術資訊';
@@ -43,32 +45,42 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
   const [editing, setEditing] = useState<Video | null>(null);
   const [editDraft, setEditDraft] = useState<VideoMetadata>(emptyMetadata);
   const [selected, setSelected] = useState<Video | null>(null);
+  const [filters, setFilters] = useState(defaultVideoFilters);
+  const [videoPage, setVideoPage] = useState(1);
+  const refreshVersion = useRef(0);
+  const queryString = page === 'monitor' ? '' : page === 'videos'
+    ? new URLSearchParams({ ...filters, page: String(videoPage) }).toString() : 'pageSize=1';
   const playerDialog = useRef<HTMLDialogElement>(null);
   const editDialog = useRef<HTMLDialogElement>(null);
 
-  async function refresh() {
-    const result = await request<LibraryData>('library');
+  async function refresh(signal?: AbortSignal) {
+    const version = ++refreshVersion.current;
+    const result = await api<LibraryData>(`library?${queryString}`, { signal });
+    if (signal?.aborted || version !== refreshVersion.current) return;
     result.videos = result.videos.map(video => ({ ...emptyMetadata(), ...video }));
     setData(result);
     onNodeId?.(result.nodeId);
     setLoadError('');
-    setSelected(current => current ? result.videos.find(video => video.id === current.id) || null : null);
+    setSelected(current => current ? result.videos.find(video => video.id === current.id) || current : null);
     setPoolId(current => current || result.pools[0]?.id || '');
   }
 
   useEffect(() => {
+    if (!queryString) return;
     let active = true;
+    const controller = new AbortController();
+    setData(null);
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
       if (active) {
-        try { await refresh(); }
+        try { await refresh(controller.signal); }
         catch (reason) { if (active) setLoadError(reason instanceof Error ? reason.message : String(reason)); }
         if (active) timer = setTimeout(poll, 5000);
       }
     };
     void poll();
-    return () => { active = false; clearTimeout(timer); };
-  }, []);
+    return () => { active = false; controller.abort(); ++refreshVersion.current; clearTimeout(timer); };
+  }, [queryString]);
 
   useEffect(() => {
     if (page !== 'videos') { setSelected(null); setEditing(null); }
@@ -99,15 +111,16 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
     {(error || loadError) && <section><p role="alert">{error || loadError}</p><button disabled={busy} onClick={() => void submit(async () => {})}>重試</button></section>}
     {page === 'overview' && <>
       <div className="summary-grid">
-        <a href="#videos"><span>影片總數</span><strong>{data?.videos.length ?? '—'}</strong></a>
+        <a href="#videos"><span>影片總數</span><strong>{data?.pagination.totalVideos ?? '—'}</strong></a>
         <a href="#pools"><span>在線儲存池</span><strong>{data ? `${data.pools.filter(pool => pool.online).length} / ${data.pools.length}` : '—'}</strong></a>
-        <a href="#videos"><span>可用影片來源</span><strong>{data?.videos.filter(video => video.available).length ?? '—'}</strong></a>
+        <a href="#jobs"><span>影片工作（最近 100 筆）</span><strong>{data?.jobs.length ?? '—'}</strong></a>
       </div>
       <section><h2>開始管理</h2><p>先登錄影片目錄，再匯入目錄內的檔案。</p><div className="quick-links"><a href="#pools">管理儲存池</a><a href="#import">匯入影片</a><a href="#videos">瀏覽影片庫</a></div></section>
     </>}
-    {page === 'videos' && <section><div className="section-heading"><div><h2>已匯入影片</h2><p className="muted">{data ? `${data.videos.length} 部影片` : '正在讀取影片庫…'}</p></div>
+    {page === 'videos' && <section><div className="section-heading"><div><h2>已匯入影片</h2><p className="muted">{data ? `符合 ${data.pagination.total} 部 ／ 影片庫共 ${data.pagination.totalVideos} 部` : '正在讀取影片庫…'}</p></div>
       <button disabled={busy} onClick={() => void submit(async () => {})}>重新整理</button></div>
-      {data?.videos.length === 0 && <div className="empty-state">影片庫還是空的。<a href="#import">匯入第一部影片</a></div>}
+      <VideoFilters pools={data?.pools || []} initialValues={filters} onApply={values => { setSelected(null); setEditing(null); setFilters(values); setVideoPage(1); }} />
+      {data?.videos.length === 0 && <div className="empty-state">{data.pagination.totalVideos === 0 ? <>影片庫還是空的。<a href="#import">匯入第一部影片</a></> : '沒有符合條件的影片，請調整或清除篩選。'}</div>}
       <div className="video-grid">{data?.videos.map(video => <article key={video.id} className="video-card">
         <div className="video-cover" aria-hidden="true">▶</div><h3>{video.title}</h3>
         <p>{video.category || '未分類'}{video.adult ? ' · 18+' : ''}</p>
@@ -118,7 +131,16 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
         <p className="muted">{mediaSummary(video)}</p>
         <button disabled={!video.available} onClick={() => setSelected(video)}>播放影片</button>
         <button disabled={busy} onClick={() => { setEditing(video); setEditDraft({ ...video }); }}>編輯資料</button>
+        <button disabled={busy || data.jobs.some(job => job.source === 'reprobe' && job.videoId === video.id && (job.status === 'queued' || job.status === 'running'))} onClick={() => void submit(async () => {
+          await request<ImportJob>(`videos/${video.id}/probe`, {});
+          window.location.hash = 'jobs';
+        })}>重新讀取影片資訊</button>
       </article>)}</div>
+      {data && <nav className="pagination" aria-label="影片清單分頁">
+        <button disabled={data.pagination.page <= 1} onClick={() => setVideoPage(data.pagination.page - 1)}>上一頁</button>
+        <span>第 {data.pagination.page} ／ {Math.max(1, Math.ceil(data.pagination.total / data.pagination.pageSize))} 頁</span>
+        <button disabled={data.pagination.page * data.pagination.pageSize >= data.pagination.total} onClick={() => setVideoPage(data.pagination.page + 1)}>下一頁</button>
+      </nav>}
     </section>}
       {page === 'pools' && <div className="split-layout">
         <section><h2>儲存目錄與狀態</h2><p className="muted">登錄伺服器上的既有目錄，原始檔案維持原位。</p>
@@ -127,7 +149,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
             {data?.scan && <button disabled={busy || data.scan.running || data.scan.queued} onClick={() => void submit(async () => { await request('library/scan', {}); })}>{data.scan.running ? '正在掃描…' : data.scan.queued ? '掃描已排程' : '立即掃描新增影片'}</button>}
             <button disabled={busy} onClick={() => void submit(async () => {})}>重新檢查狀態</button>
           </div>
-          {data?.scan?.last && <p className="muted">上次完成：{new Date(data.scan.last.completedAt).toLocaleString()} · 排程匯入 {data.scan.last.enqueued || 0} · 等待穩定 {data.scan.last.pending} · 失敗 {data.scan.last.failed} · 離線池 {data.scan.last.offlinePools} · <a href="#jobs">查看匯入工作</a></p>}
+          {data?.scan?.last && <p className="muted">上次完成：{new Date(data.scan.last.completedAt).toLocaleString()} · 排程匯入 {data.scan.last.enqueued || 0} · 等待穩定 {data.scan.last.pending} · 失敗 {data.scan.last.failed} · 離線池 {data.scan.last.offlinePools} · <a href="#jobs">查看影片工作</a></p>}
           {data?.scan?.last?.errors.length ? <details><summary>掃描錯誤</summary><ul>{data.scan.last!.errors.map((message, index) => <li key={index}>{message}</li>)}</ul></details> : null}
           {data?.pools.length === 0 && <p>尚未註冊儲存池，請先新增影片所在的目錄。</p>}
           <ul className="pool-list">{data?.pools.map(pool => <li key={pool.id}><strong>{pool.name}</strong><span className={pool.online ? 'badge' : ''}>{pool.online ? '在線' : '離線'}</span><code>{pool.path}</code></li>)}</ul>
@@ -148,7 +170,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
         setPath(''); setDraft(emptyMetadata());
         window.location.hash = 'jobs';
       }); }}>
-        <section className="import-source form-stack"><h2>匯入既有影片</h2><p className="muted">加入背景佇列後會檢查影片資訊，再計算 SHA-256。原始檔案維持原位，處理進度可在「匯入工作」查看。</p>
+        <section className="import-source form-stack"><h2>匯入既有影片</h2><p className="muted">加入背景佇列後會檢查影片資訊，再計算 SHA-256。原始檔案維持原位，處理進度可在「影片工作」查看。</p>
           {data?.pools.length === 0 && <p>尚無儲存池。<a href="#pools">先註冊影片目錄</a></p>}
           <label>儲存池<select required value={poolId} onChange={event => setPoolId(event.target.value)}><option value="">選擇儲存池</option>{data?.pools.map(pool => <option key={pool.id} value={pool.id} disabled={!pool.online}>{pool.name}{pool.online ? '' : '（離線）'}</option>)}</select></label>
           <label>池內相對路徑<input required value={path} onChange={event => setPath(event.target.value)} placeholder="例如：旅行/第一天.mp4" /></label>
