@@ -1,0 +1,23 @@
+[Unit]
+Description=DVN %i
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+User=dvn
+Group=dvn
+WorkingDirectory=/opt/dvn
+ExecStart=/opt/dvn/%i -config /etc/dvn/%i.json
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+StateDirectory=dvn/%i
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+
+[Install]
+WantedBy=multi-user.target

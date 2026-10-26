@@ -1,0 +1,15 @@
+.git
+.github
+bin
+data
+media
+**/node_modules
+**/dist
+*.exe
+*.sqlite*
+*.mp4
+*.mkv
+*.webm
+.env
+**/.env
+**/.env.*

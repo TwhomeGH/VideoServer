@@ -1,0 +1,7 @@
+/bin/
+/data/
+node_modules/
+dist/
+*.exe
+/media/
+/.env

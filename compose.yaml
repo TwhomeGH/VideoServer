@@ -1,0 +1,56 @@
+name: dvn
+services:
+  video-node:
+    image: dvn/video-node:local
+    build:
+      context: .
+      target: video-node
+      args:
+        VCS_REF: ${DVN_COMMIT:-unknown}
+        DIRTY: ${DVN_DIRTY:-true}
+    ports:
+      - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_NODE_PORT:-18610}:18610"
+    volumes:
+      - node-data:/data
+      - type: bind
+        source: ${DVN_MEDIA_PATH:-./media}
+        target: /media
+        read_only: true
+        bind:
+          create_host_path: false
+    restart: unless-stopped
+    init: true
+  central:
+    profiles: [all]
+    image: dvn/central:local
+    build:
+      context: .
+      target: central
+      args:
+        VCS_REF: ${DVN_COMMIT:-unknown}
+        DIRTY: ${DVN_DIRTY:-true}
+    ports:
+      - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_CENTRAL_PORT:-18620}:18620"
+    volumes:
+      - central-data:/data
+    restart: unless-stopped
+    init: true
+  transcode-worker:
+    profiles: [all]
+    image: dvn/transcode-worker:local
+    build:
+      context: .
+      target: transcode-worker
+      args:
+        VCS_REF: ${DVN_COMMIT:-unknown}
+        DIRTY: ${DVN_DIRTY:-true}
+    ports:
+      - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_WORKER_PORT:-18630}:18630"
+    volumes:
+      - worker-data:/data
+    restart: unless-stopped
+    init: true
+volumes:
+  node-data:
+  central-data:
+  worker-data:

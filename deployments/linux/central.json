@@ -1,0 +1,7 @@
+{
+  "host": "0.0.0.0",
+  "preferredPort": 18620,
+  "fallbackPorts": [18621, 18622, 18623],
+  "webDirectory": "/opt/dvn/web",
+  "dataDirectory": "/var/lib/dvn/central"
+}

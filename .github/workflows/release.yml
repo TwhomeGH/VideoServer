@@ -1,0 +1,51 @@
+name: 正式版本建置
+on:
+  push:
+    tags: ['v[0-9]*']
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: 檢查版本標籤
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo '正式版本標籤必須為 vX.Y.Z'; exit 1; }
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: web/admin/package-lock.json
+      - run: go test ./...
+      - run: go vet ./...
+      - run: npm --prefix web/admin ci
+      - run: npm --prefix web/admin run build
+
+  images:
+    needs: verify
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [video-node, central, transcode-worker]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+      - name: 建置正式版本 image（發布目的地待定）
+        env:
+          SERVICE: ${{ matrix.service }}
+        shell: bash
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          docker buildx build --platform linux/amd64,linux/arm64 --target "$SERVICE" \
+            --build-arg "VERSION=$version" --build-arg "VCS_REF=$GITHUB_SHA" \
+            --build-arg DIRTY=false --build-arg CHANNEL=release \
+            --output "type=oci,dest=/tmp/$SERVICE-image.tar" .

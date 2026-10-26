@@ -1,0 +1,123 @@
+import { useEffect, useState } from 'react';
+import { Attribution, emptyMetadata, MetadataFields, type VideoMetadata } from './VideoMetadata';
+import type { Page } from './navigation';
+
+type Pool = { id: string; name: string; path: string; online: boolean };
+type Video = VideoMetadata & {
+  id: string; title: string; poolId: string; size: number; fileHash: string;
+  available: boolean; importedAt: string;
+  description: string; category: string; adult: boolean; license: string;
+};
+type LibraryData = { nodeId: string; pools: Pool[]; videos: Video[] };
+
+async function request<T>(path: string, body?: object, method = 'POST'): Promise<T> {
+  const response = await fetch(`/api/v1/${path}`, body ? {
+    method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  } : undefined);
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error || `服務回應 ${response.status}`);
+  return result as T;
+}
+
+/** Library 依 page 顯示管理分頁，切換時保留尚未送出的表單資料。 */
+export function Library({ page }: { page: Page }) {
+  const [data, setData] = useState<LibraryData | null>(null);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [name, setName] = useState('');
+  const [root, setRoot] = useState('');
+  const [poolId, setPoolId] = useState('');
+  const [path, setPath] = useState('');
+  const [draft, setDraft] = useState<VideoMetadata>(emptyMetadata);
+  const [editing, setEditing] = useState<Video | null>(null);
+  const [editDraft, setEditDraft] = useState<VideoMetadata>(emptyMetadata);
+  const [selected, setSelected] = useState<Video | null>(null);
+
+  async function refresh() {
+    const result = await request<LibraryData>('library');
+    result.videos = result.videos.map(video => ({ ...emptyMetadata(), ...video }));
+    setData(result);
+    setSelected(current => current ? result.videos.find(video => video.id === current.id) || null : null);
+    setPoolId(current => current || result.pools[0]?.id || '');
+  }
+
+  useEffect(() => { void refresh().catch(reason => setError(String(reason.message))); }, []);
+
+  async function submit(action: () => Promise<void>) {
+    setBusy(true); setError('');
+    try { await action(); await refresh(); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : String(reason)); }
+    finally { setBusy(false); }
+  }
+
+  return <>
+    {error && <section><p role="alert">{error}</p><button disabled={busy} onClick={() => void submit(async () => {})}>重試</button></section>}
+    {page === 'overview' && <>
+      <div className="summary-grid">
+        <a href="#videos"><span>影片總數</span><strong>{data?.videos.length ?? '—'}</strong></a>
+        <a href="#pools"><span>在線儲存池</span><strong>{data ? `${data.pools.filter(pool => pool.online).length} / ${data.pools.length}` : '—'}</strong></a>
+        <a href="#videos"><span>可用影片來源</span><strong>{data?.videos.filter(video => video.available).length ?? '—'}</strong></a>
+      </div>
+      <section><h2>開始管理</h2><p>先登錄影片目錄，再匯入目錄內的檔案。</p><div className="quick-links"><a href="#pools">管理儲存池</a><a href="#import">匯入影片</a><a href="#videos">瀏覽影片庫</a></div></section>
+    </>}
+    {page === 'diagnostics' && data && <section><h2>節點識別</h2><p className="node-id">NodeID · {data.nodeId}</p></section>}
+    {page === 'videos' && <section><div className="section-heading"><div><h2>已匯入影片</h2><p className="muted">{data ? `${data.videos.length} 部影片` : '正在讀取影片庫…'}</p></div>
+      <button disabled={busy} onClick={() => void submit(async () => {})}>重新整理</button></div>
+      {data?.videos.length === 0 && <div className="empty-state">影片庫還是空的。<a href="#import">匯入第一部影片</a></div>}
+      <div className="video-grid">{data?.videos.map(video => <article key={video.id} className="video-card">
+        <div className="video-cover" aria-hidden="true">▶</div><h3>{video.title}</h3>
+        <p>{video.category || '未分類'}{video.adult ? ' · 18+' : ''}</p>
+        {video.description && <p className="description">{video.description}</p>}
+        <p>授權：{video.license || '未提供'}</p>
+        <Attribution video={video} />
+        <p>{(video.size / 1024 / 1024).toFixed(1)} MB · {video.available ? '來源可用' : '離線或已變更'}</p>
+        <button disabled={!video.available} onClick={() => setSelected(video)}>播放影片</button>
+        <button disabled={busy} onClick={() => { setEditing(video); setEditDraft({ ...video }); }}>編輯資料</button>
+      </article>)}</div>
+    </section>}
+    {page === 'videos' && selected && <section><div className="section-heading"><h2>{selected.title}</h2><button onClick={() => setSelected(null)}>關閉播放器</button></div>
+      <p>{selected.category || '未分類'} · {selected.adult ? '18+ 內容' : '未標示 18+'} · 授權：{selected.license || '未提供'}</p>
+      {selected.description && <p className="description">{selected.description}</p>}
+      <Attribution video={selected} />
+      <video key={selected.id} controls autoPlay preload="metadata" src={`/api/v1/videos/${selected.id}/content`} />
+      <p className="muted">此階段直接播放原始檔。是否能播放取決於瀏覽器支援的編碼，尚未提供自動轉碼。</p>
+    </section>}
+    {page === 'videos' && editing && <section><div className="section-heading"><h2>編輯影片資料</h2><button disabled={busy} onClick={() => setEditing(null)}>取消編輯</button></div>
+      <form onSubmit={event => { event.preventDefault(); void submit(async () => {
+        await request(`videos/${editing.id}/metadata`, {
+          title: editDraft.title, description: editDraft.description, category: editDraft.category,
+          adult: editDraft.adult, license: editDraft.license, tags: editDraft.tags, creators: editDraft.creators,
+          workType: editDraft.workType, sourceUrl: editDraft.sourceUrl, sourcePlatform: editDraft.sourcePlatform,
+          sourcePending: editDraft.sourcePending, repostNote: editDraft.repostNote, language: editDraft.language,
+        }, 'PUT');
+        setEditing(null);
+      }); }}><MetadataFields value={editDraft} onChange={setEditDraft} editing /><button disabled={busy}>儲存資料</button></form>
+    </section>}
+      {page === 'pools' && <section><h2>儲存目錄與狀態</h2><p className="muted">登錄伺服器上的既有目錄，原始檔案維持原位。</p>
+        <button disabled={busy} onClick={() => void submit(async () => {})}>重新檢查狀態</button>
+        {data?.pools.length === 0 && <p>尚未註冊儲存池，請先新增影片所在的目錄。</p>}
+        <ul className="pool-list">{data?.pools.map(pool => <li key={pool.id}><strong>{pool.name}</strong><span className={pool.online ? 'badge' : ''}>{pool.online ? '在線' : '離線'}</span><code>{pool.path}</code></li>)}</ul>
+        <form onSubmit={event => { event.preventDefault(); void submit(async () => {
+          const pool = await request<Pool>('pools', { name, path: root });
+          setPoolId(pool.id); setName(''); setRoot('');
+        }); }}>
+          <label>儲存池名稱<input required value={name} onChange={event => setName(event.target.value)} placeholder="例如：主影片庫" /></label>
+          <label>伺服器絕對目錄<input required value={root} onChange={event => setRoot(event.target.value)} placeholder="例如：D:\Videos 或 /srv/videos" /></label>
+          <button disabled={busy}>註冊儲存池</button>
+        </form>
+      </section>}
+      {page === 'import' && <section><h2>匯入既有影片</h2><p className="muted">建立 SHA-256 索引，不複製檔案。大型影片計算雜湊需要一些時間。</p>
+        {data?.pools.length === 0 && <p>尚無儲存池。<a href="#pools">先註冊影片目錄</a></p>}
+        {busy && <p role="status">正在處理，請等待完成。</p>}
+        <form onSubmit={event => { event.preventDefault(); void submit(async () => {
+          await request('videos/import', { poolId, path, ...draft });
+          setPath(''); setDraft(emptyMetadata());
+        }); }}>
+          <label>儲存池<select required value={poolId} onChange={event => setPoolId(event.target.value)}><option value="">選擇儲存池</option>{data?.pools.map(pool => <option key={pool.id} value={pool.id} disabled={!pool.online}>{pool.name}{pool.online ? '' : '（離線）'}</option>)}</select></label>
+          <label>池內相對路徑<input required value={path} onChange={event => setPath(event.target.value)} placeholder="例如：旅行/第一天.mp4" /></label>
+          <MetadataFields value={draft} onChange={setDraft} />
+          <button disabled={busy || !poolId}>{busy ? '處理中…' : '匯入影片'}</button>
+        </form>
+      </section>}
+  </>;
+}
