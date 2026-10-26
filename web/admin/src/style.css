@@ -24,6 +24,17 @@ dd { margin:0; overflow-wrap:anywhere; }
 .import-source { position:sticky; top:24px; }
 .form-stack { display:grid; gap:16px; align-content:start; }
 .button-row { display:flex; gap:12px; flex-wrap:wrap; align-items:center; }
+.header-actions { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.login-panel { max-width:420px; margin:48px auto; }
+.login-panel form { margin-top:20px; }
+.login-panel button { width:100%; }
+.login-meta { margin:16px 0 0; text-align:center; }
+.settings-side { display:grid; gap:24px; align-content:start; }
+.settings-side>section { margin-bottom:0; }
+.state-badge { border:1px solid var(--accent); color:var(--accent); border-radius:999px; padding:4px 10px; font-size:.78rem; white-space:nowrap; }
+.confirm-panel { display:grid; gap:12px; margin-top:16px; padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--bg); }
+.confirm-panel p { margin:0; }
+.notice { color:var(--accent); }
 .dl-columns { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); column-gap:16px; }
 .dl-columns>div { grid-template-columns:96px minmax(0,1fr); gap:6px; }
 .dl-columns dt { white-space:nowrap; }
@@ -76,3 +87,9 @@ dialog video { max-height:min(60vh,560px); }
 .modal-heading button { flex:none; white-space:nowrap; }
 body:has(dialog[open]) { overflow:hidden; }
 @media(max-width:900px) { .import-layout { grid-template-columns:1fr; } .import-source { position:static; } }
+/* 工作清單沿用管理頁面色彩，進度不依賴動畫或外部圖示。 */
+.job-list { display:grid; gap:16px; }
+.job-card { border:1px solid var(--line); border-radius:12px; padding:16px; }
+.job-card p { overflow-wrap:anywhere; }
+.job-card h3 { overflow-wrap:anywhere; min-width:0; }
+.job-card progress { width:100%; accent-color:var(--accent); }

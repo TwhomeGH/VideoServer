@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 
 /** pages 定義可直接連結的管理分頁；hash 路由支援既有靜態服務。 */
 export const pages = {
-  overview: '總覽', videos: '影片庫', pools: '儲存池', import: '匯入影片', diagnostics: '服務資訊',
+  overview: '總覽', videos: '影片庫', pools: '儲存池', import: '匯入影片', jobs: '匯入工作', settings: '設定', diagnostics: '服務資訊',
 } as const;
 
 /** Page 是管理介面支援的分頁識別。 */

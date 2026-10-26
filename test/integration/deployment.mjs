@@ -6,7 +6,7 @@ import net from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-process.chdir(fileURLToPath(new URL('..', import.meta.url)));
+process.chdir(fileURLToPath(new URL('../..', import.meta.url)));
 const project = `dvn-test-${Date.now()}`;
 const directory = path.resolve('data', 'deployment-tests', project);
 const media = path.join(directory, 'media');
@@ -15,6 +15,8 @@ const envFile = path.join(directory, 'test.env');
 const sample = path.join(media, '範例影片.mp4');
 const steps = [];
 let started = false;
+let cookie = '';
+const adminPassword = 'deployment-test-password';
 
 /** freePort 取得本機測試端口；正式端口與其他開發服務不受影響。 */
 async function freePort() {
@@ -43,16 +45,36 @@ const base = `http://127.0.0.1:${port}`;
 async function api(route, body, method = 'POST') {
   const response = await fetch(`${base}/api/v1/${route}`, {
     signal: AbortSignal.timeout(15000),
-    ...(body ? { method, headers: { 'Content-Type': 'application/json', Origin: base }, body: JSON.stringify(body) } : {}),
+    ...(body ? { method, headers: { 'Content-Type': 'application/json', Origin: base, ...(cookie ? { Cookie: cookie } : {}) }, body: JSON.stringify(body) } : {
+      headers: { Origin: base, ...(cookie ? { Cookie: cookie } : {}) },
+    }),
   });
   const result = await response.json();
   assert.ok(response.ok, `${route}: ${response.status} ${JSON.stringify(result)}`);
   return result;
 }
 
+/** login 取得管理 session cookie；後續 API 與影片傳輸都帶入。 */
+async function login() {
+  const response = await fetch(`${base}/api/v1/auth/login`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Origin: base },
+    body: JSON.stringify({ password: adminPassword }),
+  });
+  assert.equal(response.status, 200, `login: ${await response.text()}`);
+  const value = response.headers.get('set-cookie');
+  assert.ok(value, '登入沒有回傳 session cookie');
+  cookie = value.split(';')[0];
+}
+
+/** authorizedFetch 對影片內容請求帶入 session cookie。 */
+function authorizedFetch(route, init = {}) {
+  return fetch(route, { ...init, headers: { ...(init.headers || {}), ...(cookie ? { Cookie: cookie } : {}) } });
+}
+
 mkdirSync(media, { recursive: true });
 writeFileSync(config, JSON.stringify({ host: '0.0.0.0', preferredPort: 18610, fallbackPorts: [], webDirectory: '/app/web', dataDirectory: '/data/acceptance' }, null, 2));
-writeFileSync(envFile, `DVN_BIND_ADDRESS=127.0.0.1\nDVN_NODE_PORT=${port}\nDVN_MEDIA_PATH=${media.replaceAll('\\', '/')}\nDVN_NODE_CONFIG=${config.replaceAll('\\', '/')}\n`);
+writeFileSync(envFile, `DVN_BIND_ADDRESS=127.0.0.1\nDVN_NODE_PORT=${port}\nDVN_MEDIA_PATH=${media.replaceAll('\\', '/')}\nDVN_NODE_CONFIG=${config.replaceAll('\\', '/')}\nDVN_ADMIN_PASSWORD=${adminPassword}\n`);
 
 try {
   if (!process.argv.includes('--skip-build')) {
@@ -67,6 +89,11 @@ try {
   started = true;
   compose('up', '-d', '--no-build', '--pull', 'never', '--wait', '--wait-timeout', '60');
   pass('Compose 以外掛 config、資料卷及唯讀影片目錄啟動');
+  assert.equal((await fetch(`${base}/api/v1/import-jobs/nonexistent`)).status, 401);
+  assert.equal((await fetch(`${base}/api/v1/videos/import`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 401);
+  pass('匯入工作與建立工作 API 均要求登入');
+  await login();
+  pass('管理員登入並取得 session cookie');
   const status = await api('status');
   assert.equal(status.build.service, 'video-node');
   const html = await (await fetch(base)).text();
@@ -79,17 +106,32 @@ try {
   assert.equal(pool.online, true);
   const details = { title: '部署測試影片', description: '測試專用，自行產生的色塊與聲音。', category: '測試', tags: ['Docker', 'docker', '部署測試'],
     workType: 'original', creators: [{ name: 'DVN 測試產生器', url: '' }], language: '無語音', adult: false, license: '測試素材' };
-  const video = await api('videos/import', { poolId: pool.id, path: '範例影片.mp4', ...details });
+  const job = await api('videos/import', { poolId: pool.id, path: '範例影片.mp4', ...details });
+  let finished;
+  const deadline = Date.now() + 30000;
+  while (Date.now() < deadline) {
+    finished = await api(`import-jobs/${job.id}`);
+    if (finished.status === 'completed' || finished.status === 'failed') break;
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  assert.equal(finished?.status, 'completed', finished?.error || '匯入工作逾時');
+  const video = (await api('library')).videos.find(item => item.id === finished.videoId);
+  assert.ok(video, '完成工作後找不到影片');
+  assert.equal(video.media.width, 320);
+  assert.equal(video.media.height, 180);
+  assert.equal(video.media.videoCodec, 'h264');
+  assert.equal(video.media.audioCodec, 'aac');
+  assert.ok(video.media.durationSeconds >= 1.9 && video.media.durationSeconds <= 2.2);
   assert.deepEqual(video.tags, ['Docker', '部署測試']);
   const digest = createHash('sha256').update(readFileSync(sample)).digest('hex');
   assert.equal(video.fileHash, digest);
   pass('註冊 /media、匯入中文檔名、計算雜湊並保存 Tag 與作者');
   const content = `${base}/api/v1/videos/${video.id}/content`;
-  const range = await fetch(content, { headers: { Range: 'bytes=0-1023' } });
+  const range = await authorizedFetch(content, { headers: { Range: 'bytes=0-1023' } });
   assert.equal(range.status, 206);
   assert.equal((await range.arrayBuffer()).byteLength, 1024);
-  assert.equal((await fetch(content, { method: 'HEAD' })).status, 200);
-  const full = await fetch(content);
+  assert.equal((await authorizedFetch(content, { method: 'HEAD' })).status, 200);
+  const full = await authorizedFetch(content);
   assert.equal(createHash('sha256').update(Buffer.from(await full.arrayBuffer())).digest('hex'), digest);
   pass('播放傳輸支援 Range / HEAD，完整影片內容雜湊一致');
   await api(`videos/${video.id}/metadata`, { ...details, title: '已編輯的測試影片' }, 'PUT');
@@ -98,6 +140,7 @@ try {
   const previousContainer = compose('ps', '-q', 'video-node');
   compose('up', '-d', '--force-recreate', '--no-build', '--pull', 'never', '--wait', '--wait-timeout', '60');
   assert.notEqual(compose('ps', '-q', 'video-node'), previousContainer);
+  await login();
   const after = await api('library');
   assert.equal(after.nodeId, before.nodeId);
   assert.equal(after.pools[0].id, pool.id);
@@ -111,7 +154,7 @@ try {
     const offline = await api('library');
     assert.equal(offline.videos.length, 1);
     assert.equal(offline.videos[0].available, false);
-    assert.equal((await fetch(content)).status, 503);
+    assert.equal((await authorizedFetch(content)).status, 503);
   } finally { renameSync(sample + '.offline', sample); }
   assert.equal((await api('library')).videos[0].available, true);
   pass('來源離線保留索引並拒絕播放，恢復檔案後重新可用');

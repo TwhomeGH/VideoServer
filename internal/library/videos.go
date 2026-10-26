@@ -5,12 +5,15 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/TwhomeGH/VideoServer/internal/media"
 )
 
 const videoColumns = `id,publication_id,replica_id,pool_id,title,file_hash,source_hash,size,imported_at,relative_path,modified_at,description,category,adult,license`
@@ -28,17 +31,28 @@ func (s *Store) poolPath(id string) (string, error) {
 }
 
 // Import 對 poolID 內的既有影片建立索引並計算 SHA-256，不複製檔案。
+// 這是同步索引底層；正式管理 API 與掃描透過 ImportQueue 先進行 FFprobe 檢查。
 // ctx 取消或來源讀取期間變動時不提交索引；同一路徑重複匯入會失敗。
 // metadata 可省略或提供一份描述資料，長度超限會在讀取影片前回傳錯誤。
 func (s *Store) Import(ctx context.Context, poolID, relative, title string, metadata ...Metadata) (Video, error) {
-	var v Video
 	if len(metadata) > 1 {
-		return v, fmt.Errorf("每次匯入僅能提供一份描述資料")
+		return Video{}, fmt.Errorf("每次匯入僅能提供一份描述資料")
 	}
 	var details Metadata
 	if len(metadata) == 1 {
 		details = metadata[0]
 	}
+	return s.importVideo(ctx, poolID, relative, title, details, nil)
+}
+
+type importOptions struct {
+	media    *media.Info
+	jobID    string
+	expected os.FileInfo
+}
+
+func (s *Store) importVideo(ctx context.Context, poolID, relative, title string, details Metadata, options *importOptions) (Video, error) {
+	var v Video
 	details, err := details.normalize()
 	if err != nil {
 		return v, err
@@ -66,8 +80,13 @@ func (s *Store) Import(ctx context.Context, poolID, relative, title string, meta
 	if !before.Mode().IsRegular() {
 		return v, fmt.Errorf("來源不是一般檔案")
 	}
+	if options != nil && options.expected != nil && (!os.SameFile(before, options.expected) || before.Size() != options.expected.Size() || !before.ModTime().Equal(options.expected.ModTime())) {
+		return v, fmt.Errorf("來源已變更，請重新匯入")
+	}
 	hash := sha256.New()
 	buffer := make([]byte, 1024*1024)
+	var processed int64
+	lastProgress := time.Time{}
 	for {
 		if err := ctx.Err(); err != nil {
 			return v, err
@@ -75,6 +94,13 @@ func (s *Store) Import(ctx context.Context, poolID, relative, title string, meta
 		n, err := file.Read(buffer)
 		if n > 0 {
 			hash.Write(buffer[:n])
+			processed += int64(n)
+			if options != nil && options.jobID != "" && (time.Since(lastProgress) > 250*time.Millisecond || processed == before.Size()) {
+				if _, err := s.db.ExecContext(ctx, "UPDATE import_jobs SET bytes_processed=?,updated_at=? WHERE id=? AND status='running'", processed, timestamp(), options.jobID); err != nil {
+					return v, err
+				}
+				lastProgress = time.Now()
+			}
 		}
 		if err == io.EOF {
 			break
@@ -89,6 +115,10 @@ func (s *Store) Import(ctx context.Context, poolID, relative, title string, meta
 	}
 	if before.Size() != after.Size() || !before.ModTime().Equal(after.ModTime()) {
 		return v, fmt.Errorf("來源檔案已變動，請重試")
+	}
+	current, err := os.Stat(path)
+	if err != nil || !os.SameFile(before, current) || current.Size() != before.Size() || !before.ModTime().Equal(current.ModTime()) {
+		return v, fmt.Errorf("來源路徑已變更，請重新匯入")
 	}
 	if strings.TrimSpace(title) == "" {
 		title = filepath.Base(path)
@@ -111,6 +141,31 @@ func (s *Store) Import(ctx context.Context, poolID, relative, title string, meta
 	}
 	if err := saveAttribution(ctx, tx, v.ID, details); err != nil {
 		return v, err
+	}
+	if options != nil {
+		if options.media != nil {
+			payload, err := json.Marshal(options.media)
+			if err != nil {
+				return v, err
+			}
+			if _, err := tx.ExecContext(ctx, "INSERT INTO video_media VALUES(?,?)", v.ID, string(payload)); err != nil {
+				return v, err
+			}
+			v.Media = options.media
+		}
+		if options.jobID != "" {
+			result, err := tx.ExecContext(ctx, `UPDATE import_jobs SET status='completed',phase='completed',video_id=?,bytes_processed=?,total_bytes=?,error='',updated_at=? WHERE id=? AND status='running'`, v.ID, v.Size, v.Size, timestamp(), options.jobID)
+			if err != nil {
+				return v, err
+			}
+			count, err := result.RowsAffected()
+			if err != nil {
+				return v, err
+			}
+			if count != 1 {
+				return v, fmt.Errorf("匯入工作狀態已改變")
+			}
+		}
 	}
 	return v, tx.Commit()
 }
@@ -138,6 +193,9 @@ func (s *Store) Videos() ([]Video, error) {
 	// 單連線資料庫需先釋放 rows，再查詢各副本，避免互相等待。
 	for i := range result {
 		if err := s.loadAttribution(&result[i]); err != nil {
+			return nil, err
+		}
+		if err := s.loadMedia(&result[i]); err != nil {
 			return nil, err
 		}
 		file, err := s.openVideo(result[i])
@@ -178,5 +236,25 @@ func (s *Store) video(id string) (Video, error) {
 	if err == nil {
 		err = s.loadAttribution(&v)
 	}
+	if err == nil {
+		err = s.loadMedia(&v)
+	}
 	return v, err
+}
+
+func (s *Store) loadMedia(video *Video) error {
+	var value string
+	err := s.db.QueryRow("SELECT details_json FROM video_media WHERE video_id=?", video.ID).Scan(&value)
+	if err == sql.ErrNoRows {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	var info media.Info
+	if err := json.Unmarshal([]byte(value), &info); err != nil {
+		return err
+	}
+	video.Media = &info
+	return nil
 }

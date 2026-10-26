@@ -23,7 +23,7 @@
 
 - Go 1.26 以上（SQLite 驅動需求）、Node.js 22.12 以上、npm。
 - 走 Docker 路徑時：Docker Desktop 使用 Linux containers，或 Linux 主機的 Docker Engine + Compose。
-- 只有執行 `npm run test:deployment` 時才需要 FFmpeg。
+- 原生 Video Node 匯入影片需要 FFprobe（隨 FFmpeg 提供）；Docker image 已內建。執行 `npm run test:deployment` 時主機另需 FFmpeg 產生測試影片。
 - Windows 專案路徑以 `F:\VideoServer` 為例；指令都在專案根目錄執行，除非特別註明。
 
 ## 架構與目前範圍
@@ -39,8 +39,9 @@
 管理資料的重點：
 
 - NodeID、儲存池、影片描述與 Tag 存在 SQLite；影片原檔**不複製**，只在原目錄建立索引。
-- 轉碼、Central 索引協作、遠端 Worker 派工、登入授權、封面擷取都還沒實作。
-- 目前只適合可信任的本機／區網環境。管理 API 的 Origin 檢查不是登入授權。
+- 已有單一管理員登入、HttpOnly session、管理 API 授權、密碼變更與設定保存／重啟流程；尚未提供多使用者與角色權限。
+- 轉碼、Central 索引協作、遠端 Worker 派工與封面擷取尚未實作。
+- 管理 API 同時使用登入授權與 Origin 檢查。跨網路部署仍需規劃 HTTPS；公開健康檢查與版本端點不等同管理權限。
 - 更完整的模型與限制見 [架構文件](architecture.md)、[TODO](../TODO.md)。
 
 ## A. 本機開發
@@ -55,9 +56,11 @@ npm run dev
 完成後：
 
 - Go 會建置並啟動 `bin/video-node.exe`（Linux 無 `.exe`），Vite 啟動在 `http://localhost:5173`。
+- 第一次開啟會要求管理登入。開發模式若沒有 `DVN_ADMIN_PASSWORD`，隨機密碼會顯示在 `[video-node]` 日誌一次；主機可先設定環境變數再啟動，例如 PowerShell 的 `$env:DVN_ADMIN_PASSWORD='...'`。
 - Vite 的 `/api` 會代理到本次實際啟動的 Go 端口，日誌會列出實際網址；不要假設一定是 18610。
 - 修改前端會熱更新；修改 Go 後需按 Ctrl+C 重新執行 `npm run dev`。
-- 設定自動放在 `local/development/config/`，資料放在 `local/development/data/`；第一次啟動會建立缺少的檔案，不覆蓋既有設定。
+- 設定自動放在 `local/development/config/`，資料放在 `local/development/data/`（若偵測到舊 `data/library.sqlite` 則沿用 `data/`）；第一次啟動會建立缺少的檔案，不覆蓋既有設定。
+- 登入後「設定」頁可變更密碼、編輯設定與重新啟動。開發模式的重新啟動由 `npm run dev` 監督；若端口改變，Vite 代理會自動重建。
 - 要同時開發三服務時用 `npm run dev:all`；Central 與 Worker 目前只有診斷頁。
 
 日常檢查：
@@ -90,7 +93,9 @@ npm run testing:up
 - Video Node：<http://localhost:18710>（區網用主機 IP，例如 <http://192.168.0.102:18710>）
 - Central：<http://localhost:18720>
 - Worker：<http://localhost:18730>
-- 資料在 `testing/local/` 與 Docker volume `dvn-testing_node-data`，與本機開發、根目錄正式部署分開。
+- 第一次開啟會要求管理登入。首次密碼會顯示在 video-node 日誌的「已建立管理員密碼」訊息；也可在啟動前設定 `DVN_ADMIN_PASSWORD`。`testing:up` 會提示到哪裡找。
+- 資料在 `testing/local/` 與 Docker volume `dvn-testing_node-data`，與本機開發、根目錄正式部署分開；`auth.json` 與 `config.override.json` 也在資料卷。
+- 登入後「設定」頁可變更密碼、編輯設定與確認重新啟動；儲存設定會寫入資料卷的 `config.override.json`，主機 JSON 不會被修改。
 
 只檢查、不建置也不啟動：
 
@@ -141,7 +146,10 @@ docker compose ps
 
 # 4. 開管理頁
 # http://localhost:18610
+# 首次登入密碼在 docker compose logs video-node；或用 .env 的 DVN_ADMIN_PASSWORD
 ```
+
+登入後「設定」頁可變更密碼、編輯可調整的設定並確認重新啟動。設定會寫入資料卷的 `/data/config.override.json`，`deployments/docker/` 的主機 JSON 仍是唯讀基準；儲存後要重新啟動才會套用。
 
 部署後資料位置：
 
@@ -168,6 +176,7 @@ docker compose ps
 | `deployments/docker/` | 根目錄 Compose 使用的容器設定 |
 | `web/admin/` | React + Vite 管理介面；`src/` 是原始碼，`dist/` 是建置產物 |
 | `scripts/` | 開發啟動、image 建置、測試環境檢查與工作區初始化 |
+| `test/` | Node 單元測試；Go 測試依慣例放在各套件旁 |
 | `Docs/` | 操作手冊；行為改變時同步更新 `ChangeHistory.md` |
 
 修改後的檢查順序：
@@ -176,7 +185,7 @@ docker compose ps
 go test ./...
 go vet ./...
 npm --prefix web/admin run build
-node --test scripts/*.test.mjs
+npm run test:unit
 npm run testing:up        # 有動到 Docker、靜態頁或部署路徑時
 ```
 
@@ -206,6 +215,7 @@ npm run testing:up         # 建置、啟動並檢查測試環境
 | Docker 測試 | `testing/local/config/` | volume `dvn-testing_node-data` | `testing/local/media/` 或 `testing/compose.local.yaml` 的額外掛載 |
 | 正式部署 | `deployments/docker/`、`.env` | volume `dvn_node-data` | `.env` 指定的主機目錄 |
 
+各環境的資料目錄也包含 `auth.json` 與 `config.override.json`。刪除資料卷或資料目錄會失去管理密碼與設定覆寫；管理密碼會重新產生，需到日誌查看新的一次性密碼。
 備份時先停止對應服務，再完整備份設定與資料卷；不要只複製 SQLite 主檔而漏掉 WAL 檔。
 
 ## 文件地圖
@@ -227,9 +237,9 @@ npm run testing:up         # 建置、啟動並檢查測試環境
 第一次接手時，建議依序完成：
 
 1. 讀完本文件與 [架構文件](architecture.md)。
-2. 執行 `npm --prefix web/admin ci`、`npm run dev`，確認 5173 可以開啟並看到 Video Node。
-3. 執行 `npm run testing:up`，確認 18710 三服務健康，且 `npm run check:testing` 全部相符。
-4. 打開 `#diagnostics`，確認 NodeID、程式建置時間、鏡像建置時間與來源摘要都有值。
+2. 執行 `npm --prefix web/admin ci`、`npm run dev`，用日誌的首次密碼登入，確認 5173 可以開啟並看到 Video Node。
+3. 執行 `npm run testing:up`，確認 18710 三服務健康，且 `npm run check:testing` 全部相符；首次登入密碼在 video-node 日誌。
+4. 打開 `#settings` 確認設定來源與覆寫路徑，再打開 `#diagnostics` 確認 NodeID、程式建置時間、鏡像建置時間與來源摘要都有值。
 5. 執行 `go test ./...`、`go vet ./...`、`npm --prefix web/admin run build`。
 6. 確認你知道三種環境的資料位置，以及哪些 volume 不能刪。
 7. 讀 [TODO](../TODO.md) 與 [ChangeHistory](ChangeHistory.md) 最近幾筆，了解目前刻意留下的限制。
@@ -239,6 +249,7 @@ npm run testing:up         # 建置、啟動並檢查測試環境
 | 現象 | 先檢查 |
 | --- | --- |
 | 不知道 image 是不是舊的 | `npm run check:testing`；來源摘要不同就重建 |
+| 忘記管理員密碼 | 看首次啟動日誌或 `DVN_ADMIN_PASSWORD`；必要時只移除資料目錄的 `auth.json` 再啟動，不要刪 volume |
 | 服務資訊的鏡像建置時間是「未提供」 | 用 `npm run image -- all` 或 `npm run testing:up` 重建 |
 | Docker 無法連線 | Docker Desktop 是否啟動、是否使用 Linux containers |
 | 端口被占用 | 測試環境改 `testing/.env`，正式部署改根目錄 `.env` |

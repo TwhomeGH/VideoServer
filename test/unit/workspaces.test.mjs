@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { ensureWorkspace } from './workspaces.mjs';
+import { ensureWorkspace } from '../../scripts/workspaces.mjs';
 
 test('開發設定獨立保存且重跑不覆寫', () => {
   const root = mkdtempSync(path.join(os.tmpdir(), 'dvn-config-'));

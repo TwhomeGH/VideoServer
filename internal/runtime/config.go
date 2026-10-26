@@ -2,11 +2,13 @@
 package runtime
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 
 	"github.com/TwhomeGH/VideoServer/internal/atomicfile"
 )
@@ -23,6 +25,8 @@ type Config struct {
 	ScanIntervalSeconds        int    `json:"scanIntervalSeconds"`
 	FileStableSeconds          int    `json:"fileStableSeconds"`
 	RememberLastSuccessfulPort bool   `json:"rememberLastSuccessfulPort"`
+	FFprobePath                string `json:"ffprobePath"`
+	ProbeTimeoutSeconds        int    `json:"probeTimeoutSeconds"`
 }
 
 // LoadConfig 讀取 path 的設定；空路徑回傳指定 port、所有 IPv4 介面的預設值。
@@ -48,7 +52,7 @@ func LoadConfig(path string, port int, service ...string) (Config, error) {
 			}
 		}
 	}
-	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, FileStableSeconds: 10, RememberLastSuccessfulPort: true}
+	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, FileStableSeconds: 10, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", ProbeTimeoutSeconds: 60}
 	if path != "" {
 		file, err := os.Open(path)
 		if err != nil {
@@ -70,10 +74,123 @@ func LoadConfig(path string, port int, service ...string) (Config, error) {
 	return c, c.Validate()
 }
 
+// Override 是管理頁可調整的設定；指標為 nil 表示沿用基準設定。
+// dataDirectory 與 webDirectory 不在這裡，避免執行中改變資料或靜態檔位置。
+type Override struct {
+	Host                       *string `json:"host,omitempty"`
+	PreferredPort              *int    `json:"preferredPort,omitempty"`
+	FallbackPorts              *[]int  `json:"fallbackPorts,omitempty"`
+	AutoScan                   *bool   `json:"autoScan,omitempty"`
+	ScanIntervalSeconds        *int    `json:"scanIntervalSeconds,omitempty"`
+	FileStableSeconds          *int    `json:"fileStableSeconds,omitempty"`
+	RememberLastSuccessfulPort *bool   `json:"rememberLastSuccessfulPort,omitempty"`
+}
+
+// LoadOverride 讀取 dataDirectory 的管理頁覆寫檔；不存在時回傳空覆寫。
+// 未知欄位會讓載入失敗，避免舊版或手動編輯的錯誤欄位被悄悄忽略。
+func LoadOverride(path string) (Override, error) {
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return Override{}, nil
+	}
+	if err != nil {
+		return Override{}, err
+	}
+	var value Override
+	decoder := json.NewDecoder(bytes.NewReader(data))
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&value); err != nil {
+		return Override{}, fmt.Errorf("設定覆寫檔格式無效：%w", err)
+	}
+	if decoder.Decode(new(any)) != io.EOF {
+		return Override{}, fmt.Errorf("設定覆寫檔必須只包含一個 JSON 物件")
+	}
+	return value, nil
+}
+
+// Apply 將覆寫套用到基準設定；未覆寫的欄位保留基準值。
+func (o Override) Apply(base Config) Config {
+	value := base
+	if o.Host != nil {
+		value.Host = *o.Host
+	}
+	if o.PreferredPort != nil {
+		value.PreferredPort = *o.PreferredPort
+	}
+	if o.FallbackPorts != nil {
+		value.FallbackPorts = append([]int(nil), (*o.FallbackPorts)...)
+	}
+	if o.AutoScan != nil {
+		value.AutoScan = *o.AutoScan
+	}
+	if o.ScanIntervalSeconds != nil {
+		value.ScanIntervalSeconds = *o.ScanIntervalSeconds
+	}
+	if o.FileStableSeconds != nil {
+		value.FileStableSeconds = *o.FileStableSeconds
+	}
+	if o.RememberLastSuccessfulPort != nil {
+		value.RememberLastSuccessfulPort = *o.RememberLastSuccessfulPort
+	}
+	return value
+}
+
+// Empty 回傳覆寫是否沒有任何欄位。
+func (o Override) Empty() bool {
+	return o.Host == nil && o.PreferredPort == nil && o.FallbackPorts == nil && o.AutoScan == nil &&
+		o.ScanIntervalSeconds == nil && o.FileStableSeconds == nil && o.RememberLastSuccessfulPort == nil
+}
+
+// BuildOverride 比較基準與新設定，只保存有差異的可編輯欄位。
+// 欄位回到基準值時不會留在覆寫檔，日後修改基準檔仍能生效。
+func BuildOverride(base, next Config) Override {
+	value := Override{}
+	if next.Host != base.Host {
+		value.Host = &next.Host
+	}
+	if next.PreferredPort != base.PreferredPort {
+		value.PreferredPort = &next.PreferredPort
+	}
+	if !slices.Equal(next.FallbackPorts, base.FallbackPorts) {
+		ports := append([]int(nil), next.FallbackPorts...)
+		value.FallbackPorts = &ports
+	}
+	if next.AutoScan != base.AutoScan {
+		value.AutoScan = &next.AutoScan
+	}
+	if next.ScanIntervalSeconds != base.ScanIntervalSeconds {
+		value.ScanIntervalSeconds = &next.ScanIntervalSeconds
+	}
+	if next.FileStableSeconds != base.FileStableSeconds {
+		value.FileStableSeconds = &next.FileStableSeconds
+	}
+	if next.RememberLastSuccessfulPort != base.RememberLastSuccessfulPort {
+		value.RememberLastSuccessfulPort = &next.RememberLastSuccessfulPort
+	}
+	return value
+}
+
+// SaveOverride 驗證後原子保存覆寫；空覆寫會移除檔案。
+func SaveOverride(path string, value Override) error {
+	if value.Empty() {
+		if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+		return nil
+	}
+	return atomicfile.WriteJSON(path, value)
+}
+
 // Validate 檢查完整生效設定，回傳欄位錯誤；不修改設定或寫入磁碟。
 func (c Config) Validate() error {
+	if c.FFprobePath == "" || c.ProbeTimeoutSeconds < 1 || c.ProbeTimeoutSeconds > 3600 {
+		return fmt.Errorf("ffprobePath 不可為空，probeTimeoutSeconds 須介於 1 到 3600")
+	}
 	if c.DataDirectory == "" {
 		return fmt.Errorf("dataDirectory 不可為空")
+	}
+	if c.Host == "" {
+		return fmt.Errorf("host 不可為空")
 	}
 	if c.ScanIntervalSeconds < 1 || c.ScanIntervalSeconds > 86400 || c.FileStableSeconds < 1 || c.FileStableSeconds > 86400 {
 		return fmt.Errorf("掃描間隔與檔案穩定秒數須介於 1 到 86400")

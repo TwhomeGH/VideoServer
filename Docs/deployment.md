@@ -22,6 +22,8 @@ Windows 範例，路徑用 `/`：
 ```dotenv
 DVN_MEDIA_PATH=D:/Videos
 DVN_NODE_PORT=18610
+# 選填：指定管理員密碼；留空或省略時，首次啟動會產生隨機密碼並顯示在日誌。
+# DVN_ADMIN_PASSWORD=請改成較長的密碼
 ```
 
 Linux 將第一行改為 `DVN_MEDIA_PATH=/srv/videos`。路徑要改成你的實際目錄，不必把影片複製進專案。
@@ -48,6 +50,19 @@ docker compose ps
 同一台電腦開啟 [http://localhost:18610](http://localhost:18610)。區網其他電腦使用主機 IP，例如 [http://192.168.0.102:18610](http://192.168.0.102:18610)。
 若改了 DVN_NODE_PORT，網址也跟著改。Docker 部署不需要開啟 5173，那是前端開發模式的端口。
 
+第一次開啟會看到管理登入。首次管理員密碼在 `docker compose logs video-node` 的「已建立管理員密碼」訊息中；若 `.env` 設定了 `DVN_ADMIN_PASSWORD`，則使用該密碼，不會產生隨機密碼。登入後可在「設定」頁變更密碼。
+若 `.env` 仍保留舊的 `DVN_ADMIN_PASSWORD`，每次啟動都會以該值為準；在網頁改密碼後，重啟會被環境變數改回。長期由網頁管理密碼時，請移除 `.env` 的設定。
+
+若完全忘記密碼，可保留資料卷、只重設管理憑證：
+
+```sh
+docker compose exec video-node rm /data/auth.json
+docker compose restart video-node
+docker compose logs video-node | Select-String "已建立管理員密碼"
+```
+
+新的一次性密碼會出現在日誌；NodeID、儲存池與影片索引不受影響。若 `.env` 設定了非空 `DVN_ADMIN_PASSWORD`，重啟後仍會使用該值，不會產生隨機密碼。
+
 ## 6. 匯入第一部影片
 
 1. 進入「儲存池」，名稱填「我的影片庫」，目錄填 **`/media`**，按「註冊儲存池」。
@@ -68,6 +83,7 @@ docker compose ps
 | --- | --- | --- | --- |
 | 設定 | `deployments/docker/video-node.json` | `/app/config.json`，唯讀掛載 | 沿用主機檔案 |
 | SQLite、NodeID、影片描述 | Docker 資料卷 `dvn_node-data`（預設專案名稱） | `/data` | 保留 |
+| 管理憑證、設定覆寫 | 同上資料卷 | `/data/auth.json`、`/data/config.override.json` | 保留 |
 | 影片原檔 | `.env` 指定的既有目錄 | `/media`，唯讀掛載 | 保留原檔 |
 | 程式與網頁 | 本機 image | `/app/service`、`/app/web` | 隨 image 更新 |
 
@@ -105,6 +121,9 @@ docker compose restart video-node
 | image 找不到 | 先完成步驟 3，確認建置成功 |
 | 影片目錄不存在 | 檢查 `.env` 的實際路徑；Windows 改用 `/` |
 | 註冊儲存池失敗 | Docker 內填 `/media`，不是 `D:/Videos` |
+| 忘記管理員密碼 | 查看首次啟動日誌；或在 `.env` 設 `DVN_ADMIN_PASSWORD` 後重啟；或停止後移除資料卷內 `/data/auth.json` 再啟動（只重設憑證，不影響索引） |
+| 登入後一段時間被登出 | 使用中會自動續期；閒置 7 天或超過 90 天需重新登入 |
+| 設定儲存後沒有生效 | 在「設定」頁按重新啟動；直接手動執行且無監督程式時需自行重啟 |
 | 端口被占用 | 修改 `.env` 的 DVN_NODE_PORT，再執行 up |
 | 本機可開、區網不能開 | 檢查主機 IP、實際端口與防火牆 |
 | 可以匯入但不能播放 | 先用 H.264/AAC MP4，確認瀏覽器支援編碼 |
@@ -116,7 +135,7 @@ docker compose restart video-node
 docker compose logs --tail 100 video-node
 ```
 
-目前管理功能尚無登入授權，只適合可信任的本機／區網環境。三服務部署、Linux systemd 與發版安排，見 [進階部署參考](deployment-reference.md)。
+目前管理功能使用單一管理員登入，仍只適合可信任的本機／區網環境；尚無多使用者、角色權限或內建 HTTPS。三服務部署、Linux systemd 與發版安排，見 [進階部署參考](deployment-reference.md)。
 
 ## 重跑部署驗收測試
 

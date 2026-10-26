@@ -70,7 +70,7 @@ func TestMetadataAPIUpdateAndV2Migration(t *testing.T) {
 		t.Fatal(err)
 	}
 	nodeID := store.nodeID
-	_, err = store.db.Exec("DROP TABLE video_tags; DROP TABLE video_attribution; DELETE FROM schema_version WHERE version=3")
+	_, err = store.db.Exec("DROP TABLE import_jobs; DROP TABLE video_media; DROP TABLE video_tags; DROP TABLE video_attribution; DELETE FROM schema_version WHERE version>=3")
 	if err != nil {
 		store.Close()
 		t.Fatal(err)

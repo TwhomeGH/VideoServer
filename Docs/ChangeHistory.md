@@ -1,5 +1,54 @@
 # ChangeHistory
 
+## 2026.10.27 05:27 加入持久背景匯入與 FFprobe 影片資訊
+
+**類型**: 功能 · **檔案**: `internal/library/jobs.go`
+
+### 問題 - 同步匯入缺少可恢復工作、進度與影片技術資訊
+
+### 修改 - 新增 SQLite v4 工作佇列、重啟恢復、失敗重試與管理頁面
+
+- FFprobe 檢查影片資訊並保存片長、解析度與編碼；Docker 附帶工具
+- 補齊操作文件與測試，修正啟動測試 Scanner 讀取錯誤回報
+
+**相關文件**: Docs/import-processing.md
+
+---
+
+## 2026.10.27 04:50 將 Node 單元測試移出 scripts
+
+**類型**: 整理 · **檔案**: `test/`、`package.json`、`.github/workflows/release.yml`、`Docs/onboarding.md`
+
+### 問題 - `.test.mjs` 與建置、啟動、檢查用腳本放在同一個 `scripts/`，不容易區分哪些檔案是測試
+
+### 修改 - 將 Node 單元測試集中到 `test/unit/`、整合流程移到 `test/integration/`，新增 `npm run test:unit`，CI 改用同一個入口
+
+- `test/unit/build-inputs.test.mjs`、`test/unit/workspaces.test.mjs` 的 import 改指向 `scripts/`
+- `test/integration/deployment.mjs`、`test/integration/images.mjs` 由 `npm run test:deployment`、`npm run test:images` 執行
+- Go 測試仍依 Go 慣例留在各套件旁，由 `go test ./...` 執行
+- `test/README.md` 說明兩者的界線與執行方式
+
+---
+
+## 2026.10.27 04:40 新增管理員登入、設定覆寫與重新啟動流程
+
+**類型**: 功能 · **檔案**: `internal/auth/`、`internal/runtime/config.go`、`internal/runtime/configapi.go`、`internal/runtime/server.go`、`web/admin/src/api.ts`、`web/admin/src/Login.tsx`、`web/admin/src/Settings.tsx`、`web/admin/src/main.tsx`、`web/admin/src/Library.tsx`、`scripts/dev.mjs`、`test/integration/deployment.mjs`、`test/integration/images.mjs`、Compose 與部署文件
+
+### 問題 - 管理 API 沒有授權；Docker config 是唯讀單檔掛載，無法安全地從網頁修改設定；設定變更後也沒有套用／重啟流程
+
+### 修改 - 加入單一管理員 session、資料目錄設定覆寫、設定頁與監督式重新啟動
+
+- 首次啟動產生隨機管理員密碼並只顯示一次；可用 `DVN_ADMIN_PASSWORD` 覆寫。憑證以 PBKDF2-HMAC-SHA256 保存於資料目錄 `auth.json`。
+- 登入使用 HttpOnly、SameSite=Strict 的 `dvn_session` cookie，不把 token 放進 localStorage；閒置 7 天滑動續期，絕對上限 90 天，登入失敗每個來源 5 次鎖定 30 秒。
+- 登入後可變更密碼；登出或改密碼會輪替 session secret，使既有 session 全部失效。
+- 管理頁設定寫入資料目錄的 `config.override.json`，主機 JSON 保持唯讀；只保存與基準不同的欄位，可重設回基準。
+- 設定頁顯示來源、覆寫檔、資料／網頁目錄與需重啟狀態；確認後呼叫重啟 API。
+- 重新啟動以 exit code 75 結束，交由 Docker `restart: unless-stopped`、systemd `Restart=on-failure` 或 `npm run dev` 監督流程重新啟動；直接手動執行時會停止。
+- 修正 Vite proxy 的 `changeOrigin`，讓開發模式的登入 Origin/Host 檢查正常。
+- 部署驗收、image 測試與文件加入登入 cookie 流程。
+
+---
+
 ## 2026.10.27 04:05 完成 v0.1.0 首次發版本機驗收
 
 **類型**: 驗證 · **檔案**: `Docs/deployment-test-results.md`

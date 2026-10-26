@@ -13,9 +13,11 @@ import (
 	"os/signal"
 	"path/filepath"
 	"strconv"
+	"sync/atomic"
 	"syscall"
 	"time"
 
+	"github.com/TwhomeGH/VideoServer/internal/auth"
 	"github.com/TwhomeGH/VideoServer/internal/library"
 	"github.com/TwhomeGH/VideoServer/pkg/buildinfo"
 )
@@ -67,7 +69,7 @@ func Main(service string, port int) int {
 	logger := slog.New(slog.NewJSONHandler(os.Stdout, nil))
 	path := flag.String("config", "", "JSON 設定檔路徑")
 	flag.Parse()
-	config, err := LoadConfig(*path, port, service)
+	baseConfig, err := LoadConfig(*path, port, service)
 	if err != nil {
 		logger.Error("讀取設定失敗", "error", err)
 		return 1
@@ -80,15 +82,39 @@ func Main(service string, port int) int {
 			return 1
 		}
 	}
-	config.DataDirectory, err = filepath.Abs(config.DataDirectory)
+	baseConfig.DataDirectory, err = filepath.Abs(baseConfig.DataDirectory)
 	if err != nil {
 		logger.Error("資料路徑無效", "error", err)
 		return 1
 	}
-	config.WebDirectory, err = filepath.Abs(config.WebDirectory)
+	baseConfig.WebDirectory, err = filepath.Abs(baseConfig.WebDirectory)
 	if err != nil {
 		logger.Error("網頁路徑無效", "error", err)
 		return 1
+	}
+	if err := os.MkdirAll(baseConfig.DataDirectory, 0700); err != nil {
+		logger.Error("建立資料目錄失敗", "error", err)
+		return 1
+	}
+	overridePath := filepath.Join(baseConfig.DataDirectory, "config.override.json")
+	overrides, err := LoadOverride(overridePath)
+	if err != nil {
+		logger.Error("讀取設定覆寫失敗", "error", err)
+		return 1
+	}
+	config := overrides.Apply(baseConfig)
+	if err := config.Validate(); err != nil {
+		logger.Error("設定覆寫無效", "error", err)
+		return 1
+	}
+	authManager, initialPassword, err := auth.Open(baseConfig.DataDirectory, os.Getenv("DVN_ADMIN_PASSWORD"))
+	if err != nil {
+		logger.Error("初始化管理授權失敗", "error", err)
+		return 1
+	}
+	if initialPassword != "" {
+		logger.Warn("已建立管理員密碼，登入後請立即變更；此密碼不會再次顯示",
+			"password", initialPassword, "authFile", filepath.Join(baseConfig.DataDirectory, "auth.json"))
 	}
 	network := NetworkRuntime{StateFile: filepath.Join(config.DataDirectory, "runtime.json"), RememberEnabled: config.RememberLastSuccessfulPort}
 	state, stateErr := LoadRuntimeState(network.StateFile, service)
@@ -106,9 +132,20 @@ func Main(service string, port int) int {
 	logger = logger.With("build", identity)
 	defer listener.Close()
 	network.ActivePort = listener.Addr().(*net.TCPAddr).Port
+	var restartRequested atomic.Bool
+	restartCh := make(chan struct{}, 1)
+	requestRestart := func() {
+		select {
+		case restartCh <- struct{}{}:
+		default:
+		}
+	}
+	configState := NewConfigState(baseConfig, config, overrides, source, overridePath, &network, requestRestart)
 	var extensions []func(*http.ServeMux)
 	var scanner *library.Scanner
-	extensions = append(extensions, func(mux *http.ServeMux) { registerConfig(mux, config, source, network) })
+	var queue *library.ImportQueue
+	extensions = append(extensions, authManager.Register)
+	extensions = append(extensions, configState.Register)
 	if service == "video-node" {
 		store, err := library.Open(config.DataDirectory)
 		if err != nil {
@@ -116,6 +153,11 @@ func Main(service string, port int) int {
 			return 1
 		}
 		defer store.Close()
+		queue, err = library.NewImportQueue(store, config.FFprobePath, time.Duration(config.ProbeTimeoutSeconds)*time.Second, logger)
+		if err != nil {
+			logger.Error("初始化匯入佇列失敗", "error", err)
+			return 1
+		}
 		scanner = library.NewScanner(store, config.AutoScan, time.Duration(config.ScanIntervalSeconds)*time.Second, time.Duration(config.FileStableSeconds)*time.Second, logger)
 		extensions = append(extensions, store.Register)
 	}
@@ -132,9 +174,24 @@ func Main(service string, port int) int {
 			network.Saved = true
 		}
 	}
-	server := &http.Server{Handler: Handler(identity, listener.Addr().String(), config.WebDirectory, extensions...), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
+	server := &http.Server{Handler: authManager.Middleware(Handler(identity, listener.Addr().String(), config.WebDirectory, extensions...)), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	go func() {
+		select {
+		case <-restartCh:
+			restartRequested.Store(true)
+			logger.Info("收到重新啟動請求，準備套用設定")
+			stop()
+		case <-ctx.Done():
+		}
+	}()
+	if queue != nil {
+		queueContext, cancelQueue := context.WithCancel(ctx)
+		done := make(chan struct{})
+		go func() { defer close(done); queue.Run(queueContext) }()
+		defer func() { cancelQueue(); <-done }()
+	}
 	if scanner != nil {
 		scanContext, cancelScan := context.WithCancel(ctx)
 		done := make(chan struct{})
@@ -155,24 +212,9 @@ func Main(service string, port int) int {
 		logger.Error("服務失敗", "error", err)
 		return 1
 	}
-	return 0
-}
-
-func registerConfig(mux *http.ServeMux, config Config, source string, network ...NetworkRuntime) {
-	mux.HandleFunc("GET /api/v1/config", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		w.Header().Set("Cache-Control", "no-store")
-		json.NewEncoder(w).Encode(struct {
-			Source    string          `json:"source"`
-			Effective Config          `json:"effective"`
-			Network   *NetworkRuntime `json:"network,omitempty"`
-		}{Source: source, Effective: config, Network: firstNetwork(network)})
-	})
-}
-
-func firstNetwork(values []NetworkRuntime) *NetworkRuntime {
-	if len(values) == 0 {
-		return nil
+	if restartRequested.Load() {
+		logger.Info("結束目前程序，交由監督程式重新啟動")
+		return 75
 	}
-	return &values[0]
+	return 0
 }

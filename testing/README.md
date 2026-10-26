@@ -30,6 +30,25 @@ docker compose ps
 
 這會開啟三服務。只測影片節點時可省略 `--profile all`。
 
+第一次開啟會要求管理登入。首次管理員密碼會顯示在 video-node 日誌的「已建立管理員密碼」訊息；也可在啟動前設定 `DVN_ADMIN_PASSWORD`，該值會成為管理密碼並覆寫先前由網頁設定的值。`testing:up` 在未設定時會提示到哪裡找密碼。
+
+登入後可在「設定」頁變更密碼、編輯可調整的設定，並按確認重新啟動。設定會寫入資料卷的 `/data/config.override.json`，`testing/local/config/` 的 JSON 仍是唯讀基準；儲存後需重新啟動才套用。管理憑證 `auth.json` 與設定覆寫都在 `dvn-testing_node-data` 資料卷，刪除 volume 會失去登入憑證。
+
+## 忘記管理員密碼
+
+密碼不會以明文保存：`/data/auth.json` 只有雜湊與 session 金鑰。第一次啟動的隨機密碼只在日誌顯示一次，之後重啟不會再印。若沒有記下，請用下列其中一種方式重設：
+
+1. 在 `testing/.env` 或啟動 shell 設定 `DVN_ADMIN_PASSWORD`，再執行 `npm run testing:up`。非空值會在啟動時更新憑證。
+2. 保留 NodeID 與影片，只重設管理憑證：
+   ```sh
+   docker compose -f testing/compose.yaml exec -T video-node rm /data/auth.json
+   docker compose -f testing/compose.yaml restart video-node
+   docker compose -f testing/compose.yaml logs video-node | Select-String "已建立管理員密碼"
+   ```
+   新的一次性密碼會出現在日誌。不要刪除整個 `dvn-testing_node-data` volume，否則會失去 NodeID、索引與設定覆寫。
+
+若啟動時已設定 `DVN_ADMIN_PASSWORD`，刪除 `auth.json` 後仍會使用該環境變數，不會產生隨機密碼。
+
 | 服務 | 測試網址 |
 | --- | --- |
 | Video Node | [開啟影片節點](http://localhost:18710) |
@@ -95,12 +114,13 @@ testing/
 
 ## 修改設定與繼續測試
 
-- 改 `local/config/服務名.json` 後：`docker compose --profile all restart`。
+- 改 `local/config/服務名.json` 後：`docker compose --profile all restart`；這是主機基準檔，管理頁不會修改它。
+- 管理頁「設定」的修改會寫入資料卷的 `config.override.json`；儲存後按「重新啟動服務」，服務以 exit code 75 結束，Compose 的 `restart: unless-stopped` 會重新啟動並套用。
 - 改 `.env` 的端口後：重新執行上面的 up 指令。
 - 容器內端口維持 18610／18620／18630，外部測試端口由 `.env` 管理。
 - 測試 config 的 fallbackPorts 為空，端口記憶自動停用；runtime.json 僅記錄固定端口供診斷。
-- 設定中的 dataDirectory 保持 `/data`，webDirectory 保持 `/app/web`。
-- 看目前設定：開啟網頁「服務資訊」，可見設定來源與實際資料目錄。
+- 設定中的 dataDirectory 保持 `/data`，webDirectory 保持 `/app/web`；管理頁不開放修改這兩個路徑。
+- 看目前設定：開啟網頁「服務資訊」，可見設定來源與實際資料目錄；「設定」頁可看覆寫檔位置。
 
 更新程式時，在專案根目錄執行 `npm run testing:up`；它會重建 image、重建容器並執行版本檢查。只想重建 image 時使用 `npm run image -- all`。需備份既有測試資料時先停止節點，再備份完整資料卷與 local/config。
 

@@ -2,7 +2,7 @@
 
 可自行部署的分散式影片網路。Go 後端，React + Vite + TypeScript 管理介面。
 
-目前提供三服務基礎與 Video Node 的儲存池、影片匯入索引及原始檔播放；轉碼、Central 索引及遠端 Worker 尚未實作。
+目前提供三服務基礎與 Video Node 的儲存池、影片匯入索引及原始檔播放；管理頁已有單一管理員登入、設定編輯與重新啟動流程。轉碼、Central 索引及遠端 Worker 尚未實作。
 
 > **第一次接手？先讀 [接手開發與部署：從這裡開始](Docs/onboarding.md)。** 它會帶你選本機開發、Docker 測試或正式部署，並列出下一步要看哪份文件。
 
@@ -50,7 +50,7 @@ go vet ./...
 各服務可透過 `-ldflags -X` 獨立設定 `pkg/buildinfo.Version` 與 `Channel`。
 
 Vite 開發介面同樣監聽所有 IPv4 介面，其 API 代理仍透過本機連線到 Go 服務。
-區網連線需允許防火牆的實際服務端口；目前尚無登入授權，請在可信任網路使用。
+區網連線需允許防火牆的實際服務端口。管理 API 需先登入；仍只適合可信任的本機／區網環境，尚無多使用者與角色權限。
 架構與範圍請見 [開發基準](Docs/architecture.md) 與 [TODO](TODO.md)。
 
 ## Video Node 影片庫
@@ -64,13 +64,13 @@ Vite 開發介面同樣監聽所有 IPv4 介面，其 API 代理仍透過本機�
 
 預設索引與持久 NodeID 保存在 `data/library.sqlite`，可由 `dataDirectory` 調整；備份時請先停止服務再完整備份資料目錄。不要讓不同 Video Node 共用同一資料目錄。
 儲存池離線會保留影片紀錄。原始檔案大小或修改時間改變後，該副本會標示不可用，以免提供失準的雜湊與內容。
-目前支援 mp4、webm、mkv、mov、avi、m4v 副檔名的索引；這不是編碼或影片內容驗證，FFprobe 驗證與轉碼將另行加入。
-匯入屬同步操作，大型檔案請等待完成；目前尚無匯入佇列、分頁與刪除／重新索引介面。
+目前支援 mp4、webm、mkv、mov、avi、m4v 副檔名，透過背景工作執行 FFprobe 中繼資料檢查與 SHA-256 計算。
+在「匯入工作」查看進度、錯誤及重試；重啟後會恢復未完成工作。詳見[背景匯入說明](Docs/import-processing.md)。分頁、刪除、重新索引與轉碼仍待實作。
 已註冊儲存池預設每 30 秒自動檢查新增影片，等待至少 10 秒穩定觀察後背景匯入；儲存池頁面可手動排程與查看結果。已有影片不重複匯入，不會覆蓋你填寫的描述。詳見 [掃描設定](Docs/configuration.md)。
 
 匯入描述欄位包含標題、內容簡介（最多 10000 字）、分類（最多 80 字）、18+ 標記、授權資訊（最多 500 字）。分類可選建議值或自行輸入；授權是發布者提供的文字聲明，留空顯示「未提供」，不能推導轉載權利。18+ 僅為內容標記，尚未實作年齡驗證與存取限制。SQLite v2 會自動升級 v1 並保留原有影片；舊資料描述為空且未標示 18+，不代表通過普遍級審核。
 
-API：`GET /api/v1/library`、`POST /api/v1/pools`、`POST /api/v1/videos/import`、`GET /api/v1/videos/{id}/content`。管理寫入請求使用 JSON 並檢查瀏覽器 Origin；這不取代後續登入授權，請勿對不受信任網路開放。
+API：`GET /api/v1/library`、`POST /api/v1/pools`、`POST /api/v1/videos/import`、`GET /api/v1/videos/{id}/content`。管理 API 需先登入取得 HttpOnly session cookie；寫入請求仍檢查瀏覽器 Origin。首次啟動的管理員密碼會顯示在服務日誌，也可用 `DVN_ADMIN_PASSWORD` 指定。登入後可在「設定」頁變更密碼、編輯設定與重新啟動。
 
 ## Tag 與作品來源
 
@@ -86,13 +86,22 @@ SQLite v3 使用獨立 Tag 索引與作品來源表，會自動升級 v1/v2；�
 - `#videos`：影片清單、播放器與描述資料編輯。
 - `#pools`：儲存池註冊及在線狀態檢查。
 - `#import`：池內影片匯入與作品來源表單。
+- `#settings`：可編輯設定、設定來源、管理密碼與重新啟動。
 - `#diagnostics`：NodeID、建置識別與監聽資訊。
 
 分頁網址可加入書籤，支援重新整理與瀏覽器返回；切換分頁保留當前表單草稿，重新整理頁面則不保存未送出的草稿。Central / Worker 目前只提供總覽與服務資訊。
 
+## 管理授權與登入
+
+管理 API 使用單一管理員密碼。第一次啟動若沒有 `DVN_ADMIN_PASSWORD`，服務會產生隨機密碼並在日誌顯示一次；登入後可在「設定」頁變更。設定環境變數時，該值是啟動時的管理密碼，會覆寫先前由網頁設定的密碼。
+
+登入成功後伺服器設定 `dvn_session` cookie：HttpOnly、SameSite=Strict，瀏覽器 JavaScript 無法讀取，不會把 token 放進 localStorage。使用中的請求會自動延長閒置期限（預設 7 天），但最長 90 天仍需重新登入；登出或變更密碼會輪替簽章金鑰，使既有 session 全部失效。HTTPS/TLS 由部署層負責；直接以 HTTP 提供時 cookie 不會標記 Secure。
+
+API 用戶端需先 `POST /api/v1/auth/login`，再帶著回傳的 cookie 呼叫其他管理 API；`GET /api/v1/status` 與 `/healthz` 保持公開供健康檢查。
+
 ## Docker 與 Linux
 
-本機建置 image 使用 `npm run image -- video-node`，無需 CI；三服務共用多階段 Dockerfile，各自獨立部署。Compose 由主機映射外部端口，影片與 SQLite 資料獨立持久保存。Linux 另提供原生交叉編譯與 systemd 範本。
+本機建置 image 使用 `npm run image -- video-node`，無需 CI；三服務共用多階段 Dockerfile，各自獨立部署。Compose 由主機映射外部端口，影片與 SQLite 資料獨立持久保存。Linux 另提供原生交叉編譯與 systemd 範本。首次啟動的管理員密碼在服務日誌，或可用 `DVN_ADMIN_PASSWORD` 指定；登入後「設定」頁可寫入 `/data/config.override.json` 並確認重新啟動。
 CI 只處理正式版本標籤；registry 目的地確認前僅檢查及建置，不自動發布。完整步驟見 [部署說明](Docs/deployment.md)。
 第一次操作請直接依照 [Docker 上手手冊](Docs/deployment.md) 的六個步驟。進階部署另見 [Linux 與發版參考](Docs/deployment-reference.md)；已驗證的範圍見 [部署驗收紀錄](Docs/deployment-test-results.md)。
 持續開發測試建議使用 [testing 工作區](testing/README.md)：根目錄執行 `npm run testing:up` 會建置、啟動並檢查版本；也可先 `npm run setup:test`，再到 `testing/` 使用專用 Compose。`npm run check:testing` 可隨時確認 image 建置時間、來源摘要與執行中容器是否為目前版本。預設外部端口為 18710／18720／18730，資料不與開發或根目錄部署共用。

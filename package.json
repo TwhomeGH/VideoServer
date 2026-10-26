@@ -7,7 +7,9 @@
     "image": "node scripts/image.mjs",
     "testing:up": "node scripts/testing-up.mjs",
     "check:testing": "node scripts/check-testing.mjs",
-    "test:deployment": "node scripts/test-deployment.mjs",
+    "test:unit": "node --test test/unit/*.test.mjs",
+    "test:images": "node test/integration/images.mjs",
+    "test:deployment": "node test/integration/deployment.mjs",
     "setup:dev": "node scripts/setup.mjs development",
     "setup:test": "node scripts/setup.mjs testing"
   }

@@ -9,6 +9,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/TwhomeGH/VideoServer/internal/media"
+
 	_ "modernc.org/sqlite"
 )
 
@@ -17,6 +19,7 @@ type Store struct {
 	db      *sql.DB
 	nodeID  string
 	scanner *Scanner
+	queue   *ImportQueue
 }
 
 // Pool 表示已註冊的儲存根目錄；Online 每次查詢時重新檢查。
@@ -35,11 +38,12 @@ type Video struct {
 	PoolID        string `json:"poolId"`
 	Title         string `json:"title"`
 	Metadata
-	FileHash     string `json:"fileHash"`
-	SourceHash   string `json:"sourceHash"`
-	Size         int64  `json:"size"`
-	ImportedAt   string `json:"importedAt"`
-	Available    bool   `json:"available"`
+	FileHash     string      `json:"fileHash"`
+	SourceHash   string      `json:"sourceHash"`
+	Size         int64       `json:"size"`
+	ImportedAt   string      `json:"importedAt"`
+	Available    bool        `json:"available"`
+	Media        *media.Info `json:"media,omitempty"`
 	relativePath string
 	modifiedAt   int64
 }
@@ -90,8 +94,8 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("SELECT COALESCE(MAX(version),0) FROM schema_version").Scan(&version); err != nil {
 		return err
 	}
-	if version > 3 {
-		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 3", version)
+	if version > 4 {
+		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 4", version)
 	}
 	if _, err := tx.Exec(`
  CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
@@ -126,6 +130,19 @@ CREATE TABLE video_tags(
  position INTEGER NOT NULL, PRIMARY KEY(video_id,tag_key));
 CREATE INDEX video_tags_lookup ON video_tags(tag_key,video_id);
 INSERT INTO schema_version VALUES(3);`); err != nil {
+			return err
+		}
+	}
+	if version < 4 {
+		if _, err := tx.Exec(`CREATE TABLE video_media(video_id TEXT PRIMARY KEY REFERENCES videos(id), details_json TEXT NOT NULL);
+CREATE TABLE import_jobs(
+ id TEXT PRIMARY KEY,pool_id TEXT NOT NULL REFERENCES pools(id),relative_path TEXT NOT NULL,path_key TEXT NOT NULL,
+ title TEXT NOT NULL,metadata_json TEXT NOT NULL,source TEXT NOT NULL,
+ status TEXT NOT NULL,phase TEXT NOT NULL,bytes_processed INTEGER NOT NULL,total_bytes INTEGER NOT NULL,
+ video_id TEXT NOT NULL,error TEXT NOT NULL,attempts INTEGER NOT NULL,created_at TEXT NOT NULL,updated_at TEXT NOT NULL);
+CREATE UNIQUE INDEX import_jobs_path ON import_jobs(pool_id,path_key);
+CREATE INDEX import_jobs_pending ON import_jobs(status,created_at);
+INSERT INTO schema_version VALUES(4);`); err != nil {
 			return err
 		}
 	}

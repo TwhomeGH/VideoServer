@@ -123,6 +123,8 @@ ALTER TABLE videos DROP COLUMN adult;
 ALTER TABLE videos DROP COLUMN license;
 DROP TABLE video_tags;
 DROP TABLE video_attribution;
+DROP TABLE import_jobs;
+DROP TABLE video_media;
 DELETE FROM schema_version WHERE version>=2;`)
 	if err != nil {
 		store.Close()

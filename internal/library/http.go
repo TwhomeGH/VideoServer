@@ -50,7 +50,7 @@ func decode(w http.ResponseWriter, r *http.Request, value any) bool {
 }
 
 // Register 將 Video Node 的儲存池、影片匯入與 Range 播放路由加入 mux。
-// 本階段管理 API 限可信任區網，跨站檢查並不取代後續登入授權。
+// 登入授權由 runtime 的 auth middleware 統一執行；寫入另檢查 Origin。
 func (s *Store) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/library", func(w http.ResponseWriter, r *http.Request) {
 		pools, err := s.Pools()
@@ -67,7 +67,15 @@ func (s *Store) Register(mux *http.ServeMux) {
 		if s.scanner != nil {
 			scan = s.scanner.Status()
 		}
-		respond(w, 200, map[string]any{"nodeId": s.nodeID, "pools": pools, "videos": videos, "scan": scan})
+		jobs := []ImportJob{}
+		if s.queue != nil {
+			jobs, err = s.queue.Jobs()
+			if err != nil {
+				failure(w, 500, "無法讀取匯入工作")
+				return
+			}
+		}
+		respond(w, 200, map[string]any{"nodeId": s.nodeID, "pools": pools, "videos": videos, "scan": scan, "jobs": jobs})
 	})
 	mux.HandleFunc("POST /api/v1/pools", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
@@ -101,12 +109,20 @@ func (s *Store) Register(mux *http.ServeMux) {
 			failure(w, 400, err.Error())
 			return
 		}
-		video, err := s.Import(r.Context(), request.PoolID, request.Path, request.Title, request.Metadata)
+		if s.queue == nil {
+			failure(w, 503, "背景匯入器尚未啟用")
+			return
+		}
+		job, _, err := s.queue.Enqueue(r.Context(), request.PoolID, request.Path, request.Title, "manual", request.Metadata)
 		if err != nil {
+			if errors.Is(err, ErrImportExists) {
+				failure(w, 409, err.Error())
+				return
+			}
 			failure(w, 400, "匯入失敗：請確認影片在儲存池內、檔案可讀且尚未匯入")
 			return
 		}
-		respond(w, 201, video)
+		respond(w, 202, job)
 	})
 	mux.HandleFunc("PUT /api/v1/videos/{id}/metadata", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
@@ -139,6 +155,32 @@ func (s *Store) Register(mux *http.ServeMux) {
 			}
 			s.scanner.Request()
 			respond(w, 202, s.scanner.Status())
+		})
+	}
+	if s.queue != nil {
+		mux.HandleFunc("GET /api/v1/import-jobs/{id}", func(w http.ResponseWriter, r *http.Request) {
+			job, err := s.queue.Job(r.PathValue("id"))
+			if errors.Is(err, sql.ErrNoRows) {
+				failure(w, 404, "找不到匯入工作")
+				return
+			}
+			if err != nil {
+				failure(w, 500, "無法讀取匯入工作")
+				return
+			}
+			respond(w, 200, job)
+		})
+		mux.HandleFunc("POST /api/v1/import-jobs/{id}/retry", func(w http.ResponseWriter, r *http.Request) {
+			var request struct{}
+			if !decode(w, r, &request) {
+				return
+			}
+			job, err := s.queue.Retry(r.Context(), r.PathValue("id"))
+			if err != nil {
+				failure(w, 409, err.Error())
+				return
+			}
+			respond(w, 202, job)
 		})
 	}
 	mux.HandleFunc("GET /api/v1/videos/{id}/content", s.play)

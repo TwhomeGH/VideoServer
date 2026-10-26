@@ -12,6 +12,8 @@ services:
         SOURCE_DIGEST: ${DVN_SOURCE_DIGEST:-unknown}
     ports:
       - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_NODE_PORT:-18610}:18610"
+    environment:
+      DVN_ADMIN_PASSWORD: ${DVN_ADMIN_PASSWORD:-}
     volumes:
       - node-data:/data
       - type: bind
@@ -41,6 +43,8 @@ services:
         SOURCE_DIGEST: ${DVN_SOURCE_DIGEST:-unknown}
     ports:
       - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_CENTRAL_PORT:-18620}:18620"
+    environment:
+      DVN_ADMIN_PASSWORD: ${DVN_ADMIN_PASSWORD:-}
     volumes:
       - central-data:/data
       - type: bind
@@ -64,6 +68,8 @@ services:
         SOURCE_DIGEST: ${DVN_SOURCE_DIGEST:-unknown}
     ports:
       - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_WORKER_PORT:-18630}:18630"
+    environment:
+      DVN_ADMIN_PASSWORD: ${DVN_ADMIN_PASSWORD:-}
     volumes:
       - worker-data:/data
       - type: bind

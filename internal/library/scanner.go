@@ -17,6 +17,7 @@ type ScanResult struct {
 	StartedAt    time.Time `json:"startedAt"`
 	CompletedAt  time.Time `json:"completedAt"`
 	Imported     int       `json:"imported"`
+	Enqueued     int       `json:"enqueued"`
 	Pending      int       `json:"pending"`
 	Skipped      int       `json:"skipped"`
 	Failed       int       `json:"failed"`
@@ -113,7 +114,7 @@ func (s *Scanner) Run(ctx context.Context) {
 		s.status.Last = &result
 		s.status.Running = false
 		s.mu.Unlock()
-		s.logger.Info("儲存池掃描完成", "imported", result.Imported, "pending", result.Pending, "failed", result.Failed, "offlinePools", result.OfflinePools)
+		s.logger.Info("儲存池掃描完成", "enqueued", result.Enqueued, "imported", result.Imported, "pending", result.Pending, "failed", result.Failed, "offlinePools", result.OfflinePools)
 	}
 }
 
@@ -142,7 +143,11 @@ func fileKey(poolID, path string) string {
 }
 
 func (s *Scanner) indexed(ctx context.Context) (map[string]bool, error) {
-	rows, err := s.store.db.QueryContext(ctx, "SELECT pool_id,relative_path FROM videos")
+	query := "SELECT pool_id,relative_path FROM videos"
+	if s.store.queue != nil {
+		query += " UNION SELECT pool_id,relative_path FROM import_jobs"
+	}
+	rows, err := s.store.db.QueryContext(ctx, query)
 	if err != nil {
 		return nil, err
 	}
@@ -217,6 +222,18 @@ func (s *Scanner) scan(ctx context.Context, now time.Time) ScanResult {
 			next[key] = current
 			if info.Size() == 0 || now.Sub(current.since) < s.stable || now.Sub(current.modified) < s.stable {
 				result.Pending++
+				return nil
+			}
+			if s.store.queue != nil {
+				_, added, err := s.store.queue.Enqueue(ctx, pool.ID, relative, "", "scan", Metadata{})
+				if err != nil && err != ErrImportExists {
+					result.failure(err)
+				} else if added {
+					result.Enqueued++
+				} else {
+					result.Skipped++
+				}
+				delete(next, key)
 				return nil
 			}
 			if _, err := s.store.Import(ctx, pool.ID, relative, ""); err != nil {

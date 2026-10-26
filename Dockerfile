@@ -57,6 +57,9 @@ EXPOSE 18630
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD wget -q -O /dev/null http://127.0.0.1:18630/healthz || exit 1
 
 FROM runtime AS video-node
+USER root
+RUN apk add --no-cache ffmpeg
+USER 10001:10001
 COPY --from=backend /out/video-node /app/service
 COPY deployments/docker/video-node.json /app/config.json
 EXPOSE 18610

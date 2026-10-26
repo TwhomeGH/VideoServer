@@ -23,14 +23,34 @@
 服務先建立內建預設值，再套用 `-config` 的 JSON；未指定欄位保留預設，未知欄位或無效設定會讓啟動失敗。
 相對的 dataDirectory／webDirectory 依程序工作目錄解析，服務會轉成絕對路徑並顯示生效值。自動產生的開發設定直接使用絕對路徑，搬動專案後需調整既有 JSON。
 根目錄 `.env` 由根目錄 Compose 讀取；`testing/.env` 由測試 Compose 讀取。Go 不直接讀取這些 .env，開發腳本也不拿它們覆蓋服務 JSON。
-NodeID、儲存池與影片資料存在 SQLite，不寫回設定檔。目前設定是啟動時讀取，沒有熱更新或網頁寫入設定功能。
+NodeID、儲存池與影片資料存在 SQLite，不寫回主機設定檔。管理頁的設定修改會寫入資料目錄的 `config.override.json`，主機 JSON 仍是唯讀基準；儲存後需重新啟動才會套用。
+
+## 管理頁設定編輯
+
+主機 JSON 是唯讀基準；管理頁只寫入資料目錄的 `<dataDirectory>/config.override.json`，因此 Docker 的單檔唯讀掛載不需要改成可寫。
+可編輯欄位是 host、preferredPort、fallbackPorts、rememberLastSuccessfulPort、autoScan、scanIntervalSeconds、fileStableSeconds。dataDirectory、webDirectory 與基準檔路徑只顯示，不能從網頁變更。
+儲存時只記錄與基準不同的欄位；欄位改回基準值會從覆寫檔移除，按「重設為基準」則刪除整個覆寫檔。覆寫檔使用原子替換保存，主機 JSON 不會被修改。
+
+程序啟動時先讀基準 JSON，再套用覆寫並重新驗證；未知欄位、無效端口或無效秒數會讓啟動失敗。管理頁儲存後會顯示「需重新啟動」，按下確認後服務以 exit code 75 結束，交由 Docker `restart: unless-stopped`、systemd `Restart=on-failure` 或 `npm run dev` 的監督流程重新啟動並套用。直接手動執行二進位且沒有監督程式時，服務會停止，需自行重新啟動。
+
+## 管理授權與 session
+
+第一次啟動且沒有 `DVN_ADMIN_PASSWORD` 時，服務產生隨機管理員密碼，只在日誌顯示一次；之後可在「設定」頁用目前密碼變更。設定 `DVN_ADMIN_PASSWORD` 時，該值是啟動時的管理密碼；若與已保存的不同，會更新憑證並讓既有 session 失效。憑證保存在 `<dataDirectory>/auth.json`，使用 PBKDF2-HMAC-SHA256 雜湊與隨機 session secret，檔案權限為 0600。
+
+登入成功後只設定 `dvn_session` cookie：HttpOnly、SameSite=Strict，JavaScript 無法讀取，不會在 localStorage 保存 token。使用中的 API 請求會在閒置期限剩餘一半時自動續期；閒置期限 7 天，絕對上限 90 天，超過任一期限需重新登入。登出或變更密碼會輪替 session secret，讓所有裝置的既有 session 失效。登入失敗每個來源連續 5 次會暫停 30 秒。
+
+`GET /api/v1/status`、`GET /healthz`、`/api/v1/auth/session` 與 `/api/v1/auth/login` 保持公開；其他 `/api/v1/*` 需要有效 cookie。API 用戶端請先 `POST /api/v1/auth/login` 並保存回傳的 cookie。瀏覽器 cookie 以主機名稱區分、不以端口區分；同一主機名稱下同時跑多個實例時，切換實例可能需要重新登入，開發與測試可用不同主機名稱區隔。
+
+密碼不會以明文保存，`auth.json` 只有 PBKDF2 雜湊與 session 金鑰。首次隨機密碼只在日誌出現一次；忘記時可設定非空的 `DVN_ADMIN_PASSWORD` 後重啟，或停止服務、備份資料目錄後移除 `auth.json` 再啟動，讓服務重新產生一次性密碼。移除 `auth.json` 不會刪除 NodeID、儲存池或影片索引，但會讓既有 session 失效；不要直接刪除整個資料目錄或 volume。
+
+HTTPS/TLS 尚未內建；直接以 HTTP 提供時 cookie 不會標記 Secure。若在前面放 TLS 反向代理，請確認瀏覽器實際使用 HTTPS。
 
 ## 新增影片自動掃描
 
 Video Node 預設啟用 `autoScan: true`，`scanIntervalSeconds: 30`，`fileStableSeconds: 10`。既有 JSON 沒有這些欄位時同樣套用預設。要停用自動掃描可設定 autoScan 為 false，仍可在儲存池頁面手動排程掃描。
 服務啟動與註冊新池時會檢查，之後每 30 秒遞迴掃描已註冊池。檔案需至少兩次觀察大小與修改時間一致、觀察間隔達 10 秒且修改時間足夠久，才計算雜湊並建立索引；通常在新增後約 30–60 秒出現在清單。重啟會重新觀察尚未索引的檔案。
 自動匯入使用檔名作為標題，作品類型為「未確認」，不推定作者、授權、分類或 18+ 狀態。可以在影片庫編輯補填。管理頁面每五秒重新讀取清單及掃描狀態。
-掃描略過既有索引與符號連結，不重寫描述、不刪除離線紀錄，也不自動重新索引已變更檔案。支援的副檔名與手動匯入相同；沒有 FFprobe 內容驗證。儲存池仍須先註冊一次，程式不會擅自搜尋未註冊的磁碟。
+掃描略過既有索引、既有匯入工作與符號連結，不重寫描述、不刪除離線紀錄，也不自動重新索引已變更檔案。穩定檔案交由背景工作執行 FFprobe 與雜湊計算；失敗工作須手動重試。儲存池仍須先註冊一次，程式不會擅自搜尋未註冊的磁碟。
 穩定觀察只是降低讀到未完成檔案的機率，不能保證來源已完成傳輸。建議複製時使用 `.part` 等暫存副檔名，完成後再改為 `.mp4`。大型影片的 SHA-256 計算在背景序列執行，不會同時重複掃描。
 
 ## Git 與測試隔離
@@ -52,4 +72,4 @@ Video Node 預設啟用 `autoScan: true`，`scanIntervalSeconds: 30`，`fileStab
 
 `SaveConfig` 先驗證完整設定，再使用與 runtime.json 共用的保存流程：同目錄暫存檔 → 完整寫入 → 同步 → 關閉 → 替換目標。Windows 使用帶替換與 write-through 旗標的 MoveFileEx，Linux 使用同目錄 rename 並同步目錄。
 替換前失敗不截斷舊檔；失敗暫存檔以 `.檔名.pending-*` 留在同目錄供診斷，不自動清理。成功後沒有額外暫存檔。若替換成功後的目錄同步失敗，錯誤會明確表示「檔案已替換」，不會假稱已回復舊檔。
-這項底層不等於網頁設定編輯或熱更新；目前沒有對外寫入 API，Docker 唯讀掛載的 config 仍由主機管理。保存新設定後須明確重啟才會套用。讀寫中的其他程序、權限、唯讀掛載及檔案系統特性仍可能使替換失敗；不保證遠端／虛擬檔案系統與突然斷電下的所有情境。
+這項底層現在用於管理頁的 `config.override.json` 與 `auth.json`；Docker 唯讀掛載的基準 config 仍由主機管理，不會被網頁修改。保存覆寫後須重新啟動才會套用，沒有熱更新。讀寫中的其他程序、權限、唯讀掛載及檔案系統特性仍可能使替換失敗；不保證遠端／虛擬檔案系統與突然斷電下的所有情境。

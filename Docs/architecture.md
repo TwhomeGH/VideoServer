@@ -31,13 +31,13 @@ Worker 依派工條件轉碼，不能變更影片所有權或放寬政策。
 後續加入持久 NodeID、最後成功端口、Endpoint revision 與外部可達性驗證。
 Docker 外部映射由部署層處理；容器端口切換不代表外部映射已更新。
 
-Build Identity 包含 service、version、commit、buildTime、channel、dirty、protocolVersion。
-後續握手檢查協定相容性，轉碼任務保存 Node / Worker 當時版本快照。
+Build Identity 包含 service、version、commit、buildTime、channel、dirty、protocolVersion，以及 imageBuildTime、imageSourceDigest。後續握手檢查協定相容性，轉碼任務保存 Node / Worker 當時版本快照。
 
 ## Phase 1 實作決策
 
 初版設定採 JSON（Go 標準庫），取代候選 YAML / TOML；需要更多設定能力時再以明確遷移方式擴充。
-三個服務先共用唯讀管理頁面與啟動層，領域功能依階段分離。
+管理頁可將可編輯設定寫入資料目錄的 `config.override.json`，主機 JSON 保持唯讀基準；套用需要重新啟動。資料目錄與網頁目錄不開放由網頁變更。
+管理授權採單一管理員密碼、HttpOnly session cookie 與伺服器端簽章；閒置期限可滑動續期，另有絕對上限。登出或變更密碼會輪替 session secret。
 先使用 CSS Variables 實作主題；Tailwind 尚未導入。
 本次僅建立程序健康與診斷 API；它們不代表儲存、FFmpeg 或聯邦服務已就緒。
 
@@ -47,7 +47,7 @@ Video Node 使用 modernc SQLite 驅動（Go 1.26 以上，免 CGO），以交�
 NodeID 保存在資料庫，影片目前是一部邏輯影片、一筆發布與一份原始副本的精簡資料模型；多版本／多副本分表將在轉碼與分散式階段遷移。
 既有影片以池內相對路徑索引，不搬移原檔；FileHash / SourceHash 記錄匯入當下 SHA-256。
 播放前重新檢查路徑邊界、檔案大小與修改時間，來源離線或變更回傳 503，未知影片回傳 404。
-管理介面呈現池在線狀態、同步匯入、清單及直接播放。這一批尚無 FFprobe 內容驗證、轉碼、持久匯入工作佇列與分頁。
+管理介面呈現池在線狀態、背景匯入、清單及直接播放。SQLite v4 加入持久匯入工作與 FFprobe 中繼資料；轉碼與分頁仍待實作。詳見[背景匯入說明](import-processing.md)。
 
 影片描述使用 schema v2：description、category、adult、license。分類與授權先保留可擴充文字，18+ 是內容標記，不能替代後續年齡與存取政策。v1 升級保留既有 ID、雜湊與 NodeID，新增描述預設空值；授權空白不能視為允許轉載。
 

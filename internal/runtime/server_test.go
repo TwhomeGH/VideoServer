@@ -3,7 +3,6 @@ package runtime
 import (
 	"encoding/json"
 	"net"
-	"net/http"
 	"net/http/httptest"
 	"testing"
 
@@ -61,7 +60,8 @@ func TestConfigRejectsInvalidPort(t *testing.T) {
 
 func TestEffectiveConfigSource(t *testing.T) {
 	config := Config{Host: "0.0.0.0", PreferredPort: 18610, DataDirectory: "/data/test", WebDirectory: "/app/web", FallbackPorts: []int{}}
-	handler := Handler(buildinfo.Current("video-node"), "0.0.0.0:18610", t.TempDir(), func(mux *http.ServeMux) { registerConfig(mux, config, "/config/video-node.json") })
+	state := NewConfigState(config, config, Override{}, "/config/video-node.json", "/data/test/config.override.json", nil, nil)
+	handler := Handler(buildinfo.Current("video-node"), "0.0.0.0:18610", t.TempDir(), state.Register)
 	response := httptest.NewRecorder()
 	handler.ServeHTTP(response, httptest.NewRequest("GET", "/api/v1/config", nil))
 	var body struct {

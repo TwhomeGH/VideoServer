@@ -7,10 +7,12 @@ import (
 	"flag"
 	"net"
 	"net/http"
+	"net/http/cookiejar"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -30,7 +32,13 @@ func startTestService(t *testing.T, configPath string) (int, func()) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	command := exec.CommandContext(ctx, os.Args[0], "-test.run=^TestRuntimeHelperProcess$")
-	command.Env = append(os.Environ(), "DVN_RUNTIME_TEST_CONFIG="+configPath)
+	env := make([]string, 0, len(os.Environ())+2)
+	for _, value := range os.Environ() {
+		if !strings.HasPrefix(value, "DVN_ADMIN_PASSWORD=") {
+			env = append(env, value)
+		}
+	}
+	command.Env = append(env, "DVN_RUNTIME_TEST_CONFIG="+configPath, "DVN_ADMIN_PASSWORD=test-password-123")
 	output, err := command.StdoutPipe()
 	if err != nil {
 		cancel()
@@ -43,7 +51,11 @@ func startTestService(t *testing.T, configPath string) (int, func()) {
 	var once sync.Once
 	stop := func() { once.Do(func() { command.Process.Kill(); command.Wait(); cancel() }) }
 	t.Cleanup(stop)
-	ready := make(chan int, 1)
+	type startupResult struct {
+		port int
+		err  error
+	}
+	ready := make(chan startupResult, 1)
 	go func() {
 		scanner := bufio.NewScanner(output)
 		for scanner.Scan() {
@@ -54,19 +66,27 @@ func startTestService(t *testing.T, configPath string) (int, func()) {
 			if json.Unmarshal(scanner.Bytes(), &line) == nil && line.Msg == "服務啟動" {
 				_, port, _ := net.SplitHostPort(line.ListenAddress)
 				value, _ := strconv.Atoi(port)
-				ready <- value
+				ready <- startupResult{port: value}
 				return
 			}
 		}
-		ready <- 0
+		if err := scanner.Err(); err != nil {
+			ready <- startupResult{err: err}
+			return
+		}
+		ready <- startupResult{}
 	}()
 	select {
-	case port := <-ready:
-		if port == 0 {
+	case result := <-ready:
+		if result.err != nil {
+			stop()
+			t.Fatalf("read service startup output: %v", result.err)
+		}
+		if result.port == 0 {
 			stop()
 			t.Fatal("service exited before becoming ready")
 		}
-		return port, stop
+		return result.port, stop
 	case <-ctx.Done():
 		stop()
 		t.Fatal("service startup timed out")
@@ -113,6 +133,20 @@ func TestStartupPersistsFallbackAndKeepsConfigUnchanged(t *testing.T) {
 		t.Fatal("restart returned to preferred instead of remembered port")
 	}
 	client := &http.Client{Timeout: 3 * time.Second}
+	jar, err := cookiejar.New(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	client.Jar = jar
+	login, err := client.Post("http://127.0.0.1:"+strconv.Itoa(port)+"/api/v1/auth/login",
+		"application/json", strings.NewReader(`{"password":"test-password-123"}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	login.Body.Close()
+	if login.StatusCode != http.StatusOK {
+		t.Fatalf("login status = %d", login.StatusCode)
+	}
 	response, err := client.Get("http://127.0.0.1:" + strconv.Itoa(port) + "/api/v1/config")
 	if err != nil {
 		t.Fatal(err)

@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
-import { buildInputDigest } from './build-inputs.mjs';
+import { buildInputDigest } from '../../scripts/build-inputs.mjs';
 
 function workspace() {
   const root = mkdtempSync(path.join(os.tmpdir(), 'dvn-build-'));
