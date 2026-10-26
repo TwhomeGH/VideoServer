@@ -8,6 +8,8 @@ services:
       args:
         VCS_REF: ${DVN_COMMIT:-unknown}
         DIRTY: ${DVN_DIRTY:-true}
+        BUILD_TIME: ${DVN_BUILD_TIME:-unknown}
+        SOURCE_DIGEST: ${DVN_SOURCE_DIGEST:-unknown}
     ports:
       - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_NODE_PORT:-18610}:18610"
     volumes:
@@ -35,6 +37,8 @@ services:
       args:
         VCS_REF: ${DVN_COMMIT:-unknown}
         DIRTY: ${DVN_DIRTY:-true}
+        BUILD_TIME: ${DVN_BUILD_TIME:-unknown}
+        SOURCE_DIGEST: ${DVN_SOURCE_DIGEST:-unknown}
     ports:
       - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_CENTRAL_PORT:-18620}:18620"
     volumes:
@@ -56,6 +60,8 @@ services:
       args:
         VCS_REF: ${DVN_COMMIT:-unknown}
         DIRTY: ${DVN_DIRTY:-true}
+        BUILD_TIME: ${DVN_BUILD_TIME:-unknown}
+        SOURCE_DIGEST: ${DVN_SOURCE_DIGEST:-unknown}
     ports:
       - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_WORKER_PORT:-18630}:18630"
     volumes:

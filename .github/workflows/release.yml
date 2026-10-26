@@ -25,7 +25,7 @@ jobs:
           cache: npm
           cache-dependency-path: web/admin/package-lock.json
       - run: go test ./...
-      - run: node --test scripts/workspaces.test.mjs
+      - run: node --test scripts/*.test.mjs
       - run: go vet ./...
       - run: npm --prefix web/admin ci
       - run: npm --prefix web/admin run build
@@ -40,6 +40,13 @@ jobs:
       - uses: actions/checkout@v4
       - uses: docker/setup-qemu-action@v3
       - uses: docker/setup-buildx-action@v3
+      - name: 準備版本資訊
+        id: metadata
+        shell: bash
+        run: |
+          digest=$(node --input-type=module -e 'import { buildInputDigest } from "./scripts/build-inputs.mjs"; console.log(buildInputDigest())')
+          echo "build_time=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_OUTPUT"
+          echo "source_digest=$digest" >> "$GITHUB_OUTPUT"
       - name: 建置正式版本 image（發布目的地待定）
         env:
           SERVICE: ${{ matrix.service }}
@@ -49,4 +56,6 @@ jobs:
           docker buildx build --platform linux/amd64,linux/arm64 --target "$SERVICE" \
             --build-arg "VERSION=$version" --build-arg "VCS_REF=$GITHUB_SHA" \
             --build-arg DIRTY=false --build-arg CHANNEL=release \
+            --build-arg "BUILD_TIME=${{ steps.metadata.outputs.build_time }}" \
+            --build-arg "SOURCE_DIGEST=${{ steps.metadata.outputs.source_digest }}" \
             --output "type=oci,dest=/tmp/$SERVICE-image.tar" .

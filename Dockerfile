@@ -24,10 +24,23 @@ RUN mkdir /out && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trim
     -o /out/ ./apps/...
 
 FROM alpine:3.23 AS runtime
+ARG VERSION=0.1.0
+ARG VCS_REF=unknown
+ARG DIRTY=true
+ARG BUILD_TIME=unknown
+ARG SOURCE_DIGEST=unknown
 RUN apk add --no-cache ca-certificates && addgroup -g 10001 dvn && adduser -D -u 10001 -G dvn dvn \
     && mkdir -p /data /media /app/web && chown 10001:10001 /data
 WORKDIR /app
 COPY --from=web /src/web/admin/dist/ /app/web/
+LABEL org.opencontainers.image.title="DVN" \
+      org.opencontainers.image.version=$VERSION \
+      org.opencontainers.image.revision=$VCS_REF \
+      org.opencontainers.image.created=$BUILD_TIME \
+      dev.dvn.dirty=$DIRTY \
+      dev.dvn.source-digest=$SOURCE_DIGEST
+ENV DVN_IMAGE_BUILT_AT=$BUILD_TIME \
+    DVN_IMAGE_SOURCE_DIGEST=$SOURCE_DIGEST
 USER 10001:10001
 ENTRYPOINT ["/app/service", "-config", "/app/config.json"]
 

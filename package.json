@@ -5,6 +5,8 @@
     "dev": "node scripts/dev.mjs",
     "dev:all": "node scripts/dev.mjs --all",
     "image": "node scripts/image.mjs",
+    "testing:up": "node scripts/testing-up.mjs",
+    "check:testing": "node scripts/check-testing.mjs",
     "test:deployment": "node scripts/test-deployment.mjs",
     "setup:dev": "node scripts/setup.mjs development",
     "setup:test": "node scripts/setup.mjs testing"

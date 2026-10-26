@@ -5,6 +5,11 @@ services:
     build:
       context: ..
       target: video-node
+      args:
+        VCS_REF: ${DVN_COMMIT:-unknown}
+        DIRTY: ${DVN_DIRTY:-true}
+        BUILD_TIME: ${DVN_BUILD_TIME:-unknown}
+        SOURCE_DIGEST: ${DVN_SOURCE_DIGEST:-unknown}
     ports:
       - "${DVN_TEST_BIND_ADDRESS:-0.0.0.0}:${DVN_TEST_NODE_PORT:-18710}:18610"
     volumes:
@@ -29,6 +34,11 @@ services:
     build:
       context: ..
       target: central
+      args:
+        VCS_REF: ${DVN_COMMIT:-unknown}
+        DIRTY: ${DVN_DIRTY:-true}
+        BUILD_TIME: ${DVN_BUILD_TIME:-unknown}
+        SOURCE_DIGEST: ${DVN_SOURCE_DIGEST:-unknown}
     ports:
       - "${DVN_TEST_BIND_ADDRESS:-0.0.0.0}:${DVN_TEST_CENTRAL_PORT:-18720}:18620"
     volumes:
@@ -47,6 +57,11 @@ services:
     build:
       context: ..
       target: transcode-worker
+      args:
+        VCS_REF: ${DVN_COMMIT:-unknown}
+        DIRTY: ${DVN_DIRTY:-true}
+        BUILD_TIME: ${DVN_BUILD_TIME:-unknown}
+        SOURCE_DIGEST: ${DVN_SOURCE_DIGEST:-unknown}
     ports:
       - "${DVN_TEST_BIND_ADDRESS:-0.0.0.0}:${DVN_TEST_WORKER_PORT:-18730}:18630"
     volumes:
