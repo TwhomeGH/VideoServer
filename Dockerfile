@@ -16,12 +16,12 @@ ARG CHANNEL=local
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
-COPY cmd/ cmd/
+COPY apps/ apps/
 COPY internal/ internal/
 COPY pkg/ pkg/
 RUN mkdir /out && CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -buildvcs=false \
     -ldflags="-X github.com/TwhomeGH/VideoServer/pkg/buildinfo.Version=$VERSION -X github.com/TwhomeGH/VideoServer/pkg/buildinfo.Commit=$VCS_REF -X github.com/TwhomeGH/VideoServer/pkg/buildinfo.Dirty=$DIRTY -X github.com/TwhomeGH/VideoServer/pkg/buildinfo.Channel=$CHANNEL -X github.com/TwhomeGH/VideoServer/pkg/buildinfo.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
-    -o /out/ ./cmd/...
+    -o /out/ ./apps/...
 
 FROM alpine:3.23 AS runtime
 RUN apk add --no-cache ca-certificates && addgroup -g 10001 dvn && adduser -D -u 10001 -G dvn dvn \

@@ -13,6 +13,12 @@ services:
     volumes:
       - node-data:/data
       - type: bind
+        source: ${DVN_NODE_CONFIG:-./deployments/docker/video-node.json}
+        target: /app/config.json
+        read_only: true
+        bind:
+          create_host_path: false
+      - type: bind
         source: ${DVN_MEDIA_PATH:-./media}
         target: /media
         read_only: true
@@ -33,6 +39,12 @@ services:
       - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_CENTRAL_PORT:-18620}:18620"
     volumes:
       - central-data:/data
+      - type: bind
+        source: ${DVN_CENTRAL_CONFIG:-./deployments/docker/central.json}
+        target: /app/config.json
+        read_only: true
+        bind:
+          create_host_path: false
     restart: unless-stopped
     init: true
   transcode-worker:
@@ -48,6 +60,12 @@ services:
       - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_WORKER_PORT:-18630}:18630"
     volumes:
       - worker-data:/data
+      - type: bind
+        source: ${DVN_WORKER_CONFIG:-./deployments/docker/transcode-worker.json}
+        target: /app/config.json
+        read_only: true
+        bind:
+          create_host_path: false
     restart: unless-stopped
     init: true
 volumes:

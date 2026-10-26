@@ -1,87 +1,124 @@
-# Docker、Linux 與正式發版
+# Docker 上手手冊：先跑起一個 Video Node
 
-## 工作分工
+完成後，你會得到一個可在瀏覽器管理、匯入及播放影片的節點。先只啟動 Video Node；Central 與 Worker 目前仍為骨架，暫時不用一起開。
 
-本機原始碼可直接建置三個獨立 image，不依賴 GitHub、CI、image registry 或預先編譯的前端。首次建置仍需網路下載官方基底 image 與 Go/npm 相依。
-CI 僅在推送 `vX.Y.Z` 正式版本標籤時檢查與建置。目前不會推送 image：發布目的地、帳號與存取範圍尚待確認。也不會在一般 commit / PR 自動發布。
-三服務共用 Dockerfile 的建置層，但各 image 只包含自己的執行檔及已打包管理頁面。容器使用 UID/GID 10001，不包含 Go、Node.js、Vite 開發伺服器。
+## 1. 準備
 
-## 本機建置 image
+- 啟動 Docker Desktop，使用 Linux containers；Linux 主機使用 Docker Engine 與 Compose。
+- 安裝 Node.js 22.12 以上，僅用來執行本機建置入口。
+- 準備一個已存在的影片目錄，例如 Windows 的 `D:\Videos`，或 Linux 的 `/srv/videos`。
+- 下列指令都在專案根目錄執行。Windows 本專案為 `F:\VideoServer`。
 
-在專案根目錄執行（需要 Docker Engine + Compose，Windows 使用 Linux containers）：
+Docker 會自行下載建置工具，不需要在主機安裝 Go，也不用先執行 npm install 或啟動 CI。首次建置需要網路。
+
+## 2. 指定影片目錄
+
+在專案根目錄新增 `.env`。如果已存在，編輯原檔，不要覆蓋其他設定。
+
+Windows 範例，路徑用 `/`：
+
+```dotenv
+DVN_MEDIA_PATH=D:/Videos
+DVN_NODE_PORT=18610
+```
+
+Linux 將第一行改為 `DVN_MEDIA_PATH=/srv/videos`。路徑要改成你的實際目錄，不必把影片複製進專案。
+
+## 3. 建置程式 image
 
 ```sh
 npm run image -- video-node
-npm run image -- central
-npm run image -- transcode-worker
-node scripts/test-images.mjs
 ```
 
-這個 npm 入口只用 Node 標準庫呼叫 Docker，不需要先 npm install。它會注入目前 commit、dirty 狀態，產生 `dvn/video-node:local` 等本機標籤，不推送任何 registry。
-不想安裝 Node，也可直接：
+成功後產生本機 `dvn/video-node:local`，包含後端與管理網頁。這一步只建置，尚未啟動服務，也不會上傳 image。
+
+## 4. 啟動
 
 ```sh
-docker build --target video-node -t dvn/video-node:local .
+docker compose up -d --no-build --pull never --wait --wait-timeout 60
+docker compose ps
 ```
 
-直接建置若未提供 VCS_REF / DIRTY，版本資訊會明確顯示 unknown / true；正式版本另提供 VERSION / CHANNEL 建置參數。Dockerfile 採多階段建置，依序打包前端、編譯 Go、組裝執行層，使用方式參見 [Docker 官方說明](https://docs.docker.com/build/building/multi-stage/)。
+`video-node` 應顯示運作中且健康檢查通過。這一步會建立資料卷保存影片索引與節點身分，並掛載指定的影片目錄。
 
-## Compose 啟動
+## 5. 開啟管理網頁
 
-將 `deployments/docker/.env.example` 複製為專案根目錄 `.env`，設定已存在的影片目錄，例如 Windows 的 `DVN_MEDIA_PATH=D:/Videos` 或 Linux 的 `DVN_MEDIA_PATH=/srv/videos`。預設的 `./media` 需自行先建立；來源不存在時明確報錯，不會悄悄建立空目錄。
+同一台電腦開啟 [http://localhost:18610](http://localhost:18610)。區網其他電腦使用主機 IP，例如 [http://192.168.0.102:18610](http://192.168.0.102:18610)。
+若改了 DVN_NODE_PORT，網址也跟著改。Docker 部署不需要開啟 5173，那是前端開發模式的端口。
+
+## 6. 匯入第一部影片
+
+1. 進入「儲存池」，名稱填「我的影片庫」，目錄填 **`/media`**，按「註冊儲存池」。
+2. 進入「匯入影片」，選剛建立的儲存池。
+3. 填池內相對路徑。例如主機檔案是 `D:\Videos\旅行\第一天.mp4`，這裡填 `旅行/第一天.mp4`。
+4. 填寫標題、簡介、Tag 與作品來源等資料，按「匯入影片」。大檔案計算雜湊需要時間，請等待結果。
+5. 進入「影片庫」，按「播放影片」或「編輯資料」。
+
+目前直接播放原始檔；建議先以 H.264 視訊、AAC 音訊的 MP4 測試。MKV 等檔案雖可索引，瀏覽器未必能解碼，目前尚無自動轉碼。
+
+## 設定、資料庫、影片在哪裡？
+
+| 內容 | 主機端 | 容器內 | 更新 image 後 |
+|---|---|---|---|
+| 設定 | `deployments/docker/video-node.json` | `/app/config.json`，唯讀掛載 | 沿用主機檔案 |
+| SQLite、NodeID、影片描述 | Docker 資料卷 `dvn_node-data`（預設專案名稱） | `/data` | 保留 |
+| 影片原檔 | `.env` 指定的既有目錄 | `/media`，唯讀掛載 | 保留原檔 |
+| 程式與網頁 | 本機 image | `/app/service`、`/app/web` | 隨 image 更新 |
+
+一般使用不必改 JSON。要改瀏覽器連線端口，改 `.env` 的 DVN_NODE_PORT 即可；保留容器內端口 18610，才能維持映射與健康檢查一致。
+要使用自己的設定檔，可在 `.env` 加入 `DVN_NODE_CONFIG=你的JSON檔案路徑`，檔案必須先存在。設定中的 `dataDirectory` 保持 `/data`，資料才會落在目前的持久資料卷。
+
+## 平常怎麼開、關與更新？
+
+停止服務，資料保留：
 
 ```sh
-docker compose up -d --no-build --pull never
-docker compose logs -f
 docker compose stop
 ```
 
-需要同時啟動三服務時：
+重新開啟：
 
 ```sh
-docker compose --profile all up -d --no-build --pull never
+docker compose up -d --no-build --pull never --wait --wait-timeout 60
 ```
 
-也可使用 `docker compose build` 完全在本機建置；若未設定 DVN_COMMIT / DVN_DIRTY，識別使用 unknown / true，因此建議優先使用上面的 image 腳本。
-Video Node 在 `http://主機IP:18610`，Central 為 18620，Worker 為 18630。容器直接提供打包網頁，無需 5173。
-容器內端口固定且不遞補；外部占用時修改 `.env` 的 DVN_NODE_PORT 等，再執行 up。Docker 不會因容器內自行換端口就調整映射。
-預設對所有 IPv4 介面綁定；可用 DVN_BIND_ADDRESS 指定單一介面。管理 API 仍只適合可信任網路，目前尚無登入授權。
-
-容器內註冊儲存池要填 `/media`，不是 Windows / Linux 主機路徑。現階段唯讀掛載即可索引與播放；日後轉碼輸出會另外規劃可寫掛載。NAS 必須先在主機掛載，再提供容器讀取權限。
-SQLite 與 NodeID 保存在 `node-data` named volume。更新 image 前先停止 Video Node，備份完整資料卷及設定，再重新建置與啟動；不應刪除 volume。資料庫升級後回退舊版 image 前須恢復相容備份。Central、Worker 仍為骨架，不代表索引與轉碼派工已實作。
-
-## Linux 原生執行
-
-可直接在 Linux 建置，或在 Windows 交叉編譯。Linux 範例：
+修改 JSON 設定後套用：
 
 ```sh
-npm --prefix web/admin ci
-npm --prefix web/admin run build
-GOOS=linux GOARCH=amd64 node scripts/build.mjs video-node
-GOOS=linux GOARCH=amd64 node scripts/build.mjs central
-GOOS=linux GOARCH=amd64 node scripts/build.mjs transcode-worker
+docker compose restart video-node
 ```
 
-Windows PowerShell 可先設定 `$env:GOOS='linux'` 與 `$env:GOARCH='amd64'` 再執行相同建置入口，完成後另開新的終端機恢復一般 Windows 建置環境。ARM64 改為 arm64；輸出位於 `bin/linux-amd64/` 或 `bin/linux-arm64/`，不會覆寫 Windows 執行檔。
-部署主機只需執行檔與打包前端，不需要 Go / Node 執行環境。
+修改 `.env` 的端口或掛載路徑後，重新執行上面的 up 指令。
+更新程式前先停止服務並備份設定與資料卷；備妥後重新執行步驟 3、4，Compose 會以新 image 重建容器。不要刪除 node-data 資料卷，也不要使用帶 `-v` 的移除指令，否則可能失去節點身分與索引。
 
-Linux 管理員準備以下目錄與權限：
+## 卡住時先看這裡
 
-- `/opt/dvn/`：放置三個執行檔（具執行權限）；`/opt/dvn/web/` 放置前端 dist 內容。
-- `/etc/dvn/`：複製 `deployments/linux/` 的三份 JSON 設定。
-- 建立專用 dvn 使用者／群組，授權讀取影片目錄；建議影片位於 `/srv/videos`。
-- 將 `deployments/linux/dvn@.service` 安裝至 `/etc/systemd/system/`。
+| 現象 | 檢查方式 |
+|---|---|
+| Docker 無法連線 | Docker Desktop 是否已啟動且使用 Linux containers |
+| image 找不到 | 先完成步驟 3，確認建置成功 |
+| 影片目錄不存在 | 檢查 `.env` 的實際路徑；Windows 改用 `/` |
+| 註冊儲存池失敗 | Docker 內填 `/media`，不是 `D:/Videos` |
+| 端口被占用 | 修改 `.env` 的 DVN_NODE_PORT，再執行 up |
+| 本機可開、區網不能開 | 檢查主機 IP、實際端口與防火牆 |
+| 可以匯入但不能播放 | 先用 H.264/AAC MP4，確認瀏覽器支援編碼 |
+| 來源離線或變更 | 確認原始檔案仍在原位且未被修改 |
+
+查看日誌：
 
 ```sh
-sudo systemctl daemon-reload
-sudo systemctl enable --now dvn@video-node
-sudo journalctl -u dvn@video-node -f
+docker compose logs --tail 100 video-node
 ```
 
-其他兩服務使用 dvn@central、dvn@transcode-worker。systemd 會建立各自 `/var/lib/dvn/服務名` 資料目錄，重啟／開機自動運作。範本限制寫入系統目錄與讀取 home，請將池放在可讀的 `/srv` 路徑；日後加入轉碼寫入時再明確開放輸出目錄。
-systemd 範本尚需在實際 Linux 主機驗證；Docker Linux 啟動測試不等同原生 systemd 安裝測試。
+目前管理功能尚無登入授權，只適合可信任的本機／區網環境。三服務部署、Linux systemd 與發版安排，見 [進階部署參考](deployment-reference.md)。
 
-## 正式發版 CI
+## 重跑部署驗收測試
 
-`.github/workflows/release.yml` 只監聽 vX.Y.Z 標籤，執行 Go 測試／檢查、前端打包及三個 image 的 linux/amd64 + linux/arm64 建置。版本、commit、channel=release、dirty=false 注入 image。
-目前 OCI 產物只留在 runner 的暫存路徑，不上傳、不發布，工作結束後不保留。待確認 registry／命名空間／可見性後，再接上登入與推送，以及 Linux 發行檔封裝；本機建置完全不受這項待決策影響。
+已安裝 Docker、Node.js 與 FFmpeg 時，可執行：
+
+```sh
+npm run test:deployment
+```
+
+這會建置 image、產生兩秒範例影片，使用獨立 Compose 專案驗證匯入、播放傳輸、編輯與重建容器後資料保留，不掛載你的影片庫。完成後停止測試容器，將報告、設定與影片保留在 `data/deployment-tests/`，測試資料卷也保留供檢查。
+重用已建好的 image 可執行 `npm run test:deployment -- --skip-build`。這項測試驗證 HTTP 影片傳輸，不等同實際瀏覽器解碼與播放器操作測試。

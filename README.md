@@ -23,7 +23,7 @@ npm run dev
 npm run dev:all
 ```
 
-各服務仍可獨立執行，例如 `go run ./cmd/video-node -config configs/video-node.example.json`。單獨執行 Vite 時代理預設為 `127.0.0.1:18610`；整合啟動會覆蓋為本次後端的實際端口，避免端口遞補造成代理失敗。
+各服務仍可獨立執行，例如 `go run ./apps/video-node -config configs/video-node.example.json`。單獨執行 Vite 時代理預設為 `127.0.0.1:18610`；整合啟動會覆蓋為本次後端的實際端口，避免端口遞補造成代理失敗。
 
 ## 建置與驗證
 
@@ -89,3 +89,4 @@ SQLite v3 使用獨立 Tag 索引與作品來源表，會自動升級 v1/v2；�
 
 本機建置 image 使用 `npm run image -- video-node`，無需 CI；三服務共用多階段 Dockerfile，各自獨立部署。Compose 由主機映射外部端口，影片與 SQLite 資料獨立持久保存。Linux 另提供原生交叉編譯與 systemd 範本。
 CI 只處理正式版本標籤；registry 目的地確認前僅檢查及建置，不自動發布。完整步驟見 [部署說明](Docs/deployment.md)。
+第一次操作請直接依照 [Docker 上手手冊](Docs/deployment.md) 的六個步驟。進階部署另見 [Linux 與發版參考](Docs/deployment-reference.md)；已驗證的範圍見 [部署驗收紀錄](Docs/deployment-test-results.md)。

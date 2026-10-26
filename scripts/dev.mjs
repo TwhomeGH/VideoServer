@@ -49,7 +49,7 @@ function launch(name, command, args, supervised = true) {
 
 /** 建置固定路徑執行檔，成功後才啟動服務；失敗時保留編譯器診斷。 */
 async function build(service, output) {
-  const child = launch(`build:${service}`, 'go', ['build', '-o', output, `./cmd/${service}`], false);
+  const child = launch(`build:${service}`, 'go', ['build', '-o', output, `./apps/${service}`], false);
   child.stdout.pipe(process.stdout);
   await new Promise((resolve, reject) => {
     child.once('error', reject);

@@ -4,6 +4,7 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "dev:all": "node scripts/dev.mjs --all",
-    "image": "node scripts/image.mjs"
+    "image": "node scripts/image.mjs",
+    "test:deployment": "node scripts/test-deployment.mjs"
   }
 }

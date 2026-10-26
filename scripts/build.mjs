@@ -18,5 +18,5 @@ const buildTime = new Date().toISOString();
 execFileSync('go', [
   'build', '-buildvcs=true',
   '-ldflags', `-X github.com/TwhomeGH/VideoServer/pkg/buildinfo.BuildTime=${buildTime}`,
-  '-o', `${output}/${service}${suffix}`, `./cmd/${service}`,
+  '-o', `${output}/${service}${suffix}`, `./apps/${service}`,
 ], { stdio: 'inherit', env: { ...process.env, CGO_ENABLED: '0' } });

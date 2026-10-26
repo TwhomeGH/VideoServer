@@ -15,6 +15,7 @@
 - [ ] 持久 NodeID、最後成功端口與原子設定更新。
 - [ ] 授權機制、OpenAPI、SSE 與協定相容性檢查。
 - [x] 本機多階段 Docker image 建置、三服務 Compose 與 Linux 原生建置／systemd 範本。
+- [x] Compose 外掛 config 與完整部署驗收（影片匯入、傳輸及容器重建後資料保留），拆分新手與進階手冊。
 - [x] 僅正式版本標籤觸發的 CI 測試與 image 建置。
 - [ ] 確認 registry／命名空間／可見性後接上正式 image 發布。
 - [ ] Linux systemd 主機實測、Windows 服務安裝與正式二進位發行封裝。
