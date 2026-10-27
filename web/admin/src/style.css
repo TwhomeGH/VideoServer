@@ -44,6 +44,7 @@ dd { margin:0; overflow-wrap:anywhere; }
 .state-badge.online { border-color:var(--accent); color:var(--accent); }
 .state-badge.offline { border-color:var(--warn); color:var(--warn); }
 .state-badge.disabled { border-color:var(--line); color:var(--muted); }
+.state-badge.failed { border-color:var(--danger); color:var(--danger); }
 .confirm-panel { display:grid; gap:12px; margin-top:16px; padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--bg); }
 .confirm-panel p { margin:0; }
 .notice { color:var(--accent); }
@@ -113,6 +114,37 @@ body:has(dialog[open]) { overflow:hidden; }
 .job-card { border:1px solid var(--line); border-radius:12px; padding:16px; }
 .job-card p { overflow-wrap:anywhere; }
 .job-card h3 { overflow-wrap:anywhere; min-width:0; }
+.job-toolbar { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:16px 0 10px; }
+.job-filters { display:flex; gap:6px; flex-wrap:wrap; }
+.job-filters button { padding:6px 10px; font-size:.82rem; }
+.job-filters button.is-active { background:var(--accent); border-color:var(--accent); color:var(--bg); }
+.job-filter-count { opacity:.72; font-variant-numeric:tabular-nums; }
+.job-table { display:grid; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+.job-table-head, .job-main { display:grid; grid-template-columns:minmax(0,2.2fr) 110px minmax(160px,1.4fr) 70px minmax(120px,auto); gap:12px; align-items:center; }
+.job-table-head { padding:9px 14px; background:var(--bg); border-bottom:1px solid var(--line); color:var(--muted); font-size:.75rem; }
+.job-row { border-bottom:1px solid var(--line); }
+.job-row:last-child { border-bottom:0; }
+.job-main { min-height:48px; padding:10px 14px; }
+.job-title { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.job-title strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.job-title .muted { font-size:.78rem; }
+.job-status { justify-self:start; }
+.job-progress-cell { min-width:0; }
+.job-progress-cell .job-progress { margin:0; }
+.job-progress-cell .job-progress small { font-size:.75rem; }
+.job-attempts { font-variant-numeric:tabular-nums; }
+.job-actions { display:flex; justify-content:flex-end; align-items:center; gap:8px; flex-wrap:wrap; }
+.job-actions button, .job-actions a { padding:6px 10px; font-size:.82rem; }
+.job-detail { display:grid; gap:6px; padding:0 14px 12px; color:var(--muted); font-size:.82rem; overflow-wrap:anywhere; }
+.job-pagination { display:flex; justify-content:center; align-items:center; gap:12px; margin-top:12px; }
+@media(max-width:820px) {
+  .job-table-head { display:none; }
+  .job-main { grid-template-columns:minmax(0,1fr) auto; gap:8px 12px; }
+  .job-progress-cell { grid-column:1/-1; }
+  .job-attempts { grid-column:1; }
+  .job-actions { grid-column:1/-1; justify-content:flex-start; }
+  .job-title strong { white-space:normal; }
+}
 .job-progress { display: grid; gap: 8px; margin-block: 10px; }
 .job-progress-track { height: 8px; overflow: hidden; border-radius: 999px; background: var(--line); }
 .job-progress-fill { display: block; width: 100%; height: 100%; background: var(--accent); transform-origin: left center; transition: transform 450ms linear; }
