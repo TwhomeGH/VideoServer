@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
 import { useI18n } from './i18n';
+import { formatDuration } from './format';
 import { JobProgress } from './JobProgress';
 
 /** ImportJob 是匯入與重新讀取工作的狀態。 */
@@ -105,10 +106,10 @@ export function ImportJobs() {
   return <section><h2>{t('importJobs.title')}</h2><p className="muted">{t('importJobs.intro1')}</p>
     <p className="muted">{t('importJobs.intro2')}</p>
     {schedule && <p className="muted">
-      {schedule.scan?.automatic ? t('importJobs.nextScan', { seconds: schedule.scan.nextRunInSeconds || 0 }) : t('importJobs.scanDisabled')}
+      {schedule.scan?.automatic ? t('importJobs.nextScan', { duration: formatDuration(schedule.scan.nextRunInSeconds || 0, t) }) : t('importJobs.scanDisabled')}
       {t('common.dot')}
       {schedule.backfill?.enabled
-        ? t('importJobs.nextBackfill', { seconds: schedule.backfill.nextCheckInSeconds || 0, count: schedule.backfill.candidateCount })
+        ? t('importJobs.nextBackfill', { duration: formatDuration(schedule.backfill.nextCheckInSeconds || 0, t), count: schedule.backfill.candidateCount })
         : t('importJobs.backfillDisabled')}
     </p>}
     {error && <p role="alert">{t('importJobs.updateFailed', { error })}</p>}

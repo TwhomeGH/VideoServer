@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from './api';
 import { useI18n } from './i18n';
+import { formatDuration } from './format';
 import { Attribution, emptyMetadata, MetadataFields, type VideoMetadata } from './VideoMetadata';
 import type { Page } from './navigation';
 import { ImportJobs, type ImportJob } from './ImportJobs';
@@ -167,10 +168,10 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
       {page === 'pools' && <div className="split-layout">
         <section><h2>{t('library.poolsTitle')}</h2><p className="muted">{t('library.poolsIntro')}</p>
           {data?.scan && <>
-            <p>{data.scan.automatic ? t('library.scanAutoOn', { seconds: data.scan.intervalSeconds }) : t('library.scanAutoOff')}</p>
-            <p className="muted">{t('library.scanStable', { seconds: data.scan.stableSeconds })}</p>
-            <p className="muted">{t('library.scanBackoff', { hot: data.scan.intervalSeconds, dormant: data.scan.idleMaxSeconds || 0 })}</p>
-            {data.scan.automatic && !data.scan.running && <p className="muted">{t('library.scanNext', { seconds: data.scan.nextRunInSeconds || 0 })}</p>}
+            <p>{data.scan.automatic ? t('library.scanAutoOn', { duration: formatDuration(data.scan.intervalSeconds, t) }) : t('library.scanAutoOff')}</p>
+            <p className="muted">{t('library.scanStable', { duration: formatDuration(data.scan.stableSeconds, t) })}</p>
+            <p className="muted">{t('library.scanBackoff', { hot: formatDuration(data.scan.intervalSeconds, t), dormant: formatDuration(data.scan.idleMaxSeconds || 0, t) })}</p>
+            {data.scan.automatic && !data.scan.running && <p className="muted">{t('library.scanNext', { duration: formatDuration(data.scan.nextRunInSeconds || 0, t) })}</p>}
           </>}
           <div className="button-row">
             {data?.scan && <button disabled={busy || data.scan.running || data.scan.queued} onClick={() => void submit(async () => { await request('library/scan', {}); })}>{data.scan.running ? t('library.scanRunning') : data.scan.queued ? t('library.scanQueued') : t('library.scanNow')}</button>}
@@ -195,7 +196,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
               : tier === 'cold' ? t('scanTier.cold') : tier === 'dormant' ? t('scanTier.dormant') : t('common.notProvided');
             const scanLabel = !pool.enabled ? t('library.poolScanDisabled')
               : !pool.online ? t('library.poolScanOffline')
-                : scanInfo ? t('library.poolScanNext', { seconds: scanInfo.nextRunInSeconds, backoff: scanInfo.backoffSeconds, tier: tierLabel(scanInfo.tier) })
+                : scanInfo ? t('library.poolScanNext', { duration: formatDuration(scanInfo.nextRunInSeconds, t), interval: formatDuration(scanInfo.backoffSeconds, t), tier: tierLabel(scanInfo.tier) })
                   : t('library.poolScanWaiting');
             return <li key={pool.id} className="pool-card">
               <div className="pool-head">

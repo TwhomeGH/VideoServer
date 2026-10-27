@@ -38,7 +38,7 @@ Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的
 ## 管理頁設定編輯
 
 主機 JSON 是唯讀基準；管理頁只寫入資料目錄的 `<dataDirectory>/config.override.json`，因此 Docker 的單檔唯讀掛載不需要改成可寫。測試環境的基準檔是 `testing/local/config/video-node.json`，掛載到容器 `/app/config.json`；Docker 內的覆寫檔則是資料卷中的 `/data/config.override.json`。網頁「設定覆寫（進階）」顯示實際的基準檔與覆寫檔路徑。
-可編輯欄位是 host、preferredPort、fallbackPorts、rememberLastSuccessfulPort、autoScan、scanIntervalSeconds、scanIdleMaxSeconds、fileStableSeconds、autoBackfill、backfillIntervalSeconds、backfillDailyLimit、backfillDailyGiB、hashLimitMiBps。dataDirectory、webDirectory 與基準檔路徑只顯示，不能從網頁變更。
+可編輯欄位是 host、preferredPort、fallbackPorts、rememberLastSuccessfulPort、autoScan、scanIntervalSeconds、scanIdleMaxSeconds、fileStableSeconds、autoBackfill、backfillIntervalSeconds、backfillDailyLimit、backfillDailyGiB、hashLimitMiBps。dataDirectory、webDirectory 與基準檔路徑只顯示，不能從網頁變更。時間欄位在網頁以「數值＋秒／分／小時／天」編輯，底層與 API 仍使用整數秒。
 儲存時只記錄與基準不同的欄位；欄位改回基準值會從覆寫檔移除。按「清除設定覆寫」會刪除整個 `<dataDirectory>/config.override.json`，回到基準設定檔；這只影響設定，不會修改基準檔、影片、儲存池或自動補齊今日用量。
 
 程序啟動時先讀基準 JSON，再套用覆寫並重新驗證；未知欄位、無效端口或無效秒數會讓啟動失敗。管理頁儲存後會顯示「需重新啟動」，按下確認後服務以 exit code 75 結束，交由 Docker `restart: unless-stopped`、systemd `Restart=on-failure` 或 `npm run dev` 的監督流程重新啟動並套用。直接手動執行二進位且沒有監督程式時，服務會停止，需自行重新啟動。

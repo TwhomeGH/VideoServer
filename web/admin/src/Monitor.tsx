@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, jsonRequest } from './api';
 import { useI18n } from './i18n';
+import { formatDuration } from './format';
 import type { ImportJob } from './ImportJobs';
 import { JobProgress } from './JobProgress';
 
@@ -99,8 +100,7 @@ export function Monitor() {
       <p className="muted">{t('monitor.intro')}</p>
       {error && <p role="alert">{t('monitor.updateFailed', { error })}</p>}
       {data && <p>{t('monitor.uptime', {
-        minutes: Math.floor(data.uptimeSeconds / 60),
-        seconds: Math.floor(data.uptimeSeconds % 60),
+        duration: formatDuration(data.uptimeSeconds, t),
         cpus: data.logicalCPUs,
         maxProcs: data.goMaxProcs,
         received,
@@ -136,9 +136,9 @@ export function Monitor() {
           </section>
           <div className="monitor-side">
             <section><div className="section-heading"><h2>{t('monitor.scanTitle')}</h2><a href="#pools">{t('monitor.managePools')}</a></div>
-              <p>{data.tasks.scan.running ? t('monitor.scanRunning') : data.tasks.scan.queued ? t('monitor.scanQueued') : t('monitor.scanIdle')}{t('common.dot')}{data.tasks.scan.automatic ? t('monitor.scanEvery', { seconds: data.tasks.scan.intervalSeconds }) : t('monitor.scanDisabled')}</p>
-              {data.tasks.scan.automatic && <p className="muted">{t('monitor.scanIdleMax', { seconds: data.tasks.scan.idleMaxSeconds })}</p>}
-              {data.tasks.scan.automatic && !data.tasks.scan.running && <p className="muted">{t('monitor.scanNext', { seconds: data.tasks.scan.nextRunInSeconds || 0 })}</p>}
+              <p>{data.tasks.scan.running ? t('monitor.scanRunning') : data.tasks.scan.queued ? t('monitor.scanQueued') : t('monitor.scanIdle')}{t('common.dot')}{data.tasks.scan.automatic ? t('monitor.scanEvery', { duration: formatDuration(data.tasks.scan.intervalSeconds, t) }) : t('monitor.scanDisabled')}</p>
+              {data.tasks.scan.automatic && <p className="muted">{t('monitor.scanIdleMax', { duration: formatDuration(data.tasks.scan.idleMaxSeconds, t) })}</p>}
+              {data.tasks.scan.automatic && !data.tasks.scan.running && <p className="muted">{t('monitor.scanNext', { duration: formatDuration(data.tasks.scan.nextRunInSeconds || 0, t) })}</p>}
               {data.tasks.scan.last && <p className="muted">{t('monitor.scanLast', {
                 time: new Date(data.tasks.scan.last.completedAt).toLocaleString(locale),
                 enqueued: data.tasks.scan.last.enqueued,
@@ -152,7 +152,7 @@ export function Monitor() {
                 {data.tasks.scan.pools?.length
                   ? data.tasks.scan.pools.map(item => <li key={item.poolId}>
                     <strong>{item.name || item.poolId}</strong>
-                    <span className="muted">{tierLabel(item.tier)}{t('common.dot')}{t('monitor.scanPoolNext', { seconds: item.nextRunInSeconds })}{t('common.dot')}{t('monitor.scanPoolBackoff', { seconds: item.backoffSeconds })}</span>
+                    <span className="muted">{tierLabel(item.tier)}{t('common.dot')}{t('monitor.scanPoolNext', { duration: formatDuration(item.nextRunInSeconds, t) })}{t('common.dot')}{t('monitor.scanPoolBackoff', { duration: formatDuration(item.backoffSeconds, t) })}</span>
                   </li>)
                   : <li className="muted">{t('monitor.scanNoPools')}</li>}
               </ul>
@@ -160,7 +160,7 @@ export function Monitor() {
             <section><h2>{t('monitor.backfillTitle')}</h2>
               {data.tasks.backfill.enabled
                 ? <>
-                  <p>{t('monitor.backfillNext', { seconds: data.tasks.backfill.nextCheckInSeconds || 0 })}{t('common.dot')}{t('monitor.backfillCandidates', { count: data.tasks.backfill.candidateCount })}</p>
+                  <p>{t('monitor.backfillNext', { duration: formatDuration(data.tasks.backfill.nextCheckInSeconds || 0, t) })}{t('common.dot')}{t('monitor.backfillCandidates', { count: data.tasks.backfill.candidateCount })}</p>
                   {data.tasks.backfill.queueIdle === false && <p className="muted">{t('monitor.backfillWaitingQueue')}</p>}
                   <p className="muted">{t('monitor.backfillUsage', {
                     videos: data.tasks.backfill.dailyVideos,

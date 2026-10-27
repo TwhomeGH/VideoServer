@@ -40,6 +40,10 @@ dd { margin:0; overflow-wrap:anywhere; }
 .settings-danger h3 { margin:0; color:var(--danger); font-size:1rem; }
 .settings-danger p { margin:0; }
 .settings-danger>button { justify-self:start; }
+.duration-field { display:flex; gap:8px; align-items:center; }
+.duration-field input { flex:1; min-width:0; }
+.duration-field select { width:auto; min-width:6rem; }
+.duration-hint { font-size:.78rem; }
 .state-badge { border:1px solid var(--accent); color:var(--accent); border-radius:999px; padding:4px 10px; font-size:.78rem; white-space:nowrap; }
 .state-badge.online { border-color:var(--accent); color:var(--accent); }
 .state-badge.offline { border-color:var(--warn); color:var(--warn); }

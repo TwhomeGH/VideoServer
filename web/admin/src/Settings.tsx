@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, ApiError, jsonRequest } from './api';
+import { DurationField } from './DurationField';
 import { useI18n } from './i18n';
 
 type Config = {
@@ -209,15 +210,19 @@ export function Settings({ service }: { service?: string }) {
         {service === 'video-node' && <>
           <fieldset className="settings-group"><legend>{t('settings.scanGroup')}</legend>
             <label className="checkbox-label"><input type="checkbox" checked={form.autoScan} onChange={event => patch({ autoScan: event.target.checked })} />{t('settings.autoScan')}</label>
-            <label>{t('settings.scanInterval')}<input type="number" min={1} max={86400} value={form.scanIntervalSeconds} onChange={event => patch({ scanIntervalSeconds: event.target.value })} /></label>
-            <label>{t('settings.scanIdleMax')}<input type="number" min={1800} max={86400} value={form.scanIdleMaxSeconds} onChange={event => patch({ scanIdleMaxSeconds: event.target.value })} /></label>
+            <DurationField label={t('settings.scanInterval')} seconds={Number(form.scanIntervalSeconds)} min={1} max={86400}
+              onChange={seconds => patch({ scanIntervalSeconds: String(seconds) })} />
+            <DurationField label={t('settings.scanIdleMax')} seconds={Number(form.scanIdleMaxSeconds)} min={1800} max={86400}
+              onChange={seconds => patch({ scanIdleMaxSeconds: String(seconds) })} />
             <p className="muted">{t('settings.scanIdleMaxHint')}</p>
-            <label>{t('settings.fileStable')}<input type="number" min={1} max={86400} value={form.fileStableSeconds} onChange={event => patch({ fileStableSeconds: event.target.value })} /></label>
+            <DurationField label={t('settings.fileStable')} seconds={Number(form.fileStableSeconds)} min={1} max={86400}
+              onChange={seconds => patch({ fileStableSeconds: String(seconds) })} />
           </fieldset>
           <fieldset className="settings-group"><legend>{t('settings.backfillGroup')}</legend>
             <label className="checkbox-label"><input type="checkbox" checked={form.autoBackfill} onChange={event => patch({ autoBackfill: event.target.checked })} />{t('settings.autoBackfill')}</label>
             <p className="muted">{t('settings.autoBackfillHint')}</p>
-            <label>{t('settings.backfillInterval')}<input type="number" min={10} max={86400} value={form.backfillIntervalSeconds} onChange={event => patch({ backfillIntervalSeconds: event.target.value })} /></label>
+            <DurationField label={t('settings.backfillInterval')} seconds={Number(form.backfillIntervalSeconds)} min={10} max={86400}
+              onChange={seconds => patch({ backfillIntervalSeconds: String(seconds) })} />
             <label>{t('settings.backfillDailyLimit')}<input type="number" min={0} max={100000} value={form.backfillDailyLimit} onChange={event => patch({ backfillDailyLimit: event.target.value })} /></label>
             <label>{t('settings.backfillDailyGiB')}<input type="number" min={0} max={102400} value={form.backfillDailyGiB} onChange={event => patch({ backfillDailyGiB: event.target.value })} /></label>
             <label>{t('settings.hashLimit')}<input type="number" min={0} max={102400} value={form.hashLimitMiBps} onChange={event => patch({ hashLimitMiBps: event.target.value })} /></label>
