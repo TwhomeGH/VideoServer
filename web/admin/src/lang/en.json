@@ -457,8 +457,8 @@
   "scanTier.transitionNote": "effective at the next scan",
   "scanTier.stayDormant": "dormant: no automatic demotion",
   "scanTier.warmStep": "interval becomes 15m around {time}",
-  "scanTier.legendHot": "Hot <1h",
-  "scanTier.legendWarm": "Warm 1–6h 5m, 6–24h 15m",
-  "scanTier.legendCold": "Cold 1–7d 30m",
-  "scanTier.legendDormant": "Dormant >7d"
+  "scanTier.legendHotRest": "<1h",
+  "scanTier.legendWarmRest": "1–6h 5m, 6–24h 15m",
+  "scanTier.legendColdRest": "1–7d 30m",
+  "scanTier.legendDormantRest": ">7d"
 }

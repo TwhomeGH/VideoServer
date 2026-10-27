@@ -59,3 +59,15 @@ export function ScanTierBadge({ tier, lastActivityAt }: { tier?: string; lastAct
   if (tier !== 'hot' && tier !== 'warm' && tier !== 'cold' && tier !== 'dormant') return null;
   return <span className={`tier-badge ${tier}`} title={scanTierActivity(tier, lastActivityAt, t, locale)}>{tierLabel(tier, t)}</span>;
 }
+
+/** ScanTierLegend 以短項目呈現門檻；只有分級字上色。 */
+export function ScanTierLegend() {
+  const { t } = useI18n();
+  return <div className="muted scan-tier-legend">
+    <span><b className="tier-text hot">{t('scanTier.hot')}</b> {t('scanTier.legendHotRest')}</span>
+    <span><b className="tier-text warm">{t('scanTier.warm')}</b> {t('scanTier.legendWarmRest')}</span>
+    <span><b className="tier-text cold">{t('scanTier.cold')}</b> {t('scanTier.legendColdRest')}</span>
+    <span><b className="tier-text dormant">{t('scanTier.dormant')}</b> {t('scanTier.legendDormantRest')}</span>
+  </div>;
+}
+

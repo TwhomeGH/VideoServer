@@ -457,8 +457,8 @@
   "scanTier.transitionNote": "實際於下次掃描時判定",
   "scanTier.stayDormant": "休眠：不再自動降級",
   "scanTier.warmStep": "約 {time} 間隔改 15 分",
-  "scanTier.legendHot": "熱 <1 小時",
-  "scanTier.legendWarm": "暖 1–6 小時 5 分、6–24 小時 15 分",
-  "scanTier.legendCold": "冷 1–7 天 30 分",
-  "scanTier.legendDormant": "休眠 >7 天"
+  "scanTier.legendHotRest": "<1 小時",
+  "scanTier.legendWarmRest": "1–6 小時 5 分、6–24 小時 15 分",
+  "scanTier.legendColdRest": "1–7 天 30 分",
+  "scanTier.legendDormantRest": ">7 天"
 }

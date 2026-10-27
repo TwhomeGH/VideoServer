@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, jsonRequest } from './api';
 import { useI18n } from './i18n';
 import { formatDuration } from './format';
-import { ScanTierBadge, scanTierActivity } from './ScanTierBadge';
+import { ScanTierBadge, ScanTierLegend, scanTierActivity } from './ScanTierBadge';
 import type { ImportJob } from './ImportJobs';
 import { JobProgress } from './JobProgress';
 
@@ -151,15 +151,12 @@ export function Monitor() {
                 {data.tasks.scan.pools?.length
                   ? data.tasks.scan.pools.map(item => <li key={item.poolId}>
                     <div className="monitor-scan-head"><strong>{item.name || item.poolId}</strong><ScanTierBadge tier={item.tier} lastActivityAt={item.lastActivityAt} /></div>
-                    <span className="monitor-scan-meta muted">{t('monitor.scanPoolNext', { duration: formatDuration(item.nextRunInSeconds, t) })}{t('common.dot')}{t('monitor.scanPoolBackoff', { duration: formatDuration(item.backoffSeconds, t) })}</span>
+                    <span className="monitor-scan-meta"><span>{t('monitor.scanPoolNext', { duration: formatDuration(item.nextRunInSeconds, t) })}</span><span className="muted">{t('common.dot')}{t('monitor.scanPoolBackoff', { duration: formatDuration(item.backoffSeconds, t) })}</span></span>
                     <span className="monitor-scan-activity muted">{scanTierActivity(item.tier, item.lastActivityAt, t, locale)}</span>
                   </li>)
                   : <li className="muted">{t('monitor.scanNoPools')}</li>}
               </ul>
-              <div className="muted scan-tier-legend">
-                <span>{t('scanTier.legendHot')}</span><span>{t('scanTier.legendWarm')}</span>
-                <span>{t('scanTier.legendCold')}</span><span>{t('scanTier.legendDormant')}</span>
-              </div>
+              <ScanTierLegend />
             </section>
             <section><h2>{t('monitor.backfillTitle')}</h2>
               {data.tasks.backfill.enabled

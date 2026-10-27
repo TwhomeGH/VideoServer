@@ -57,6 +57,11 @@ dd { margin:0; overflow-wrap:anywhere; }
 .tier-badge.dormant { color:var(--muted); }
 .scan-tier-legend { display:flex; flex-wrap:wrap; gap:4px 14px; margin:10px 0 0; font-size:.78rem; }
 .scan-tier-legend span { white-space:nowrap; }
+.tier-text { font-weight:600; }
+.tier-text.hot { color:var(--tier-hot); }
+.tier-text.warm { color:var(--tier-warm); }
+.tier-text.cold { color:var(--tier-cold); }
+.tier-text.dormant { color:var(--muted); }
 .confirm-panel { display:grid; gap:12px; margin-top:16px; padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--bg); }
 .confirm-panel p { margin:0; }
 .notice { color:var(--accent); }

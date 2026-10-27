@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from './api';
 import { useI18n } from './i18n';
 import { formatDuration } from './format';
-import { ScanTierBadge } from './ScanTierBadge';
+import { ScanTierBadge, ScanTierLegend } from './ScanTierBadge';
 import { Attribution, emptyMetadata, MetadataFields, type VideoMetadata } from './VideoMetadata';
 import type { Page } from './navigation';
 import { ImportJobs, type ImportJob } from './ImportJobs';
@@ -221,10 +221,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
               </div>
             </li>;
           })}</ul>
-          <div className="muted scan-tier-legend">
-            <span>{t('scanTier.legendHot')}</span><span>{t('scanTier.legendWarm')}</span>
-            <span>{t('scanTier.legendCold')}</span><span>{t('scanTier.legendDormant')}</span>
-          </div>
+          <ScanTierLegend />
         </section>
         <section><h2>{t('library.addPoolTitle')}</h2><p className="muted">{t('library.addPoolIntro')}</p>
           <form onSubmit={event => { event.preventDefault(); void submit(async () => {
