@@ -62,6 +62,18 @@ func (s *Store) hasDiscovered(ctx context.Context, poolID, relative string) (boo
 	return true, nil
 }
 
+func (s *Store) DiscoveredExists(ctx context.Context, poolID, relative string) (bool, error) {
+	var exists int
+	err := s.db.QueryRowContext(ctx, "SELECT 1 FROM discovered_media WHERE pool_id=? AND path_key=? AND status='found' LIMIT 1", poolID, fileKey(poolID, relative)).Scan(&exists)
+	if err == sql.ErrNoRows {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	return true, nil
+}
+
 func (s *Store) markDiscoveredMissing(ctx context.Context, poolID string, seen map[string]bool) error {
 	rows, err := s.db.QueryContext(ctx, "SELECT path_key FROM discovered_media WHERE pool_id=? AND status='found'", poolID)
 	if err != nil {

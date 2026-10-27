@@ -10,6 +10,7 @@ import (
 	"net/url"
 	"path/filepath"
 	"strconv"
+	"strings"
 )
 
 func respond(w http.ResponseWriter, status int, value any) {
@@ -52,6 +53,89 @@ func decode(w http.ResponseWriter, r *http.Request, value any) bool {
 
 // Register 將 Video Node 的儲存池、影片匯入與 Range 播放路由加入 mux。
 // 登入授權由 runtime 的 auth middleware 統一執行；寫入另檢查 Origin。
+func safeDiscoveredPath(value string) bool {
+	value = strings.TrimSpace(value)
+	if value == "" || strings.HasPrefix(value, "/") || strings.Contains(value, "\\") {
+		return false
+	}
+	for _, part := range strings.Split(value, "/") {
+		if part == "" || part == "." || part == ".." {
+			return false
+		}
+	}
+	return true
+}
+
+func (s *Store) serveDiscoveredContent(w http.ResponseWriter, r *http.Request) {
+	poolID := strings.TrimSpace(r.URL.Query().Get("poolId"))
+	relative := strings.TrimSpace(r.URL.Query().Get("path"))
+	if !safeDiscoveredPath(relative) {
+		failure(w, 400, "影片路徑無效")
+		return
+	}
+	pool, err := s.poolByID(poolID)
+	if err != nil {
+		failure(w, 404, "找不到儲存池")
+		return
+	}
+	if pool.Provider != "webdav" {
+		failure(w, 409, "此儲存池不支援遠端播放")
+		return
+	}
+	if !pool.Enabled {
+		failure(w, 409, "儲存池已停用")
+		return
+	}
+	exists, err := s.DiscoveredExists(r.Context(), poolID, relative)
+	if err != nil {
+		failure(w, 500, "無法檢查找到的影片")
+		return
+	}
+	if !exists {
+		failure(w, 404, "找不到找到的影片")
+		return
+	}
+	username, password, err := s.WebDAVCredentials(poolID)
+	if err != nil {
+		failure(w, 500, "無法讀取 WebDAV 憑證")
+		return
+	}
+	target, err := webDAVTarget(pool, relative)
+	if err != nil {
+		failure(w, 500, "WebDAV URL 無效")
+		return
+	}
+	request, err := http.NewRequestWithContext(r.Context(), r.Method, target.String(), nil)
+	if err != nil {
+		failure(w, 500, "無法建立遠端請求")
+		return
+	}
+	request.SetBasicAuth(username, password)
+	for _, header := range []string{"Range", "If-Range"} {
+		if value := r.Header.Get(header); value != "" {
+			request.Header.Set(header, value)
+		}
+	}
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		failure(w, 502, "無法連線 WebDAV")
+		return
+	}
+	defer response.Body.Close()
+	for _, header := range []string{"Content-Type", "Content-Length", "Content-Range", "Accept-Ranges", "ETag", "Last-Modified"} {
+		if value := response.Header.Get(header); value != "" {
+			w.Header().Set(header, value)
+		}
+	}
+	w.Header().Set("Cache-Control", "private, no-store")
+	w.Header().Set("X-Content-Type-Options", "nosniff")
+	w.WriteHeader(response.StatusCode)
+	if r.Method != http.MethodHead {
+		_, _ = io.Copy(w, response.Body)
+	}
+}
+
 func (s *Store) Register(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/v1/schedule", func(w http.ResponseWriter, r *http.Request) {
 		var scan, backfill, jobs any
@@ -317,6 +401,8 @@ func (s *Store) Register(mux *http.ServeMux) {
 	}
 	if s.queue != nil {
 
+		mux.HandleFunc("GET /api/v1/discovered/content", s.serveDiscoveredContent)
+		mux.HandleFunc("HEAD /api/v1/discovered/content", s.serveDiscoveredContent)
 		mux.HandleFunc("GET /api/v1/discovered", func(w http.ResponseWriter, r *http.Request) {
 			page, _ := strconv.Atoi(r.URL.Query().Get("page"))
 			pageSize, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))

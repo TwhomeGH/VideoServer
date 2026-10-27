@@ -506,5 +506,8 @@
   "library.webdavUser": "WebDAV 使用者",
   "library.webdavPassword": "WebDAV 密碼",
   "discovered.remoteOnly": "WebDAV（僅索引）",
-  "discovered.remoteImportUnavailable": "WebDAV 池目前僅支援索引，尚未支援匯入。"
+  "discovered.remoteImportUnavailable": "WebDAV 池目前僅支援索引，尚未支援匯入。",
+  "discovered.play": "播放",
+  "discovered.playerAria": "播放找到的影片",
+  "discovered.playerNote": "影片由 OpenList WebDAV 透過 DVN 代理播放；帳密不會送到瀏覽器。"
 }

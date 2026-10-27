@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, jsonRequest } from './api';
 import { useI18n } from './i18n';
 import { useLiveVersion } from './live';
@@ -29,6 +29,8 @@ export function Discovered() {
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
   const [revision, setRevision] = useState(0);
+  const [playing, setPlaying] = useState<DiscoveredMedia | null>(null);
+  const player = useRef<HTMLDialogElement>(null);
   const liveJobs = useLiveVersion('jobs');
   const liveScan = useLiveVersion('scan');
 
@@ -90,10 +92,19 @@ export function Discovered() {
   };
   const importSelected = () => importItems([...selected.values()]);
 
+  useEffect(() => {
+    const dialog = player.current;
+    if (!dialog) return;
+    if (playing && !dialog.open) dialog.showModal();
+    else if (!playing && dialog.open) dialog.close();
+  }, [playing]);
+
   const items = data?.items ?? [];
   const pageCount = Math.max(1, Math.ceil((data?.total ?? 0) / PAGE_SIZE));
   const allPageSelected = items.length > 0 && items.every(item => selected.has(keyOf(item)));
-  return <section>
+  const playerSrc = playing ? `/api/v1/discovered/content?poolId=${encodeURIComponent(playing.poolId)}&path=${encodeURIComponent(playing.relativePath)}` : '';
+  return <>
+  <section>
     <h2>{t('discovered.title')}</h2>
     <p className="muted">{t('discovered.intro')}</p>
     <div className="discovered-toolbar">
@@ -121,6 +132,7 @@ export function Discovered() {
             <span className="muted">{item.poolName}{item.provider === 'webdav' ? ` · ${t('discovered.remoteOnly')}` : ''}</span>
             <span className="muted">{formatBytes(item.size)}</span>
             <span className="muted">{new Date(item.modifiedAt).toLocaleString(locale)}</span>
+            {item.provider === 'webdav' && <button type="button" disabled={busy} onClick={() => setPlaying(item)}>{t('discovered.play')}</button>}
             <button type="button" disabled={busy || item.provider === 'webdav'} title={item.provider === 'webdav' ? t('discovered.remoteImportUnavailable') : undefined} onClick={() => void importItems([item])}>{t('discovered.importOne')}</button>
           </div>;
         })}
@@ -130,5 +142,11 @@ export function Discovered() {
       <span className="muted">{t('importJobs.pageOf', { page, pages: pageCount })}</span>
       <button type="button" disabled={page >= pageCount} onClick={() => { setPage(value => value + 1); setSelected(new Map()); }}>{t('importJobs.nextPage')}</button>
     </div>}
-  </section>;
+  </section>
+  {playing && <dialog ref={player} className="modal" aria-label={t('discovered.playerAria')} onClose={() => setPlaying(null)} onClick={event => { if (event.target === event.currentTarget) setPlaying(null); }}>
+    <div className="modal-heading"><h2>{playing.relativePath}</h2><button type="button" onClick={() => setPlaying(null)}>{t('common.cancel')}</button></div>
+    <video key={playerSrc} controls autoPlay preload="metadata" src={playerSrc} />
+    <p className="muted">{t('discovered.playerNote')}</p>
+  </dialog>}
+  </>;
 }

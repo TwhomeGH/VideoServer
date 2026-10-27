@@ -2,6 +2,40 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 04:45 WebDAV Range 代理播放
+
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/http.go`
+- `internal/library/discovery.go`
+- `internal/library/webdav_client.go`
+- `web/admin/src/Discovered.tsx`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- WebDAV discovery 只能看得到、不能播放
+- 若直接暴露 OpenList URL，會把 guest／使用者憑證帶到瀏覽器
+
+### 修改
+
+- 新增 `GET/HEAD /api/v1/discovered/content`，以 DVN session 保護。
+- 只允許目前 discovery 清單中的 WebDAV 路徑；拒絕 `..`、絕對路徑與非 WebDAV 池。
+- 代理 `Range`／`If-Range`，回傳 200／206 與 Content-Range、Content-Length、ETag、Last-Modified；不把 Basic Auth 傳給瀏覽器。
+- 「找到的影片」WebDAV 列新增播放 dialog；播放器直接指向 DVN 代理 URL。
+- OpenAPI、OpenList 文件與設定文件同步。
+
+### 驗證
+
+- OpenList 2.01 GiB 影片 Range 0–1023 回 206、1024 bytes、`Content-Range` 正確。
+- HEAD 回 200 與完整 Content-Length；`../etc/passwd` 被 400 拒絕。
+- 頁面播放 dialog 開啟，video src 指向 `/api/v1/discovered/content`；390px 無水平溢出。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
+---
+
 ## 2026.10.28 04:30 唯讀 WebDAV 儲存池與 OpenList 索引
 
 **類型**: 功能

@@ -75,6 +75,8 @@ npx --yes @redocly/cli lint pkg/protocol/openapi.json --extends=minimal
 
 `GET /api/v1/discovered` 列出 index-only 掃描找到、尚未進入影片庫的檔案，支援 `poolId`、`q`、`page`、`pageSize`。`POST /api/v1/discovered/import` 接受 `{ "items": [{ "poolId", "relativePath" }] }`，一次最多 100 筆，會建立手動匯入工作；匯入成功後該項目會從清單消失。這兩個端點都需要登入。
 
+`GET /api/v1/discovered/content?poolId=...&path=...` 代理 WebDAV 影片；支援 `Range` 與 `HEAD`，回 200／206，路徑必須是目前 discovery 清單中的項目。瀏覽器不會取得 WebDAV 帳密。
+
 ## SSE 事件串流
 
 登入後可連線 `GET /api/v1/events`，使用同一個 HttpOnly session cookie。端點只推送變更通知，不包含完整資料：

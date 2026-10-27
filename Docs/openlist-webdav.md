@@ -30,13 +30,16 @@ curl -D - -o NUL -u USER:PASS -H "Range: bytes=0-1023" \
 
 儲存後 DVN 會用 `PROPFIND` 遞迴列出支援的影片，寫入「找到的影片」，**不 hash、不建立 import job**。遠端池固定為 index-only，掃描間隔至少 5 分鐘。
 
+「找到的影片」的 WebDAV 項目可按「播放」，由 DVN 代理 WebDAV Range 請求；瀏覽器只看到 DVN 的 `/api/v1/discovered/content`，不會取得 OpenList 帳密。支援 `Range` 與 `HEAD`，可直接回 206。
+
 目前遠端池限制：
 
-- 不支援播放與匯入；「找到的影片」的匯入按鈕會停用。
+- 尚未支援匯入；「找到的影片」的匯入按鈕會停用。
 - 不啟用 OS watcher，完全依賴輪詢。
 - Basic Auth；正式環境請用 HTTPS。
 - 憑證存在 `<dataDirectory>/webdav-secrets.json`（0600），不會出現在 pool API 回應。
 - 只支援 WebDAV；OpenList 的 SMB 後端仍由 OpenList 自己掛載，DVN 不直接連 SMB。
+- 播放是即時代理，不落地快取；流量經過 Video Node。
 
 ## Docker 與網路
 
@@ -44,9 +47,8 @@ Video Node 容器必須能連到 OpenList。若 OpenList 在 Docker 主機上，
 
 ## 後續
 
-要支援遠端播放與匯入，還需要：
+要支援遠端匯入，還需要：
 
-- WebDAV Range 代理，避免把 OpenList 帳密暴露給瀏覽器。
 - 匯入時下載／暫存、FFprobe 與 SHA-256 限速。
 - 遠端檔案身分、etag／mtime 與 rename 策略。
 - 可設定的遠端掃描間隔與 TLS 憑證政策。

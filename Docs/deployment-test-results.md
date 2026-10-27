@@ -81,6 +81,16 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## WebDAV Range 代理驗收
+
+2026-10-28 在 `dvn-testing`（image 來源 `d8f5a5cce251`）驗證：
+
+- 代理 Range 0–1023 回 206、1024 bytes，`Content-Range: bytes 0-1023/2156687892`。
+- HEAD 回 200、`Content-Length: 2156687892`；`../etc/passwd` 回 400。
+- 瀏覽器播放 dialog 開啟，video src 指向 DVN 代理，不是 OpenList URL。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：尚未支援遠端匯入、下載 hash 或 TLS 憑證政策。
+
 ## OpenList WebDAV index-only 驗收
 
 2026-10-28 在 `dvn-testing`（image 來源 `1f05f2652558`）驗證：

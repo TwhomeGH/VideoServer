@@ -38,6 +38,20 @@ type webDAVMultistatus struct {
 	} `xml:"response"`
 }
 
+// webDAVTarget 組合 WebDAV base、root 與 discovered 相對路徑；relative 需先驗證。
+func webDAVTarget(pool Pool, relative string) (*url.URL, error) {
+	base, err := url.Parse(strings.TrimSpace(pool.RemoteURL))
+	if err != nil || base.Scheme == "" || base.Host == "" {
+		return nil, fmt.Errorf("WebDAV URL 無效")
+	}
+	base.Path = strings.TrimSuffix(base.Path, "/")
+	if root := strings.Trim(strings.TrimSpace(pool.RemoteRoot), "/"); root != "" {
+		base.Path = path.Join(base.Path, root)
+	}
+	base.Path = path.Join(base.Path, relative)
+	return base, nil
+}
+
 // listWebDAV 以 Depth:1 遞迴列出遠端影片；不讀取檔案內容。
 func (s *Store) listWebDAV(ctx context.Context, pool Pool) ([]webDAVEntry, error) {
 	username, password, err := s.WebDAVCredentials(pool.ID)

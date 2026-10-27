@@ -506,5 +506,8 @@
   "library.webdavUser": "WebDAV user",
   "library.webdavPassword": "WebDAV password",
   "discovered.remoteOnly": "WebDAV (index only)",
-  "discovered.remoteImportUnavailable": "WebDAV pools currently support indexing only; import is not available."
+  "discovered.remoteImportUnavailable": "WebDAV pools currently support indexing only; import is not available.",
+  "discovered.play": "Play",
+  "discovered.playerAria": "Play discovered video",
+  "discovered.playerNote": "Video is proxied from OpenList WebDAV by DVN; credentials are not sent to the browser."
 }

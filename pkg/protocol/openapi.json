@@ -2153,6 +2153,150 @@
           "影片庫與儲存池"
         ]
       }
+    },
+    "/api/v1/discovered/content": {
+      "get": {
+        "operationId": "streamDiscoveredContent",
+        "summary": "代理 WebDAV 影片 Range 播放",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          },
+          {
+            "name": "poolId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "影片內容；Range 請求會回 206",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "Partial Content",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "找不到影片"
+          },
+          "409": {
+            "description": "儲存池不支援或已停用"
+          },
+          "502": {
+            "description": "WebDAV 連線失敗"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      },
+      "head": {
+        "operationId": "headDiscoveredContent",
+        "summary": "取得 WebDAV 影片 HEAD",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          },
+          {
+            "name": "poolId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "path",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "影片中繼資料"
+          },
+          "206": {
+            "description": "Partial Content",
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "找不到影片"
+          },
+          "409": {
+            "description": "儲存池不支援或已停用"
+          },
+          "502": {
+            "description": "WebDAV 連線失敗"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
     }
   },
   "components": {
