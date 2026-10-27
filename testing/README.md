@@ -87,6 +87,12 @@ video-node  dvn/video-node:local
 
 「程式建置時間」是 Go 執行檔的編譯時間，「鏡像建置時間」是 image 的建置時間；Docker 層快取命中時兩者可能不同，屬正常現象。
 
+## HTTPS 測試
+
+`testing/local/config/`、`testing/compose.local.yaml` 與 `testing/certs/` 都是本機檔案，不會提交；預設 clone 後仍是 HTTP。若某台機器已把 Video Node 設成 HTTPS，需把 CA／憑證放在 `testing/certs/`，並在 compose.local 掛載 `tls.crt`／`tls.key`。
+
+**不會自動退回 HTTP**：TLS 設定存在但憑證缺少時，Compose 的 `create_host_path: false` 或服務載入憑證會直接失敗，不會靜默降級。這是刻意的安全預設；要恢復 HTTP 請移除 config 的 `tlsCertFile`／`tlsKeyFile` 與 cert 掛載。
+
 ## 測試檔案放哪裡？
 
 若影片在 H:\Video 等其他位置、不想複製進 local/media，請複製 `compose.local.example.yaml` 為 `compose.local.yaml`，填入自己的來源，再於網頁註冊容器內的 target。`compose.local.yaml` 不會提交，`npm run testing:up` 會自動疊加。
