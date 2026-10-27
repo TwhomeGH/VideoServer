@@ -2301,7 +2301,7 @@
     "/api/v1/videos/{id}/verify": {
       "post": {
         "operationId": "verifyVideoHash",
-        "summary": "背景下載遠端影片並計算 SHA-256",
+        "summary": "建立 WebDAV SHA-256 驗證工作",
         "parameters": [
           {
             "name": "id",
@@ -2328,11 +2328,11 @@
         },
         "responses": {
           "202": {
-            "description": "已開始驗證",
+            "description": "已排入驗證",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Video"
+                  "$ref": "#/components/schemas/ImportJob"
                 }
               }
             }
@@ -2344,7 +2344,58 @@
             "description": "找不到影片"
           },
           "409": {
-            "description": "不是遠端影片或已在驗證"
+            "description": "不是遠端影片、已驗證或無法排程"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
+    },
+    "/api/v1/videos/{id}/verify/cancel": {
+      "post": {
+        "operationId": "cancelVerifyVideoHash",
+        "summary": "取消 WebDAV SHA-256 驗證",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "已取消",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "找不到進行中的驗證"
           }
         },
         "tags": [

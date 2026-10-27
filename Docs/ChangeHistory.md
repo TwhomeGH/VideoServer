@@ -2,6 +2,44 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 06:00 WebDAV 驗證改為 Range 分塊與可取消工作
+
+**類型**: 改善
+
+**檔案**:
+
+- `internal/library/remote_verify.go`
+- `internal/library/jobs.go`
+- `internal/library/http.go`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/ImportJobs.tsx`
+- `web/admin/src/Monitor.tsx`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- 背景 SHA-256 是 detached goroutine，沒有可持續工作、進度或取消
+- 單一 GET 無法在重啟後延續，也無法偵測中途來源變更
+
+### 修改
+
+- 驗證改成 `source=verify` 的 import job；重啟時沿用既有 queued/running 恢復。
+- 使用 16 MiB HTTP Range 分塊；驗證 206 與 Content-Range。
+- 開始前後用 HEAD 的 size、ETag、Last-Modified 比對；任一變更就失敗。
+- 每塊更新 `bytes_processed`，UI 顯示百分比；可取消，最多等目前分塊結束。
+- 取消後影片回到 unverified；成功才寫入 SHA-256。
+- `POST /videos/{id}/verify/cancel`、OpenAPI、ImportJobs 來源標籤同步。
+
+### 驗證
+
+- 183 MB 遠端影片驗證工作回 202；取消 API 回 202，影片回到 unverified。
+- 重新啟動驗證後 job 完成，`bytesProcessed=totalBytes=183005327`。
+- SHA-256 `788f3b0e…`、64 hex，`hashStatus=verified`。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：取消最多等待一個分塊；尚無 TLS 憑證政策。
+
+---
+
 ## 2026.10.28 05:20 WebDAV 遠端 FFprobe 與驗證限速
 
 **類型**: 改善

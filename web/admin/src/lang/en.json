@@ -514,5 +514,8 @@
   "library.verified": "SHA-256 verified",
   "discovered.addRemote": "Add to library",
   "library.verifyHash": "Verify SHA-256",
-  "library.verifying": "Verifying…"
+  "library.verifyProgress": "Verifying SHA-256… {percent}%",
+  "library.cancelVerify": "Cancel verification",
+  "importJobs.sourceVerify": "SHA-256 verification",
+  "monitor.verify": "SHA-256 verification"
 }

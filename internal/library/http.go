@@ -497,7 +497,11 @@ func (s *Store) Register(mux *http.ServeMux) {
 			if !decode(w, r, &request) {
 				return
 			}
-			video, err := s.VerifyRemoteVideo(r.Context(), r.PathValue("id"))
+			if s.queue == nil {
+				failure(w, 503, "匯入佇列尚未就緒")
+				return
+			}
+			job, err := s.queue.EnqueueVerify(r.Context(), r.PathValue("id"))
 			if errors.Is(err, sql.ErrNoRows) {
 				failure(w, 404, "找不到影片")
 				return
@@ -506,7 +510,27 @@ func (s *Store) Register(mux *http.ServeMux) {
 				failure(w, 409, err.Error())
 				return
 			}
-			respond(w, 202, video)
+			respond(w, 202, job)
+		})
+		mux.HandleFunc("POST /api/v1/videos/{id}/verify/cancel", func(w http.ResponseWriter, r *http.Request) {
+			var request struct{}
+			if !decode(w, r, &request) {
+				return
+			}
+			if s.queue == nil {
+				failure(w, 503, "匯入佇列尚未就緒")
+				return
+			}
+			job, err := s.queue.CancelVerify(r.Context(), r.PathValue("id"))
+			if errors.Is(err, sql.ErrNoRows) {
+				failure(w, 404, "找不到進行中的驗證")
+				return
+			}
+			if err != nil {
+				failure(w, 500, "無法取消驗證")
+				return
+			}
+			respond(w, 202, job)
 		})
 		mux.HandleFunc("GET /api/v1/import-jobs/{id}", func(w http.ResponseWriter, r *http.Request) {
 			job, err := s.queue.Job(r.PathValue("id"))

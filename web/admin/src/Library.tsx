@@ -161,6 +161,8 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
       <div className="video-grid">{data?.videos.map(video => {
         const pool = data.pools.find(item => item.id === video.poolId);
         const availability = video.available ? t('library.available') : unavailableVideoLabel(video, pool?.name, t);
+        const verifyJob = data.jobs.find(job => job.source === 'verify' && job.videoId === video.id && (job.status === 'queued' || job.status === 'running'));
+        const verifyPercent = verifyJob ? Math.min(100, Math.round((verifyJob.bytesProcessed / Math.max(1, verifyJob.totalBytes || video.size)) * 100)) : 0;
         return <article key={video.id} className="video-card">
         <div className="video-cover" aria-hidden="true">▶</div><h3>{video.title}</h3>
         <p>{video.category || t('library.unclassified')}{video.adult ? `${t('common.dot')}${t('common.adultTag')}` : ''}</p>
@@ -170,9 +172,12 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
         <p>{t('library.size', { size: (video.size / 1024 / 1024).toFixed(1), availability })}</p>
         <p className="muted">{mediaSummary(video, t)}</p>
         {video.provider === 'webdav' && <p className="muted">{t('library.webdavSource')}{t('common.dot')}{video.hashStatus === 'verified' ? t('library.verified') : t('library.unverified')}</p>}
+        {verifyJob && <p className="muted">{t('library.verifyProgress', { percent: verifyPercent })}</p>}
         <button disabled={!video.available} title={!video.available ? availability : undefined} onClick={() => setSelected(video)}>{t('library.play')}</button>
         <button disabled={busy} onClick={() => { setEditing(video); setEditDraft({ ...video }); }}>{t('library.edit')}</button>
-        {video.provider === 'webdav' && video.hashStatus !== 'verified' && <button disabled={busy || video.hashStatus === 'pending'} onClick={() => void submit(async () => { await request(`videos/${video.id}/verify`, {}); })}>{video.hashStatus === 'pending' ? t('library.verifying') : t('library.verifyHash')}</button>}
+        {verifyJob
+          ? <button disabled={busy} onClick={() => void submit(async () => { await request(`videos/${video.id}/verify/cancel`, {}); })}>{t('library.cancelVerify')}</button>
+          : video.provider === 'webdav' && video.hashStatus !== 'verified' && <button disabled={busy} onClick={() => void submit(async () => { await request(`videos/${video.id}/verify`, {}); })}>{t('library.verifyHash')}</button>}
         <button disabled={busy || !video.available || data.jobs.some(job => job.source === 'reprobe' && job.videoId === video.id && (job.status === 'queued' || job.status === 'running'))} title={!video.available ? availability : undefined} onClick={() => void submit(async () => {
           await request<ImportJob>(`videos/${video.id}/probe`, {});
           window.location.hash = 'jobs';

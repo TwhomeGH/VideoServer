@@ -73,6 +73,7 @@ export function ImportJobs() {
     return translated === key ? job.status : translated;
   };
   const sourceLabel = (source: string) => source === 'reprobe' ? t('importJobs.sourceReprobe')
+    : source === 'verify' ? t('importJobs.sourceVerify')
     : source === 'scan' ? t('importJobs.sourceScan') : t('importJobs.sourceManual');
   const statusClass = (status: string) => status === 'running' ? 'online' : status === 'failed' ? 'failed' : status === 'queued' ? 'offline' : 'disabled';
   const matchesFilter = (job: ImportJob, value: JobFilter) => value === 'all' ||

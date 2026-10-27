@@ -133,7 +133,7 @@ export function Monitor() {
               completed: data.tasks.jobs.counts.completed,
             })}</p>
             {data.tasks.jobs.active.length === 0 && <p className="muted">{t('monitor.noActiveJobs')}</p>}
-            <ul className="monitor-jobs">{data.tasks.jobs.active.map(job => <li key={job.id}><strong>{job.title}</strong><span>{job.source === 'reprobe' ? t('monitor.reprobe') : t('monitor.import')}{t('common.dot')}{phaseLabel(job.phase)}</span><JobProgress job={job} /></li>)}</ul>
+            <ul className="monitor-jobs">{data.tasks.jobs.active.map(job => <li key={job.id}><strong>{job.title}</strong><span>{job.source === 'reprobe' ? t('monitor.reprobe') : job.source === 'verify' ? t('monitor.verify') : t('monitor.import')}{t('common.dot')}{phaseLabel(job.phase)}</span><JobProgress job={job} /></li>)}</ul>
             <p className="muted">{t('monitor.queueNote')}</p>
           </section>
           <div className="monitor-side">

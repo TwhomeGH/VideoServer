@@ -32,13 +32,13 @@ curl -D - -o NUL -u USER:PASS -H "Range: bytes=0-1023" \
 
 「找到的影片」的 WebDAV 項目可按「播放」，由 DVN 代理 WebDAV Range 請求；瀏覽器只看到 DVN 的 `/api/v1/discovered/content`，不會取得 OpenList 帳密。支援 `Range` 與 `HEAD`，可直接回 206。
 
-遠端項目可按「加入書庫」建立 library 參考，不下載副本；加入後會排入遠端 FFprobe，取得片長／解析度／編碼。DVN 會嘗試從 OpenList 的 `hash_info` 取得 SHA-256；有合法值就標記已驗證，否則標記未驗證。未驗證影片可手動按「驗證 SHA-256」，DVN 會在背景串流完整檔案計算，不落地保存，並套用 `hashLimitMiBps`。
+遠端項目可按「加入書庫」建立 library 參考，不下載副本；加入後會排入遠端 FFprobe，取得片長／解析度／編碼。DVN 會嘗試從 OpenList 的 `hash_info` 取得 SHA-256；有合法值就標記已驗證，否則標記未驗證。未驗證影片可手動按「驗證 SHA-256」，DVN 會建立背景 verify job，以 16 MiB HTTP Range 分塊讀取，邊讀邊計算，不落地保存，並套用 `hashLimitMiBps`。開始前後會用 size、ETag、Last-Modified 檢查來源是否變更；UI 顯示進度並可取消。
 
 目前遠端池限制：
 
 - 加入書庫是遠端參考，不下載副本；OpenList 離線時影片不可用。
 - OpenList 不一定提供 SHA-256；沒有時需手動背景驗證，驗證會讀取完整檔案。
-- 背景驗證還沒有進度百分比或取消。
+- 取消只在目前分塊結束後生效（最多一個 16 MiB 分塊）。
 - 遠端 FFprobe 由 Video Node 直接讀取 WebDAV；憑證只放在 FFprobe 參數，不寫入日誌。
 - 不啟用 OS watcher，完全依賴輪詢。
 - Basic Auth；正式環境請用 HTTPS。

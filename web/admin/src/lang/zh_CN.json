@@ -514,5 +514,8 @@
   "library.verified": "SHA-256 已验证",
   "discovered.addRemote": "加入书库",
   "library.verifyHash": "验证 SHA-256",
-  "library.verifying": "验证中…"
+  "library.verifyProgress": "正在验证 SHA-256… {percent}%",
+  "library.cancelVerify": "取消验证",
+  "importJobs.sourceVerify": "SHA-256 验证",
+  "monitor.verify": "SHA-256 验证"
 }

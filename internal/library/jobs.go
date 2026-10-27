@@ -253,6 +253,11 @@ func (q *ImportQueue) Run(ctx context.Context) {
 		if err == nil {
 			continue
 		}
+		if errors.Is(err, errVerifyCancelled) {
+			_, _ = q.store.db.ExecContext(context.Background(), "UPDATE import_jobs SET status='cancelled',phase='cancelled',error='',updated_at=? WHERE id=?", timestamp(), job.ID)
+			q.store.publish("jobs")
+			continue
+		}
 		if ctx.Err() != nil {
 			recovery, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 			_, recoveryErr := q.store.db.ExecContext(recovery, `UPDATE import_jobs SET status='queued',phase='queued',bytes_processed=0,error='',updated_at=? WHERE id=? AND status='running'`, timestamp(), job.ID)
@@ -263,6 +268,9 @@ func (q *ImportQueue) Run(ctx context.Context) {
 			q.store.publish("jobs")
 			return
 		}
+		if job.Source == "verify" {
+			_ = q.store.setVideoHashStatus(job.VideoID, "failed")
+		}
 		if _, saveErr := q.store.db.ExecContext(ctx, `UPDATE import_jobs SET status='failed',phase='failed',error=?,updated_at=? WHERE id=? AND status='running'`, err.Error(), timestamp(), job.ID); saveErr != nil {
 			q.logger.Error("保存失敗工作狀態失敗", "jobId", job.ID, "error", saveErr)
 		}
@@ -272,6 +280,9 @@ func (q *ImportQueue) Run(ctx context.Context) {
 }
 
 func (q *ImportQueue) process(ctx context.Context, job ImportJob) error {
+	if job.Source == "verify" {
+		return q.processRemoteVerify(ctx, job)
+	}
 	if job.Source == "reprobe" {
 		return q.processProbe(ctx, job)
 	}
