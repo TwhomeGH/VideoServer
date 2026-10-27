@@ -81,6 +81,16 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## 檔案監聽與 9p 降級驗收
+
+2026-10-28 在 `dvn-testing`（image 來源 `eaed5ca3238a`）驗證：
+
+- Monitor 顯示 watcher 狀態；兩個 9p 池都未啟用 OS watcher，fallback 顯示「9p 檔案系統使用輪詢」。
+- 關閉 watcher 的池仍由既有掃描週期運作；status 可區分 active／fallback。
+- `addWatchTree` 測試確認安全排除目錄不會加入監聽，關閉政策時會加入。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：Docker 9p 不支援可靠 inotify，實際 native Windows／Linux 事件尚未在此環境驗證。
+
 ## 儲存池頁雙欄與進階收合驗收
 
 2026-10-28 在 `dvn-testing`（image 來源 `6d22dc28823f`）驗證：

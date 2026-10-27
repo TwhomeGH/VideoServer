@@ -2,6 +2,43 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 04:10 檔案監聽第一版與輪詢降級
+
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/watch.go`
+- `internal/library/watch_test.go`
+- `internal/library/scanner.go`
+- `internal/runtime/server.go`
+- `web/admin/src/Monitor.tsx`
+- `web/admin/src/lang/`
+- `go.mod`／`go.sum`
+
+### 問題
+
+- 新檔最多要等下一個掃描週期才會被發現
+- 沒有 watcher 狀態或降級原因，難以判斷目前是否仍只靠輪詢
+
+### 修改
+
+- 使用 `fsnotify` 建立 per-pool watcher；只提示掃描，不直接改 catalog／不直接匯入。
+- 事件 debounce 500ms，呼叫 `Scanner.NotifyChange`；reconciliation 掃描仍是權威。
+- 整碟池與 9p 檔案系統跳過監聽，保留輪詢；其他監聽失敗也記錄 fallback。
+- watcher 每 10 秒同步啟用中的池；停用／離線池會停止監聽。
+- Monitor 新增「檔案監聽：N 個池 · M 個事件」與去重後的降級原因。
+- 掃描政策、index-only、安全排除沿用既有規則。
+
+### 驗證
+
+- `addWatchTree` 測試確認安全排除不會加入 Windows、node_modules、.git，關閉政策時會加入。
+- Docker 9p 測試站顯示 `activePools: 0`、fallback「9p 檔案系統使用輪詢」，輪詢仍運作。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：Docker 9p 無法驗證實際 OS 事件；file identity／rename 尚未實作。
+
+---
+
 ## 2026.10.28 04:00 儲存池頁改為雙欄卡片與進階收合
 
 **類型**: 改善

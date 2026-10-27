@@ -493,5 +493,7 @@
   "library.safeScan": "排除系统目录",
   "library.fullScan": "全盘扫描",
   "library.indexOnlyOn": "只索引",
-  "library.autoImportOn": "自动导入"
+  "library.autoImportOn": "自动导入",
+  "monitor.watchStatus": "文件监听：{pools} 个池 · {events} 个事件",
+  "monitor.watchFallback": "轮询降级：{reasons}"
 }

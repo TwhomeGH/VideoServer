@@ -493,5 +493,7 @@
   "library.safeScan": "System folders excluded",
   "library.fullScan": "Whole-disk scan",
   "library.indexOnlyOn": "index only",
-  "library.autoImportOn": "auto import"
+  "library.autoImportOn": "auto import",
+  "monitor.watchStatus": "File watching: {pools} pools · {events} events",
+  "monitor.watchFallback": "Polling fallback: {reasons}"
 }

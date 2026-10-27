@@ -49,6 +49,8 @@ Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的
 
 `autoScan` 控制目錄 metadata 掃描（`WalkDir`／`Stat`），不讀影片內容；`scanIntervalSeconds` 是熱池的基礎間隔。每個儲存池依最後活動時間分級：熱（1 小時內）用基礎間隔、暖前段（1–6 小時）5 分鐘、暖後段（6–24 小時）15 分鐘、冷（1–7 天）30 分鐘、休眠（超過 7 天）用 `scanIdleMaxSeconds`（預設 21600 秒／6 小時，可調到 86400 秒／24 小時）。有新檔／變更／待穩定檔案、手動掃描或 watcher 事件時回到熱；只掃描到期的池，不會因為一個池活躍就讓全部池一直付出完整 traversal。`last_activity_at` 存在資料庫，重啟後仍保留分級；掃描狀態本身在記憶體。
 
+檔案監聽第一版自動啟用，使用 `fsnotify` 只做新檔提示，事件 debounce 後觸發該池掃描；不會直接改 catalog 或匯入。整碟池與 9p 掛載（Docker Desktop 常見）會跳過監聽、保留輪詢；其他監聽失敗也會顯示 fallback。Monitor 的「檔案監聽」列會顯示 active pools、事件數與降級原因。目前沒有 per-pool watch 開關或 file identity rename。
+
 每個儲存池預設 `scanExcludeSystem=true`，掃描會跳過 Windows、Program Files、ProgramData、AppData、Recycle Bin、System Volume Information、隱藏目錄、`node_modules`、`.git` 等；關閉前會要求確認，關閉後才進行真正的全盤掃描。新增儲存池若是磁碟根目錄（例如 `C:\`），介面會顯示全盤掃描警告。Docker 內只能註冊容器內 target，不能直接把主機 `C:\` 當成路徑。
 
 `indexOnly=true` 時，掃描只把找到的支援影片寫入 `discovered_media`，不建立 import job、不計算 SHA-256／FFprobe。使用者可在「找到的影片」頁選取後手動匯入；匯入成功後才會進入正式影片庫。關閉 index-only 後，既有 `discovered_media` 不會自動匯入，之後的新檔才恢復自動匯入。適合全盤查找或先盤點再挑選。

@@ -62,7 +62,8 @@
 ## 後續階段
 
 - [x] Reconciliation diff：週期掃描統計 new／changed／deleted；changed／deleted 只標狀態，不自動改資料。
-- [ ] 檔案變更監聽：OS watcher、file identity、rename 與 persistent catalog（設計文件完成，待實作）。
+- [x] OS watcher 新檔事件提示；debounce 後觸發掃描，9p／整碟池降級輪詢。
+- [ ] File identity、rename 配對與 persistent catalog（設計文件完成，待實作）。
 - [ ] Central／Worker peer 註冊、heartbeat、lease 與版本／能力協商（設計文件完成，待實作）。
 - [x] Protocol 版本範圍、`Negotiate` 與向後相容的 `capabilityVersions`；peer 註冊尚未實作。
 - [ ] Phase 3：Worker 註冊、能力與條件公告、派工、政策比對、版本快照及本機降級。

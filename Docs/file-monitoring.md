@@ -1,6 +1,6 @@
 # 檔案變更監聽與 Reconciliation（設計草案）
 
-> 狀態：第一階段 reconciliation diff 已實作（週期掃描會統計 changed／deleted，來源狀態由讀取時的 `openVideo` 判定）；OS watcher、file ID rename 與持久化 file catalog 尚未實作。
+> 狀態：reconciliation diff 與第一版 OS watcher 已實作（新檔事件只觸發掃描提示；掃描仍是權威）；file ID rename、持久化 file catalog 與 per-pool watchMode 尚未實作。
 
 ## 目的
 
@@ -15,6 +15,7 @@
 - 新檔需在記憶體中的 `observed` 連續觀察相同 size/mtime，且至少經過 `fileStableSeconds`（預設 10 秒），才排入匯入。
 - 週期掃描現在會比對已索引影片的 size/mtime，統計 `changed` 與 `deleted`；兩者都**不會**改 hash、刪索引或自動重新匯入。實際來源狀態仍由 `videos` 讀取時的 `openVideo` 判定。
 - 不處理 rename；沒有持久化的 file identity；重啟後重新觀察。
+- 第一版 watcher 使用 `fsnotify`，只當低延遲提示：事件經 debounce 後呼叫掃描；不直接修改 catalog、不直接匯入。整碟池與 9p 檔案系統直接降級輪詢；其他監聽失敗也會保留 polling。
 - 掃描與自動補齊共用單一 FIFO 佇列；真正大量讀取是匯入／重新探測的 FFprobe＋SHA-256，受 `hashLimitMiBps` 限制。
 
 ## 目標架構

@@ -162,6 +162,20 @@ func (s *Scanner) Request() bool {
 	return true
 }
 
+// NotifyChange 由 watcher 呼叫，將指定池排入下一輪掃描；掃描仍是權威來源。
+func (s *Scanner) NotifyChange(poolID string) {
+	if poolID == "" {
+		return
+	}
+	s.mu.Lock()
+	s.forcePool[poolID] = true
+	s.mu.Unlock()
+	select {
+	case s.requests <- struct{}{}:
+	default:
+	}
+}
+
 // RequestPool 只要求掃描一個池，完成後重置該池退避。
 func (s *Scanner) RequestPool(id string) bool {
 	if id == "" {

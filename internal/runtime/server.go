@@ -152,6 +152,7 @@ func Main(service string, port int) int {
 	var extensions []func(*http.ServeMux)
 	var scanner *library.Scanner
 	var queue *library.ImportQueue
+	var watcher *library.Watcher
 	extensions = append(extensions, authManager.Register)
 	extensions = append(extensions, configState.Register)
 	if service == "video-node" {
@@ -175,6 +176,7 @@ func Main(service string, port int) int {
 		queue.SetBackfillLimits(config.BackfillDailyLimit, config.BackfillDailyGiB)
 		scanner = library.NewScanner(store, config.AutoScan, time.Duration(config.ScanIntervalSeconds)*time.Second, time.Duration(config.FileStableSeconds)*time.Second, logger)
 		scanner.SetIdleMax(time.Duration(config.ScanIdleMaxSeconds) * time.Second)
+		watcher = library.NewWatcher(store, scanner, logger)
 		store.SetPublisher(hub)
 		extensions = append(extensions, store.Register)
 	}
@@ -203,7 +205,11 @@ func Main(service string, port int) int {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"jobs": work, "scan": scanner.Status(), "backfill": backfill}, nil
+		result := map[string]any{"jobs": work, "scan": scanner.Status(), "backfill": backfill}
+		if watcher != nil {
+			result["watch"] = watcher.Status()
+		}
+		return result, nil
 	})
 	extensions = append(extensions, func(mux *http.ServeMux) { events.Register(mux, hub) })
 	extensions = append(extensions, monitor.Register)
@@ -238,6 +244,12 @@ func Main(service string, port int) int {
 		done := make(chan struct{})
 		go func() { defer close(done); scanner.Run(scanContext) }()
 		defer func() { cancelScan(); <-done }()
+	}
+	if watcher != nil {
+		watchContext, cancelWatch := context.WithCancel(ctx)
+		done := make(chan struct{})
+		go func() { defer close(done); watcher.Run(watchContext) }()
+		defer func() { cancelWatch(); <-done }()
 	}
 	go func() {
 		<-ctx.Done()

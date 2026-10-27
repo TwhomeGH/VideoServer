@@ -16,7 +16,7 @@ type MonitorData = {  service: string; startedAt: string; sampledAt: string; upt
     nextRunAt?: string; nextRunInSeconds?: number;
     pools?: { poolId: string; name?: string; tier?: string; backoffSeconds: number; quiet: number; lastActivityAt?: string; nextRunAt?: string; nextRunInSeconds: number }[];
     last: { completedAt: string; enqueued: number; failed: number; pending: number; changed: number; deleted: number; offlinePools: number } | null;
-  }; backfill: {
+  }; watch?: { enabled: boolean; mode: string; activePools: number; events: number; lastEventAt?: string; fallbackReasons?: string[] }; backfill: {
     enabled: boolean; intervalSeconds: number; nextCheckAt?: string; nextCheckInSeconds: number;
     candidateCount: number; nextVideoId?: string; nextVideoTitle?: string;
     dailyVideoLimit: number; dailyVideos: number; dailyGiBLimit: number; dailyBytes: number;
@@ -150,6 +150,7 @@ export function Monitor() {
                 failed: data.tasks.scan.last.failed,
                 offline: data.tasks.scan.last.offlinePools,
               })}</p>}
+              {data.tasks.watch && <p className="muted">{t('monitor.watchStatus', { pools: data.tasks.watch.activePools, events: data.tasks.watch.events })}{data.tasks.watch.fallbackReasons?.length ? t('common.dot') + t('monitor.watchFallback', { reasons: data.tasks.watch.fallbackReasons.join('、') }) : ''}</p>}
               <ul className="monitor-scans">
                 {data.tasks.scan.pools?.length
                   ? data.tasks.scan.pools.map(item => <li key={item.poolId}>
