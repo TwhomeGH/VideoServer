@@ -191,6 +191,8 @@ type BackfillStatus struct {
 	NextCheckAt        string `json:"nextCheckAt,omitempty"`
 	NextCheckInSeconds int    `json:"nextCheckInSeconds"`
 	CandidateCount     int    `json:"candidateCount"`
+	NextVideoID        string `json:"nextVideoId,omitempty"`
+	NextVideoTitle     string `json:"nextVideoTitle,omitempty"`
 	LastScheduledAt    string `json:"lastScheduledAt,omitempty"`
 	LastVideoID        string `json:"lastVideoId,omitempty"`
 }
@@ -215,7 +217,23 @@ LEFT JOIN video_media m ON m.video_id = v.id
 WHERE m.video_id IS NULL
   AND NOT EXISTS (SELECT 1 FROM import_jobs j WHERE j.source = 'reprobe' AND j.video_id = v.id)
   AND NOT EXISTS (SELECT 1 FROM import_jobs j WHERE j.status IN ('queued','running'))`).Scan(&status.CandidateCount)
-	return status, err
+	if err != nil {
+		return status, err
+	}
+	err = q.store.db.QueryRowContext(ctx, `
+SELECT v.id, v.title
+FROM videos v
+JOIN pools p ON p.id = v.pool_id AND p.enabled = 1
+LEFT JOIN video_media m ON m.video_id = v.id
+WHERE m.video_id IS NULL
+  AND NOT EXISTS (SELECT 1 FROM import_jobs j WHERE j.source = 'reprobe' AND j.video_id = v.id)
+  AND NOT EXISTS (SELECT 1 FROM import_jobs j WHERE j.status IN ('queued','running'))
+ORDER BY v.imported_at, v.id
+LIMIT 1`).Scan(&status.NextVideoID, &status.NextVideoTitle)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		return status, err
+	}
+	return status, nil
 }
 
 // RunBackfill 週期性補齊缺少技術資訊的影片；一次只排一筆，且只在整個佇列閒置時排。

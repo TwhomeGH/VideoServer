@@ -143,6 +143,8 @@
   "monitor.backfillTitle": "Automatic metadata backfill",
   "monitor.backfillNext": "Next check in about {seconds} s",
   "monitor.backfillCandidates": "Candidates to check: {count}",
+  "monitor.backfillNextCandidate": "Next candidate to check: {title}",
+  "monitor.backfillNoCandidate": "No eligible candidate right now",
   "monitor.backfillDisabled": "Automatic backfill is disabled",
   "monitor.scanLast": "Last completed {time} · jobs added {enqueued} · waiting for stability {pending} · changed {changed} · missing {deleted} · failed {failed} · offline pools {offline}",
   "monitor.managePools": "Manage storage pools and scans",

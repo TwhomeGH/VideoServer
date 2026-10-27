@@ -19,6 +19,19 @@ func importWithoutMedia(t *testing.T, store *Store, pool Pool, name string) Vide
 	return video
 }
 
+func TestBackfillStatusShowsNextCandidate(t *testing.T) {
+	store, _, pool := scannerFixture(t)
+	queue := testQueue(t, store)
+	video := importWithoutMedia(t, store, pool, "next-target.mp4")
+	status, err := queue.BackfillStatus(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.CandidateCount != 1 || status.NextVideoID != video.ID || status.NextVideoTitle != "next-target.mp4" {
+		t.Fatalf("unexpected backfill target: %+v", status)
+	}
+}
+
 func TestBackfillMissingMediaOneAtATime(t *testing.T) {
 	store, _, pool := scannerFixture(t)
 	queue := testQueue(t, store)

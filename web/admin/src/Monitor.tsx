@@ -16,7 +16,8 @@ type MonitorData = {
     last: { completedAt: string; enqueued: number; failed: number; pending: number; changed: number; deleted: number; offlinePools: number } | null;
   }; backfill: {
     enabled: boolean; intervalSeconds: number; nextCheckAt?: string; nextCheckInSeconds: number;
-    candidateCount: number; lastScheduledAt?: string; lastVideoId?: string;
+    candidateCount: number; nextVideoId?: string; nextVideoTitle?: string;
+    lastScheduledAt?: string; lastVideoId?: string;
   } } | null;
 };
 
@@ -136,7 +137,12 @@ export function Monitor() {
             </section>
             <section><h2>{t('monitor.backfillTitle')}</h2>
               {data.tasks.backfill.enabled
-                ? <p>{t('monitor.backfillNext', { seconds: data.tasks.backfill.nextCheckInSeconds || 0 })}{t('common.dot')}{t('monitor.backfillCandidates', { count: data.tasks.backfill.candidateCount })}</p>
+                ? <>
+                  <p>{t('monitor.backfillNext', { seconds: data.tasks.backfill.nextCheckInSeconds || 0 })}{t('common.dot')}{t('monitor.backfillCandidates', { count: data.tasks.backfill.candidateCount })}</p>
+                  <p className="muted">{data.tasks.backfill.nextVideoTitle
+                    ? t('monitor.backfillNextCandidate', { title: data.tasks.backfill.nextVideoTitle })
+                    : t('monitor.backfillNoCandidate')}</p>
+                </>
                 : <p className="muted">{t('monitor.backfillDisabled')}</p>}
             </section>
           </div>

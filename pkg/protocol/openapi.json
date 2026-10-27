@@ -3107,6 +3107,12 @@
           },
           "lastVideoId": {
             "type": "string"
+          },
+          "nextVideoId": {
+            "type": "string"
+          },
+          "nextVideoTitle": {
+            "type": "string"
           }
         },
         "required": [

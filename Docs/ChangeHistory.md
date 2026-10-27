@@ -2,6 +2,38 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.27 21:20 自動補齊顯示下一個候選
+
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/reprobe.go`
+- `internal/library/backfill_test.go`
+- `pkg/protocol/openapi.json`
+- `web/admin/src/Monitor.tsx`
+- `web/admin/src/lang/`
+
+### 問題
+
+- 自動補齊只顯示待檢查候選數，看不到下一個可能排程的影片
+- 使用者無法判斷目前要處理哪一部
+
+### 修改
+
+- `BackfillStatus` 新增 `nextVideoId`、`nextVideoTitle`。
+- 監看頁顯示「下一個待檢查候選：標題」；沒有候選時顯示明確訊息。
+- 候選查詢與數量使用相同條件；仍只提供提示，實際排程前會再做來源檢查。
+- OpenAPI、i18n 與測試同步。
+
+### 驗證
+
+- 實測監看頁顯示「下一個待檢查候選：RPReplay_Final1654974526.mp4」。
+- 單元測試驗證候選 ID 與標題。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
+---
+
 ## 2026.10.27 21:00 工作監看重排與每池掃描明細
 
 **類型**: 功能

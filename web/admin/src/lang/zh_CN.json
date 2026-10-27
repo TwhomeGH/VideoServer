@@ -143,6 +143,8 @@
   "monitor.backfillTitle": "自动补齐技术信息",
   "monitor.backfillNext": "下次检查：约 {seconds} 秒后",
   "monitor.backfillCandidates": "待检查候选：{count} 部",
+  "monitor.backfillNextCandidate": "下一个待检查候选：{title}",
+  "monitor.backfillNoCandidate": "目前没有可调度的候选",
   "monitor.backfillDisabled": "自动补齐已禁用",
   "monitor.scanLast": "上次完成 {time} · 加入工作 {enqueued} · 待稳定 {pending} · 变更 {changed} · 遗失 {deleted} · 失败 {failed} · 脱机池 {offline}",
   "monitor.managePools": "管理存储池与扫描",

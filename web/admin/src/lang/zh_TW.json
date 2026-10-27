@@ -143,6 +143,8 @@
   "monitor.backfillTitle": "自動補齊技術資訊",
   "monitor.backfillNext": "下次檢查：約 {seconds} 秒後",
   "monitor.backfillCandidates": "待檢查候選：{count} 部",
+  "monitor.backfillNextCandidate": "下一個待檢查候選：{title}",
+  "monitor.backfillNoCandidate": "目前沒有可排程的候選",
   "monitor.backfillDisabled": "自動補齊已停用",
   "monitor.scanLast": "上次完成 {time} · 加入工作 {enqueued} · 待穩定 {pending} · 變更 {changed} · 遺失 {deleted} · 失敗 {failed} · 離線池 {offline}",
   "monitor.managePools": "管理儲存池與掃描",
