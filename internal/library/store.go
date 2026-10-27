@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/TwhomeGH/VideoServer/internal/media"
 
@@ -41,6 +42,7 @@ type Pool struct {
 	Filesystem     string `json:"filesystem,omitempty"`
 	VolumeID       string `json:"volumeId,omitempty"`
 	VolumeStatus   string `json:"volumeStatus,omitempty"`
+	LastActivityAt string `json:"lastActivityAt,omitempty"`
 	volumeRelative string
 }
 
@@ -110,8 +112,8 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("SELECT COALESCE(MAX(version),0) FROM schema_version").Scan(&version); err != nil {
 		return err
 	}
-	if version > 6 {
-		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 6", version)
+	if version > 7 {
+		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 7", version)
 	}
 	if _, err := tx.Exec(`
  CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
@@ -195,6 +197,26 @@ INSERT INTO schema_version VALUES(6);`); err != nil {
 			return err
 		}
 	}
+	if version < 7 {
+		exists, err := columnExists(tx, "pools", "last_activity_at")
+		if err != nil {
+			return err
+		}
+		if !exists {
+			if _, err := tx.Exec("ALTER TABLE pools ADD COLUMN last_activity_at TEXT NOT NULL DEFAULT ''"); err != nil {
+				return err
+			}
+		}
+		if _, err := tx.Exec(`
+UPDATE pools SET last_activity_at = COALESCE(
+ (SELECT MAX(imported_at) FROM videos WHERE videos.pool_id = pools.id), ?)
+WHERE last_activity_at = ''`, timestamp()); err != nil {
+			return err
+		}
+		if _, err := tx.Exec("INSERT INTO schema_version VALUES(7)"); err != nil {
+			return err
+		}
+	}
 	if _, err := tx.Exec("INSERT OR IGNORE INTO metadata VALUES('nodeId', ?)", identifier()); err != nil {
 		return err
 	}
@@ -230,7 +252,7 @@ func (s *Store) Close() error { return s.db.Close() }
 
 // Pools 回傳所有已註冊儲存池，離線或被停用的池保留資料而不刪除。
 func (s *Store) Pools() ([]Pool, error) {
-	rows, err := s.db.Query("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled FROM pools ORDER BY name,id")
+	rows, err := s.db.Query("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at FROM pools ORDER BY name,id")
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +261,7 @@ func (s *Store) Pools() ([]Pool, error) {
 	for rows.Next() {
 		var pool Pool
 		var enabled int
-		if err := rows.Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled); err != nil {
+		if err := rows.Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled, &pool.LastActivityAt); err != nil {
 			return nil, err
 		}
 		pool.Enabled = enabled != 0
@@ -275,10 +297,10 @@ func (s *Store) AddPool(name, path string) (Pool, error) {
 	volumeID, volumeRelative, filesystem := volumeDetailsFor(path)
 	pool = Pool{
 		ID: identifier(), Name: strings.TrimSpace(name), Path: path, Online: true, Enabled: true,
-		Filesystem: filesystem, VolumeID: volumeID, volumeRelative: volumeRelative,
+		Filesystem: filesystem, VolumeID: volumeID, volumeRelative: volumeRelative, LastActivityAt: timestamp(),
 	}
 	applyVolumeStatus(&pool)
-	_, err = s.db.Exec("INSERT INTO pools(id,name,path,volume_id,volume_relative,filesystem,enabled) VALUES(?,?,?,?,?,?,1)", pool.ID, pool.Name, pool.Path, pool.VolumeID, pool.volumeRelative, pool.Filesystem)
+	_, err = s.db.Exec("INSERT INTO pools(id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at) VALUES(?,?,?,?,?,?,1,?)", pool.ID, pool.Name, pool.Path, pool.VolumeID, pool.volumeRelative, pool.Filesystem, pool.LastActivityAt)
 	return pool, err
 }
 
@@ -298,11 +320,16 @@ func (s *Store) SetPoolEnabled(id string, enabled bool) (Pool, error) {
 	return s.poolByID(id)
 }
 
+func (s *Store) touchPoolActivity(id string, at time.Time) error {
+	_, err := s.db.Exec("UPDATE pools SET last_activity_at=? WHERE id=?", at.UTC().Format(time.RFC3339Nano), id)
+	return err
+}
+
 func (s *Store) poolByID(id string) (Pool, error) {
 	var pool Pool
 	var enabled int
-	err := s.db.QueryRow("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled FROM pools WHERE id=?", id).
-		Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled)
+	err := s.db.QueryRow("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at FROM pools WHERE id=?", id).
+		Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled, &pool.LastActivityAt)
 	if err != nil {
 		return Pool{}, err
 	}

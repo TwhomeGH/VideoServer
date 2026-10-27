@@ -11,7 +11,7 @@ type MonitorData = {  service: string; startedAt: string; sampledAt: string; upt
   tasks: { jobs: { counts: Record<string, number>; active: ImportJob[] }; scan: {
     automatic: boolean; running: boolean; queued: boolean; intervalSeconds: number; idleMaxSeconds: number;
     nextRunAt?: string; nextRunInSeconds?: number;
-    pools?: { poolId: string; name?: string; backoffSeconds: number; quiet: number; nextRunAt?: string; nextRunInSeconds: number }[];
+    pools?: { poolId: string; name?: string; tier?: string; backoffSeconds: number; quiet: number; lastActivityAt?: string; nextRunAt?: string; nextRunInSeconds: number }[];
     last: { completedAt: string; enqueued: number; failed: number; pending: number; changed: number; deleted: number; offlinePools: number } | null;
   }; backfill: {
     enabled: boolean; intervalSeconds: number; nextCheckAt?: string; nextCheckInSeconds: number;
@@ -77,6 +77,8 @@ export function Monitor() {
     const translated = t(key);
     return translated === key ? phase : translated;
   };
+  const tierLabel = (tier?: string) => tier === 'hot' ? t('scanTier.hot') : tier === 'warm' ? t('scanTier.warm')
+    : tier === 'cold' ? t('scanTier.cold') : tier === 'dormant' ? t('scanTier.dormant') : t('common.notProvided');
   const resetUsage = async () => {
     setUsageBusy(true);
     setUsageNotice('');
@@ -150,7 +152,7 @@ export function Monitor() {
                 {data.tasks.scan.pools?.length
                   ? data.tasks.scan.pools.map(item => <li key={item.poolId}>
                     <strong>{item.name || item.poolId}</strong>
-                    <span className="muted">{t('monitor.scanPoolNext', { seconds: item.nextRunInSeconds })}{t('common.dot')}{t('monitor.scanPoolBackoff', { seconds: item.backoffSeconds })}</span>
+                    <span className="muted">{tierLabel(item.tier)}{t('common.dot')}{t('monitor.scanPoolNext', { seconds: item.nextRunInSeconds })}{t('common.dot')}{t('monitor.scanPoolBackoff', { seconds: item.backoffSeconds })}</span>
                   </li>)
                   : <li className="muted">{t('monitor.scanNoPools')}</li>}
               </ul>

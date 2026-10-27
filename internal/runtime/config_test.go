@@ -16,7 +16,7 @@ func baseTestConfig() Config {
 	return Config{
 		Host: "0.0.0.0", PreferredPort: 18610, FallbackPorts: []int{18611, 18612},
 		WebDirectory: "/app/web", DataDirectory: "/data", AutoScan: true,
-		ScanIntervalSeconds: 30, ScanIdleMaxSeconds: 300, FileStableSeconds: 10, AutoBackfill: false,
+		ScanIntervalSeconds: 30, ScanIdleMaxSeconds: 21600, FileStableSeconds: 10, AutoBackfill: false,
 		BackfillIntervalSeconds: 60, BackfillDailyLimit: 50, BackfillDailyGiB: 20, HashLimitMiBps: 64, RememberLastSuccessfulPort: true,
 		FFprobePath: "ffprobe", ProbeTimeoutSeconds: 60,
 	}

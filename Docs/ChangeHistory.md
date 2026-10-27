@@ -2,6 +2,46 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.27 22:45 掃描改為熱／暖／冷／休眠分級
+
+**類型**: 改善
+
+**檔案**:
+
+- `internal/library/scanner.go`
+- `internal/library/store.go`
+- `internal/library/scheduler_test.go`
+- `internal/runtime/config.go`
+- `internal/runtime/configapi.go`
+- `internal/runtime/server.go`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/Monitor.tsx`
+- `web/admin/src/Settings.tsx`
+- `web/admin/src/lang/`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- 單一 300 秒上限對長期沒有變化的冷池仍過於頻繁
+- 只有退避秒數，沒有分級標記，難以判斷掃描策略
+
+### 修改
+
+- 每池依 `last_activity_at` 分成熱（1 小時內，基礎間隔）、暖（1–24 小時，5 分）、冷（1–7 天，30 分）、休眠（超過 7 天，`scanIdleMaxSeconds`）。
+- `scanIdleMaxSeconds` 預設改為 21600 秒（6 小時），可調到 86400 秒（24 小時）。
+- 新檔／變更／待穩定、手動掃描或未來 watcher 事件都會回到熱級。
+- 新增 schema v7 `pools.last_activity_at`，重啟後保留分級依據。
+- API／監看／儲存池頁顯示 tier、上次活動、下次掃描與目前間隔。
+- 設定頁名稱改為「熱池掃描間隔」與「休眠掃描間隔」。
+
+### 驗證
+
+- 單元測試驗證熱／暖／冷／休眠間隔與手動掃描回到熱級。
+- 測試站驗證分級標記、休眠 6 小時與 24 小時可調。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
+---
+
 ## 2026.10.27 22:30 影片工作改為緊湊清單與分頁
 
 **類型**: 改善

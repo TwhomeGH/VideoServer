@@ -60,36 +60,50 @@ func TestBackfillEnabledExposesNextRun(t *testing.T) {
 	}
 }
 
-func TestScannerAdaptiveBackoffAndPoolScan(t *testing.T) {
+func TestScannerTierAndPoolScan(t *testing.T) {
 	_, scanner, pool := scannerFixture(t)
 	scanner.interval = 20 * time.Millisecond
-	scanner.SetIdleMax(80 * time.Millisecond)
+	scanner.SetIdleMax(time.Hour)
 	ctx := context.Background()
 	scanner.runDue(ctx)
-	scanner.mu.Lock()
-	state := scanner.states[pool.ID]
-	scanner.mu.Unlock()
-	if state.quiet != 1 || state.backoff != 40*time.Millisecond {
-		t.Fatalf("first idle backoff: %+v", state)
+	readState := func() poolScanState {
+		scanner.mu.Lock()
+		defer scanner.mu.Unlock()
+		return scanner.states[pool.ID]
+	}
+	state := readState()
+	if state.tier != "hot" || state.interval != 20*time.Millisecond {
+		t.Fatalf("initial tier: %+v", state)
 	}
 
-	for _, expected := range []time.Duration{80 * time.Millisecond, 80 * time.Millisecond} {
+	setAge := func(age time.Duration) {
 		scanner.mu.Lock()
 		state = scanner.states[pool.ID]
+		state.lastActivity = time.Now().Add(-age)
 		state.next = time.Now().Add(-time.Second)
 		scanner.states[pool.ID] = state
 		scanner.mu.Unlock()
 		scanner.runDue(ctx)
-		scanner.mu.Lock()
-		state = scanner.states[pool.ID]
-		scanner.mu.Unlock()
-		if state.backoff != expected {
-			t.Fatalf("backoff = %v, want %v", state.backoff, expected)
-		}
+	}
+	setAge(2 * time.Hour)
+	state = readState()
+	if state.tier != "warm" || state.interval != 5*time.Minute {
+		t.Fatalf("warm tier: %+v", state)
+	}
+	setAge(2 * 24 * time.Hour)
+	state = readState()
+	if state.tier != "cold" || state.interval != 30*time.Minute {
+		t.Fatalf("cold tier: %+v", state)
+	}
+	setAge(8 * 24 * time.Hour)
+	state = readState()
+	if state.tier != "dormant" || state.interval != time.Hour {
+		t.Fatalf("dormant tier: %+v", state)
 	}
 
 	scanner.mu.Lock()
 	state = scanner.states[pool.ID]
+	state.lastActivity = time.Now().Add(-8 * 24 * time.Hour)
 	state.next = time.Now().Add(-time.Second)
 	scanner.states[pool.ID] = state
 	scanner.mu.Unlock()
@@ -97,11 +111,9 @@ func TestScannerAdaptiveBackoffAndPoolScan(t *testing.T) {
 		t.Fatal("pool scan request was not queued")
 	}
 	scanner.runDue(ctx)
-	scanner.mu.Lock()
-	state = scanner.states[pool.ID]
-	scanner.mu.Unlock()
-	if state.quiet != 0 || state.backoff != 20*time.Millisecond {
-		t.Fatalf("manual pool scan did not reset backoff: %+v", state)
+	state = readState()
+	if state.tier != "hot" || state.interval != 20*time.Millisecond {
+		t.Fatalf("manual pool scan did not promote: %+v", state)
 	}
 }
 

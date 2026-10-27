@@ -2313,6 +2313,10 @@
               "unsupported",
               "unbound"
             ]
+          },
+          "lastActivityAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
@@ -3247,13 +3251,27 @@
           },
           "name": {
             "type": "string"
+          },
+          "tier": {
+            "type": "string",
+            "enum": [
+              "hot",
+              "warm",
+              "cold",
+              "dormant"
+            ]
+          },
+          "lastActivityAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
           "poolId",
           "backoffSeconds",
           "quiet",
-          "nextRunInSeconds"
+          "nextRunInSeconds",
+          "tier"
         ]
       }
     },

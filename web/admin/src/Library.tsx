@@ -14,7 +14,8 @@ type Video = VideoMetadata & {
   media?: { durationSeconds: number; width: number; height: number; videoCodec: string; audioCodec: string; frameRate: number };
 };
 type PoolScanStatus = {
-  poolId: string; backoffSeconds: number; quiet: number; nextRunAt?: string; nextRunInSeconds: number;
+  poolId: string; name?: string; tier?: string; backoffSeconds: number; quiet: number;
+  lastActivityAt?: string; nextRunAt?: string; nextRunInSeconds: number;
 };
 type ScanStatus = {
   automatic: boolean; intervalSeconds: number; idleMaxSeconds: number; stableSeconds: number; running: boolean; queued: boolean;
@@ -168,7 +169,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
           {data?.scan && <>
             <p>{data.scan.automatic ? t('library.scanAutoOn', { seconds: data.scan.intervalSeconds }) : t('library.scanAutoOff')}</p>
             <p className="muted">{t('library.scanStable', { seconds: data.scan.stableSeconds })}</p>
-            <p className="muted">{t('library.scanBackoff', { seconds: data.scan.idleMaxSeconds || 0 })}</p>
+            <p className="muted">{t('library.scanBackoff', { hot: data.scan.intervalSeconds, dormant: data.scan.idleMaxSeconds || 0 })}</p>
             {data.scan.automatic && !data.scan.running && <p className="muted">{t('library.scanNext', { seconds: data.scan.nextRunInSeconds || 0 })}</p>}
           </>}
           <div className="button-row">
@@ -190,9 +191,11 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
             const status = !pool.enabled ? t('library.disabled') : pool.online ? t('library.online') : t('library.offline');
             const statusClass = !pool.enabled ? 'disabled' : pool.online ? 'online' : 'offline';
             const scanInfo = data.scan?.pools?.find(item => item.poolId === pool.id);
+            const tierLabel = (tier?: string) => tier === 'hot' ? t('scanTier.hot') : tier === 'warm' ? t('scanTier.warm')
+              : tier === 'cold' ? t('scanTier.cold') : tier === 'dormant' ? t('scanTier.dormant') : t('common.notProvided');
             const scanLabel = !pool.enabled ? t('library.poolScanDisabled')
               : !pool.online ? t('library.poolScanOffline')
-                : scanInfo ? t('library.poolScanNext', { seconds: scanInfo.nextRunInSeconds, backoff: scanInfo.backoffSeconds })
+                : scanInfo ? t('library.poolScanNext', { seconds: scanInfo.nextRunInSeconds, backoff: scanInfo.backoffSeconds, tier: tierLabel(scanInfo.tier) })
                   : t('library.poolScanWaiting');
             return <li key={pool.id} className="pool-card">
               <div className="pool-head">

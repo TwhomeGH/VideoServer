@@ -31,8 +31,10 @@ type ScanResult struct {
 type PoolScanStatus struct {
 	PoolID           string `json:"poolId"`
 	Name             string `json:"name,omitempty"`
+	Tier             string `json:"tier"`
 	BackoffSeconds   int    `json:"backoffSeconds"`
 	Quiet            int    `json:"quiet"`
+	LastActivityAt   string `json:"lastActivityAt,omitempty"`
 	NextRunAt        string `json:"nextRunAt,omitempty"`
 	NextRunInSeconds int    `json:"nextRunInSeconds"`
 }
@@ -58,10 +60,11 @@ type observation struct {
 }
 
 type poolScanState struct {
-	name    string
-	next    time.Time
-	backoff time.Duration
-	quiet   int
+	name         string
+	tier         string
+	lastActivity time.Time
+	next         time.Time
+	interval     time.Duration
 }
 
 // Scanner 以單一背景工作掃描儲存池；每個池有自己的下次執行時間與退避。
@@ -90,10 +93,10 @@ func NewScanner(store *Store, automatic bool, interval, stable time.Duration, lo
 		stable = 0
 	}
 	scanner := &Scanner{
-		store: store, logger: logger, interval: interval, idleMax: 5 * time.Minute,
+		store: store, logger: logger, interval: interval, idleMax: 6 * time.Hour,
 		stable: stable, requests: make(chan struct{}, 1), observed: map[string]observation{},
 		states: map[string]poolScanState{}, forcePool: map[string]bool{},
-		status: ScanStatus{Automatic: automatic, IntervalSeconds: int(interval / time.Second), IdleMaxSeconds: 300, StableSeconds: int(stable / time.Second)},
+		status: ScanStatus{Automatic: automatic, IntervalSeconds: int(interval / time.Second), IdleMaxSeconds: 21600, StableSeconds: int(stable / time.Second)},
 	}
 	store.scanner = scanner
 	return scanner
@@ -125,8 +128,9 @@ func (s *Scanner) Status() ScanStatus {
 			remaining = 0
 		}
 		status.Pools = append(status.Pools, PoolScanStatus{
-			PoolID: id, Name: state.name, BackoffSeconds: int(state.backoff / time.Second), Quiet: state.quiet,
-			NextRunAt: state.next.UTC().Format(time.RFC3339Nano), NextRunInSeconds: remaining,
+			PoolID: id, Name: state.name, Tier: state.tier, BackoffSeconds: int(state.interval / time.Second),
+			LastActivityAt: state.lastActivity.UTC().Format(time.RFC3339Nano),
+			NextRunAt:      state.next.UTC().Format(time.RFC3339Nano), NextRunInSeconds: remaining,
 		})
 	}
 	sort.Slice(status.Pools, func(i, j int) bool { return status.Pools[i].PoolID < status.Pools[j].PoolID })
@@ -237,7 +241,9 @@ func (s *Scanner) runDue(ctx context.Context) {
 	now := time.Now()
 	due := map[string]bool{}
 	names := map[string]string{}
+	byID := map[string]Pool{}
 	for _, pool := range pools {
+		byID[pool.ID] = pool
 		if !pool.Enabled || !pool.Online {
 			continue
 		}
@@ -281,15 +287,24 @@ func (s *Scanner) runDue(ctx context.Context) {
 	for id := range due {
 		state := s.states[id]
 		state.name = names[id]
-		if forceAll || forcePool[id] || active[id] {
-			state.quiet = 0
-			state.backoff = s.interval
-			state.next = now.Add(s.interval)
-		} else {
-			state.quiet++
-			state.backoff = nextBackoff(state.backoff, s.interval, s.idleMax)
-			state.next = now.Add(state.backoff)
+		lastActivity := state.lastActivity
+		if lastActivity.IsZero() {
+			if parsed, err := time.Parse(time.RFC3339Nano, byID[id].LastActivityAt); err == nil {
+				lastActivity = parsed
+			}
 		}
+		if lastActivity.IsZero() {
+			lastActivity = now
+		}
+		if forceAll || forcePool[id] || active[id] {
+			lastActivity = now
+			if err := s.store.touchPoolActivity(id, now); err != nil {
+				s.logger.Error("更新儲存池活動時間失敗", "poolId", id, "error", err)
+			}
+		}
+		state.tier, state.interval = scanTier(now, lastActivity, s.interval, s.idleMax)
+		state.lastActivity = lastActivity
+		state.next = now.Add(state.interval)
 		s.states[id] = state
 	}
 	s.status.Last = &result
@@ -328,21 +343,32 @@ func (s *Scanner) updateNextLocked(pools []Pool) {
 	s.status.NextRunAt = next.UTC().Format(time.RFC3339Nano)
 }
 
-func nextBackoff(current, base, max time.Duration) time.Duration {
+func scanTier(now, lastActivity time.Time, base, idleMax time.Duration) (string, time.Duration) {
 	if base <= 0 {
 		base = 30 * time.Second
 	}
-	if max < base {
-		max = base
+	warm := 5 * time.Minute
+	if warm < base {
+		warm = base
 	}
-	if current < base {
-		current = base
+	cold := 30 * time.Minute
+	if cold < base {
+		cold = base
 	}
-	next := current * 2
-	if next > max {
-		next = max
+	dormant := idleMax
+	if dormant < cold {
+		dormant = cold
 	}
-	return next
+	if lastActivity.IsZero() || now.Sub(lastActivity) < time.Hour {
+		return "hot", base
+	}
+	if now.Sub(lastActivity) < 24*time.Hour {
+		return "warm", warm
+	}
+	if now.Sub(lastActivity) < 7*24*time.Hour {
+		return "cold", cold
+	}
+	return "dormant", dormant
 }
 
 func (r *ScanResult) failure(err error) {

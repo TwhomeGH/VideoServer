@@ -58,7 +58,7 @@ func LoadConfig(path string, port int, service ...string) (Config, error) {
 			}
 		}
 	}
-	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, ScanIdleMaxSeconds: 300, FileStableSeconds: 10, AutoBackfill: false, BackfillIntervalSeconds: 60, BackfillDailyLimit: 50, BackfillDailyGiB: 20, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", ProbeTimeoutSeconds: 60}
+	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, ScanIdleMaxSeconds: 21600, FileStableSeconds: 10, AutoBackfill: false, BackfillIntervalSeconds: 60, BackfillDailyLimit: 50, BackfillDailyGiB: 20, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", ProbeTimeoutSeconds: 60}
 	if path != "" {
 		file, err := os.Open(path)
 		if err != nil {
@@ -244,7 +244,7 @@ func (c Config) Validate() error {
 	if c.ScanIntervalSeconds < 1 || c.ScanIntervalSeconds > 86400 || c.FileStableSeconds < 1 || c.FileStableSeconds > 86400 {
 		return fmt.Errorf("掃描間隔與檔案穩定秒數須介於 1 到 86400")
 	}
-	if c.ScanIdleMaxSeconds < 10 || c.ScanIdleMaxSeconds > 86400 {
+	if c.ScanIdleMaxSeconds < 1800 || c.ScanIdleMaxSeconds > 86400 {
 		return fmt.Errorf("掃描閒置上限必須介於 10 到 86400")
 	}
 	if c.BackfillIntervalSeconds < 10 || c.BackfillIntervalSeconds > 86400 {

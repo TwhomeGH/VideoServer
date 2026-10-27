@@ -94,7 +94,7 @@ export function Settings({ service }: { service?: string }) {
       throw new Error(t('settings.errFileStable'));
     }
     const scanIdleMaxSeconds = Number(form.scanIdleMaxSeconds);
-    if (!Number.isInteger(scanIdleMaxSeconds) || scanIdleMaxSeconds < 10 || scanIdleMaxSeconds > 86400) {
+    if (!Number.isInteger(scanIdleMaxSeconds) || scanIdleMaxSeconds < 1800 || scanIdleMaxSeconds > 86400) {
       throw new Error(t('settings.errScanIdleMax'));
     }
     const backfillIntervalSeconds = Number(form.backfillIntervalSeconds);
@@ -210,7 +210,7 @@ export function Settings({ service }: { service?: string }) {
           <fieldset className="settings-group"><legend>{t('settings.scanGroup')}</legend>
             <label className="checkbox-label"><input type="checkbox" checked={form.autoScan} onChange={event => patch({ autoScan: event.target.checked })} />{t('settings.autoScan')}</label>
             <label>{t('settings.scanInterval')}<input type="number" min={1} max={86400} value={form.scanIntervalSeconds} onChange={event => patch({ scanIntervalSeconds: event.target.value })} /></label>
-            <label>{t('settings.scanIdleMax')}<input type="number" min={10} max={86400} value={form.scanIdleMaxSeconds} onChange={event => patch({ scanIdleMaxSeconds: event.target.value })} /></label>
+            <label>{t('settings.scanIdleMax')}<input type="number" min={1800} max={86400} value={form.scanIdleMaxSeconds} onChange={event => patch({ scanIdleMaxSeconds: event.target.value })} /></label>
             <p className="muted">{t('settings.scanIdleMaxHint')}</p>
             <label>{t('settings.fileStable')}<input type="number" min={1} max={86400} value={form.fileStableSeconds} onChange={event => patch({ fileStableSeconds: event.target.value })} /></label>
           </fieldset>
