@@ -221,7 +221,10 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
               </div>
             </li>;
           })}</ul>
-          <p className="muted scan-tier-legend">{t('scanTier.legend')}</p>
+          <div className="muted scan-tier-legend">
+            <span>{t('scanTier.legendHot')}</span><span>{t('scanTier.legendWarm')}</span>
+            <span>{t('scanTier.legendCold')}</span><span>{t('scanTier.legendDormant')}</span>
+          </div>
         </section>
         <section><h2>{t('library.addPoolTitle')}</h2><p className="muted">{t('library.addPoolIntro')}</p>
           <form onSubmit={event => { event.preventDefault(); void submit(async () => {

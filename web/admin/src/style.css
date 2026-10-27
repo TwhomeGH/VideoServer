@@ -55,7 +55,8 @@ dd { margin:0; overflow-wrap:anywhere; }
 .tier-badge.warm { color:var(--tier-warm); }
 .tier-badge.cold { color:var(--tier-cold); }
 .tier-badge.dormant { color:var(--muted); }
-.scan-tier-legend { margin:10px 0 0; font-size:.78rem; }
+.scan-tier-legend { display:flex; flex-wrap:wrap; gap:4px 14px; margin:10px 0 0; font-size:.78rem; }
+.scan-tier-legend span { white-space:nowrap; }
 .confirm-panel { display:grid; gap:12px; margin-top:16px; padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--bg); }
 .confirm-panel p { margin:0; }
 .notice { color:var(--accent); }
@@ -176,16 +177,17 @@ body:has(dialog[open]) { overflow:hidden; }
 .monitor-dashboard>section, .monitor-side>section { margin-bottom:0; }
 .monitor-side { display:grid; gap:24px; align-content:start; }
 .monitor-scans { list-style:none; margin:12px 0 0; padding:0; }
-.monitor-scans li { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 16px; padding:10px 0; border-bottom:1px solid var(--line); }
+.monitor-scans li { display:grid; grid-template-columns:1fr; gap:4px; padding:10px 0; border-bottom:1px solid var(--line); }
 .monitor-scans li:last-child { border-bottom:0; }
 .monitor-scans strong { overflow-wrap:anywhere; }
-.monitor-scans span { text-align:right; }
-.monitor-scan-meta { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
+.monitor-scans span { text-align:left; }
+.monitor-scan-head { display:flex; align-items:center; gap:8px; min-width:0; }
+.monitor-scan-head strong { overflow-wrap:anywhere; }
+.monitor-scan-meta { display:flex; align-items:center; justify-content:flex-start; gap:8px; flex-wrap:wrap; text-align:left; }
 .monitor-scan-activity { grid-column:1/-1; font-size:.76rem; }
 .monitor-scans .monitor-scan-activity { text-align:left; }
 @media(min-width:1000px) { .monitor-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media(max-width:900px) { .monitor-dashboard { grid-template-columns:1fr; } }
-@media(max-width:500px) { .monitor-scans li { grid-template-columns:1fr; } .monitor-scans span { text-align:left; white-space:normal; } .monitor-scan-meta { justify-content:flex-start; } }
 .metric-value { font-size: 1.7rem; font-weight: 700; margin-block: .5rem; }
 .monitor-trend { display: block; width: 100%; height: 65px; }
 .monitor-jobs { list-style: none; padding: 0; display: grid; gap: 1rem; }

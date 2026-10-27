@@ -150,13 +150,16 @@ export function Monitor() {
               <ul className="monitor-scans">
                 {data.tasks.scan.pools?.length
                   ? data.tasks.scan.pools.map(item => <li key={item.poolId}>
-                    <strong>{item.name || item.poolId}</strong>
-                    <span className="monitor-scan-meta"><ScanTierBadge tier={item.tier} lastActivityAt={item.lastActivityAt} /><span className="muted">{t('monitor.scanPoolNext', { duration: formatDuration(item.nextRunInSeconds, t) })}{t('common.dot')}{t('monitor.scanPoolBackoff', { duration: formatDuration(item.backoffSeconds, t) })}</span></span>
+                    <div className="monitor-scan-head"><strong>{item.name || item.poolId}</strong><ScanTierBadge tier={item.tier} lastActivityAt={item.lastActivityAt} /></div>
+                    <span className="monitor-scan-meta muted">{t('monitor.scanPoolNext', { duration: formatDuration(item.nextRunInSeconds, t) })}{t('common.dot')}{t('monitor.scanPoolBackoff', { duration: formatDuration(item.backoffSeconds, t) })}</span>
                     <span className="monitor-scan-activity muted">{scanTierActivity(item.tier, item.lastActivityAt, t, locale)}</span>
                   </li>)
                   : <li className="muted">{t('monitor.scanNoPools')}</li>}
               </ul>
-              <p className="muted scan-tier-legend">{t('scanTier.legend')}</p>
+              <div className="muted scan-tier-legend">
+                <span>{t('scanTier.legendHot')}</span><span>{t('scanTier.legendWarm')}</span>
+                <span>{t('scanTier.legendCold')}</span><span>{t('scanTier.legendDormant')}</span>
+              </div>
             </section>
             <section><h2>{t('monitor.backfillTitle')}</h2>
               {data.tasks.backfill.enabled

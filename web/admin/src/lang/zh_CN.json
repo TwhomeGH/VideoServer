@@ -449,7 +449,6 @@
   "duration.unitMinutes": "分",
   "duration.unitHours": "小时",
   "duration.unitDays": "天",
-  "scanTier.legend": "热：1 小时内 · 暖：1–6 小时 5 分、6–24 小时 15 分 · 冷：1–7 天 30 分 · 休眠：超过 7 天",
   "scanTier.lastActivity": "上次活动 {time}",
   "scanTier.noActivity": "尚无活动纪录",
   "scanTier.turnWarm": "约 {time} 转暖",
@@ -457,5 +456,9 @@
   "scanTier.turnDormant": "约 {time} 转休眠",
   "scanTier.transitionNote": "实际于下次扫描时判定",
   "scanTier.stayDormant": "休眠：不再自动降级",
-  "scanTier.warmStep": "约 {time} 间隔改 15 分"
+  "scanTier.warmStep": "约 {time} 间隔改 15 分",
+  "scanTier.legendHot": "热 <1 小时",
+  "scanTier.legendWarm": "暖 1–6 小时 5 分、6–24 小时 15 分",
+  "scanTier.legendCold": "冷 1–7 天 30 分",
+  "scanTier.legendDormant": "休眠 >7 天"
 }

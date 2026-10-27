@@ -449,7 +449,6 @@
   "duration.unitMinutes": "minutes",
   "duration.unitHours": "hours",
   "duration.unitDays": "days",
-  "scanTier.legend": "Hot: under 1h · Warm: 1–6h 5m, 6–24h 15m · Cold: 1–7d 30m · Dormant: over 7d",
   "scanTier.lastActivity": "Last activity {time}",
   "scanTier.noActivity": "No activity recorded",
   "scanTier.turnWarm": "becomes warm around {time}",
@@ -457,5 +456,9 @@
   "scanTier.turnDormant": "becomes dormant around {time}",
   "scanTier.transitionNote": "effective at the next scan",
   "scanTier.stayDormant": "dormant: no automatic demotion",
-  "scanTier.warmStep": "interval becomes 15m around {time}"
+  "scanTier.warmStep": "interval becomes 15m around {time}",
+  "scanTier.legendHot": "Hot <1h",
+  "scanTier.legendWarm": "Warm 1–6h 5m, 6–24h 15m",
+  "scanTier.legendCold": "Cold 1–7d 30m",
+  "scanTier.legendDormant": "Dormant >7d"
 }
