@@ -18,8 +18,14 @@ func (q *ImportQueue) EnqueueProbe(ctx context.Context, videoID string) (ImportJ
 	if err != nil {
 		return ImportJob{}, err
 	}
-	if _, err := q.store.poolPath(video.PoolID); err != nil {
+	pool, err := q.store.poolByID(video.PoolID)
+	if err != nil {
 		return ImportJob{}, err
+	}
+	if pool.Provider != "webdav" {
+		if _, err := q.store.poolPath(video.PoolID); err != nil {
+			return ImportJob{}, err
+		}
 	}
 	key := "reprobe:" + video.ID
 	now := timestamp()
@@ -42,6 +48,9 @@ func (q *ImportQueue) processProbe(ctx context.Context, job ImportJob) error {
 	video, err := q.store.video(job.VideoID)
 	if err != nil {
 		return err
+	}
+	if video.Provider == "webdav" {
+		return q.processRemoteProbe(ctx, job, video)
 	}
 	file, err := q.store.openVideo(video)
 	if err != nil {

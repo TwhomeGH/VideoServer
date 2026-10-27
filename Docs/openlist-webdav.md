@@ -32,13 +32,14 @@ curl -D - -o NUL -u USER:PASS -H "Range: bytes=0-1023" \
 
 「找到的影片」的 WebDAV 項目可按「播放」，由 DVN 代理 WebDAV Range 請求；瀏覽器只看到 DVN 的 `/api/v1/discovered/content`，不會取得 OpenList 帳密。支援 `Range` 與 `HEAD`，可直接回 206。
 
-遠端項目可按「加入書庫」建立 library 參考，不下載副本。DVN 會嘗試從 OpenList 的 `hash_info` 取得 SHA-256；有合法值就標記已驗證，否則標記未驗證。未驗證影片可手動按「驗證 SHA-256」，DVN 會在背景串流完整檔案計算，不落地保存。
+遠端項目可按「加入書庫」建立 library 參考，不下載副本；加入後會排入遠端 FFprobe，取得片長／解析度／編碼。DVN 會嘗試從 OpenList 的 `hash_info` 取得 SHA-256；有合法值就標記已驗證，否則標記未驗證。未驗證影片可手動按「驗證 SHA-256」，DVN 會在背景串流完整檔案計算，不落地保存，並套用 `hashLimitMiBps`。
 
 目前遠端池限制：
 
 - 加入書庫是遠端參考，不下載副本；OpenList 離線時影片不可用。
 - OpenList 不一定提供 SHA-256；沒有時需手動背景驗證，驗證會讀取完整檔案。
-- 遠端影片目前沒有 FFprobe 技術資訊，也尚未套用 `hashLimitMiBps`。
+- 背景驗證還沒有進度百分比或取消。
+- 遠端 FFprobe 由 Video Node 直接讀取 WebDAV；憑證只放在 FFprobe 參數，不寫入日誌。
 - 不啟用 OS watcher，完全依賴輪詢。
 - Basic Auth；正式環境請用 HTTPS。
 - 憑證存在 `<dataDirectory>/webdav-secrets.json`（0600），不會出現在 pool API 回應。
@@ -51,6 +52,5 @@ Video Node 容器必須能連到 OpenList。若 OpenList 在 Docker 主機上，
 
 ## 後續
 
-- 遠端 FFprobe／技術資訊與 `hashLimitMiBps` 限速。
 - 遠端檔案身分、etag／mtime 與 rename 策略。
 - 可設定的遠端掃描間隔與 TLS 憑證政策。

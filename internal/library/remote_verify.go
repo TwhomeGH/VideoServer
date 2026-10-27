@@ -8,6 +8,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"time"
 )
 
 // VerifyRemoteVideo 啟動背景 SHA-256 驗證；不保存下載內容。
@@ -70,7 +71,11 @@ func (s *Store) verifyRemoteVideo(id string) {
 	}
 	defer response.Body.Close()
 	hasher := sha256.New()
-	if _, err := io.Copy(hasher, response.Body); err != nil {
+	reader := io.Reader(response.Body)
+	if s.hashLimitBytesPerSecond > 0 {
+		reader = &throttledReader{reader: reader, bytesPerSecond: s.hashLimitBytesPerSecond, started: time.Now()}
+	}
+	if _, err := io.Copy(hasher, reader); err != nil {
 		s.setHashStatus(id, "failed")
 		return
 	}
@@ -81,6 +86,25 @@ func (s *Store) verifyRemoteVideo(id string) {
 		return
 	}
 	s.publish("jobs")
+}
+
+type throttledReader struct {
+	reader         io.Reader
+	bytesPerSecond int64
+	started        time.Time
+	read           int64
+}
+
+func (r *throttledReader) Read(p []byte) (int, error) {
+	n, err := r.reader.Read(p)
+	r.read += int64(n)
+	if r.bytesPerSecond > 0 && r.read > 0 {
+		expected := time.Duration(float64(r.read) / float64(r.bytesPerSecond) * float64(time.Second))
+		if elapsed := time.Since(r.started); elapsed < expected {
+			time.Sleep(expected - elapsed)
+		}
+	}
+	return n, err
 }
 
 func (s *Store) setHashStatus(id, status string) {

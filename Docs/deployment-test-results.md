@@ -81,6 +81,17 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## WebDAV 遠端 FFprobe 驗收
+
+2026-10-28 在 `dvn-testing`（image 來源 `b8e606d41b1c`）驗證：
+
+- 163 MB WebDAV 影片 reprobe 回 202，背景完成。
+- 技術資訊：1552×1080、HEVC/AAC、541.19 秒。
+- 影片卡由「尚無影片技術資訊」變成可讀摘要；遠端重讀按鈕可用。
+- 背景 SHA-256 已改走 `hashLimitMiBps` 節流；不落地保存。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：驗證仍無進度或取消。
+
 ## WebDAV 遠端加入書庫與驗證
 
 2026-10-28 在 `dvn-testing`（image 來源 `dd75f30ada49`）驗證：

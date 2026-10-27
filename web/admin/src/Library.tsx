@@ -173,7 +173,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
         <button disabled={!video.available} title={!video.available ? availability : undefined} onClick={() => setSelected(video)}>{t('library.play')}</button>
         <button disabled={busy} onClick={() => { setEditing(video); setEditDraft({ ...video }); }}>{t('library.edit')}</button>
         {video.provider === 'webdav' && video.hashStatus !== 'verified' && <button disabled={busy || video.hashStatus === 'pending'} onClick={() => void submit(async () => { await request(`videos/${video.id}/verify`, {}); })}>{video.hashStatus === 'pending' ? t('library.verifying') : t('library.verifyHash')}</button>}
-        <button disabled={busy || !video.available || video.provider === 'webdav' || data.jobs.some(job => job.source === 'reprobe' && job.videoId === video.id && (job.status === 'queued' || job.status === 'running'))} title={!video.available ? availability : undefined} onClick={() => void submit(async () => {
+        <button disabled={busy || !video.available || data.jobs.some(job => job.source === 'reprobe' && job.videoId === video.id && (job.status === 'queued' || job.status === 'running'))} title={!video.available ? availability : undefined} onClick={() => void submit(async () => {
           await request<ImportJob>(`videos/${video.id}/probe`, {});
           window.location.hash = 'jobs';
         })}>{t('library.reprobe')}</button>

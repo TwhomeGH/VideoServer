@@ -56,6 +56,8 @@ type ImportQueue struct {
 	wake               chan struct{}
 	logger             *slog.Logger
 	probe              func(context.Context, string) (media.Info, error)
+	ffprobePath        string
+	probeTimeout       time.Duration
 	backfillSkipped    map[string]struct{}
 	backfillMu         sync.Mutex
 	backfill           BackfillStatus
@@ -72,7 +74,7 @@ func NewImportQueue(store *Store, ffprobePath string, timeout time.Duration, log
 	if _, err := store.db.Exec(`UPDATE import_jobs SET status='queued',phase='queued',bytes_processed=0,error='',updated_at=? WHERE status='running'`, timestamp()); err != nil {
 		return nil, err
 	}
-	queue := &ImportQueue{store: store, wake: make(chan struct{}, 1), logger: logger, backfillSkipped: map[string]struct{}{}, probe: func(ctx context.Context, path string) (media.Info, error) {
+	queue := &ImportQueue{store: store, wake: make(chan struct{}, 1), logger: logger, backfillSkipped: map[string]struct{}{}, ffprobePath: ffprobePath, probeTimeout: timeout, probe: func(ctx context.Context, path string) (media.Info, error) {
 		return media.Probe(ctx, path, ffprobePath, timeout)
 	}}
 	store.queue = queue

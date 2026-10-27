@@ -2,6 +2,43 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 05:20 WebDAV 遠端 FFprobe 與驗證限速
+
+**類型**: 改善
+
+**檔案**:
+
+- `internal/media/probe.go`
+- `internal/library/remote_probe.go`
+- `internal/library/remote_verify.go`
+- `internal/library/remote_import.go`
+- `internal/library/reprobe.go`
+- `internal/library/jobs.go`
+- `web/admin/src/Library.tsx`
+
+### 問題
+
+- 遠端 library 影片加入後沒有片長／解析度／編碼
+- 遠端影片的重新讀取被停用
+- 背景 SHA-256 沒有使用 `hashLimitMiBps`
+
+### 修改
+
+- FFprobe 新增遠端 URL 模式，使用 HTTP Range 與 Basic header；不先下載完整檔案。
+- 遠端加入書庫後自動排入 reprobe；WebDAV 影片可按「重新讀取影片資訊」。
+- FFprobe 直接讀取 WebDAV，成功後寫入 `video_media`。
+- 背景 SHA-256 套用 `hashLimitMiBps`；仍不落地保存。
+- API 文件與 OpenList 文件同步。
+
+### 驗證
+
+- 163 MB WebDAV 影片 reprobe 成功：1552×1080、HEVC/AAC、9:01。
+- 完成後影片卡顯示技術資訊；未 probe 的遠端影片可按按鈕補齊。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：背景驗證仍無進度百分比與取消。
+
+---
+
 ## 2026.10.28 05:05 WebDAV 遠端加入書庫與 SHA-256 驗證
 
 **類型**: 功能

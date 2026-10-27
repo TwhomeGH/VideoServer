@@ -77,7 +77,9 @@ npx --yes @redocly/cli lint pkg/protocol/openapi.json --extends=minimal
 
 `GET /api/v1/discovered/content?poolId=...&path=...` 代理 WebDAV 影片；支援 `Range` 與 `HEAD`，回 200／206，路徑必須是目前 discovery 清單中的項目。瀏覽器不會取得 WebDAV 帳密。
 
-`POST /api/v1/videos/{id}/verify` 對未驗證的 WebDAV library 影片啟動背景 SHA-256；回 202，完成後 `hashStatus=verified`。遠端檔案不會落地保存。
+`POST /api/v1/videos/{id}/verify` 對未驗證的 WebDAV library 影片啟動背景 SHA-256；回 202，完成後 `hashStatus=verified`。遠端檔案不會落地保存，會套用 `hashLimitMiBps`。
+
+`POST /api/v1/videos/{id}/probe` 也支援 WebDAV 影片；FFprobe 直接讀取 Range/HTTP，不需要先下載完整檔案。
 
 ## SSE 事件串流
 

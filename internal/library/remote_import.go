@@ -68,6 +68,9 @@ func (s *Store) ImportRemoteVideo(ctx context.Context, poolID, relative, title s
 	if err := tx.Commit(); err != nil {
 		return result, err
 	}
+	if s.queue != nil {
+		_, _ = s.queue.EnqueueProbe(context.Background(), result.ID)
+	}
 	s.publish("jobs")
 	return result, nil
 }
