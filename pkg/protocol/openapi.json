@@ -869,13 +869,43 @@
                   },
                   "path": {
                     "type": "string"
+                  },
+                  "provider": {
+                    "type": "string",
+                    "enum": [
+                      "local",
+                      "webdav"
+                    ]
+                  },
+                  "url": {
+                    "type": "string"
+                  },
+                  "username": {
+                    "type": "string"
+                  },
+                  "password": {
+                    "type": "string"
+                  },
+                  "root": {
+                    "type": "string"
                   }
                 },
                 "required": [
-                  "name",
-                  "path"
+                  "name"
                 ],
-                "additionalProperties": false
+                "additionalProperties": false,
+                "anyOf": [
+                  {
+                    "required": [
+                      "path"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "url"
+                    ]
+                  }
+                ]
               },
               "examples": {
                 "Docker或Linux": {
@@ -2550,6 +2580,18 @@
           },
           "indexOnly": {
             "type": "boolean"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "remoteUrl": {
+            "type": "string"
+          },
+          "remoteUser": {
+            "type": "string"
+          },
+          "remoteRoot": {
+            "type": "string"
           }
         },
         "required": [
@@ -2560,7 +2602,8 @@
           "enabled",
           "scanExcludeSystem",
           "wholeDisk",
-          "indexOnly"
+          "indexOnly",
+          "provider"
         ]
       },
       "ImportJob": {
@@ -3543,6 +3586,9 @@
           },
           "lastSeen": {
             "type": "string"
+          },
+          "provider": {
+            "type": "string"
           }
         },
         "required": [
@@ -3552,7 +3598,8 @@
           "size",
           "modifiedAt",
           "firstSeen",
-          "lastSeen"
+          "lastSeen",
+          "provider"
         ]
       },
       "DiscoveredPage": {

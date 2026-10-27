@@ -2,7 +2,7 @@
 
 目前採 [OpenAPI 3.1.1](https://spec.openapis.org/oas/v3.1.1.html)，來源為 [openapi.json](../../pkg/protocol/openapi.json)。文件覆蓋現有登入、設定、重啟、監看，以及 Video Node 的影片、儲存池、掃描與背景工作。
 
-登入後開啟「API 文件與測試」（網址分頁 `#api`），即可使用內建 Swagger UI；「服務資訊」也提供入口。原始 `/api/v1/openapi.json` 保留供工具使用。服務回傳嵌入該次建置的規格，不依賴開發目錄或網際網路。Central 與 Worker 的規格會移除 Video Node 專屬路由與空分組，未實作的聯邦、派工與 SSE 不會被公告為可用。
+登入後開啟「API 文件與測試」（網址分頁 `#api`），即可使用內建 Swagger UI；「服務資訊」也提供入口。原始 `/api/v1/openapi.json` 保留供工具使用。服務回傳嵌入該次建置的規格，不依賴開發目錄或網際網路。Central 與 Worker 的規格會移除 Video Node 專屬路由與空分組，未實作的聯邦與派工不會被公告為可用；SSE 已公告。
 
 ## 互動參考頁與測試
 
@@ -68,6 +68,8 @@ npx --yes @redocly/cli lint pkg/protocol/openapi.json --extends=minimal
 ```
 
 新增或修改 API 時，需同步更新規格、能力公告及契約測試。新增可選欄位通常可保留協定 v1；改變欄位語意、移除欄位、改動必要授權／工作流程等破壞相容性的變更，須先安排新協定與遷移策略。
+
+`POST /api/v1/pools` 支援本機目錄與 WebDAV：本機用 `{ "name", "path" }`；WebDAV 用 `{ "name", "provider": "webdav", "url", "username", "password", "root" }`，其中 `root` 是 `/dav` 下的子目錄。WebDAV 池固定 index-only，遠端匯入尚未支援。回應不會包含密碼。
 
 ## Index-only 找到的影片
 

@@ -81,6 +81,18 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## OpenList WebDAV index-only 驗收
+
+2026-10-28 在 `dvn-testing`（image 來源 `1f05f2652558`）驗證：
+
+- `http://192.168.0.102:5244/dav` 以 guest 帳號 PROPFIND 回 207，列出 Video5 檔案。
+- 影片 HEAD 回 200、`Accept-Ranges: bytes`；Range 回 206。
+- 建立 WebDAV 池（root `Video5`）後，`/discovered` 出現 654 部影片；`/import-jobs` 沒有遠端工作。
+- 遠端池固定 index-only，掃描間隔 300 秒；watcher 顯示「WebDAV 池使用輪詢」。
+- 重啟後遠端池與 credentials 仍在；UI 顯示 WebDAV URL 與「WebDAV（僅索引）」。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：尚未做遠端播放／匯入；guest 憑證只用於測試。
+
 ## 檔案監聽與 9p 降級驗收
 
 2026-10-28 在 `dvn-testing`（image 來源 `978f0e4bfc91`）驗證：

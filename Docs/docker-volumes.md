@@ -175,5 +175,5 @@ docker compose exec -T video-node ls -ld /storage/h-video
 ```
 
 若仍失敗，先檢查修改的是測試還是根目錄 Compose、是否已執行 up、source 是否存在及容器讀取權限。服務使用 UID/GID 10001，Linux 主機目錄需讓該身分可讀且可進入。
-NAS／網路映射磁碟／OpenList 虛擬磁碟，即使主機能瀏覽，也要額外確認 Docker Desktop 的引擎能掛載；目前 DVN 不會自動把遠端網址轉成目錄，也尚無原生 WebDAV 儲存池。
+NAS／網路映射磁碟／OpenList 虛擬磁碟，即使主機能瀏覽，也要額外確認 Docker Desktop 的引擎能掛載。DVN 現在有原生唯讀 WebDAV 儲存池（僅索引），不需要把 OpenList 先掛成 Windows 磁碟；設定方式見 [OpenList／WebDAV](openlist-webdav.md)。
 卸載或移除已註冊池的掛載會讓原有索引顯示離線，不代表影片已刪除。NodeID 與索引保存在 /data 資料卷，請保留原本 node-data 掛載。儲存池可停用；停用後不掃描、不匯入、不播放，但影片索引與描述會保留，影片會標示所屬池已停用。

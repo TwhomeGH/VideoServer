@@ -101,13 +101,24 @@ func (s *Store) Register(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("POST /api/v1/pools", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
-			Name string `json:"name"`
-			Path string `json:"path"`
+			Name     string `json:"name"`
+			Path     string `json:"path"`
+			Provider string `json:"provider"`
+			URL      string `json:"url"`
+			Username string `json:"username"`
+			Password string `json:"password"`
+			Root     string `json:"root"`
 		}
 		if !decode(w, r, &request) {
 			return
 		}
-		pool, err := s.AddPool(request.Name, request.Path)
+		var pool Pool
+		var err error
+		if request.Provider == "webdav" || (request.Provider == "" && request.URL != "") {
+			pool, err = s.AddRemotePool(request.Name, request.URL, request.Username, request.Password, request.Root)
+		} else {
+			pool, err = s.AddPool(request.Name, request.Path)
+		}
 		if err != nil {
 			failure(w, 400, "無法註冊目錄：請確認路徑、權限與是否已註冊")
 			return
@@ -188,6 +199,15 @@ func (s *Store) Register(mux *http.ServeMux) {
 			}
 		}
 		if request.IndexOnly != nil {
+			current, lookupErr := s.poolByID(id)
+			if lookupErr != nil {
+				failure(w, 404, "找不到儲存池")
+				return
+			}
+			if current.Provider == "webdav" && !*request.IndexOnly {
+				failure(w, 400, "WebDAV 池目前僅支援 index-only")
+				return
+			}
 			pool, err = s.SetPoolIndexOnly(id, *request.IndexOnly)
 			if err != nil {
 				if errors.Is(err, sql.ErrNoRows) {
@@ -328,6 +348,15 @@ func (s *Store) Register(mux *http.ServeMux) {
 			jobs := []ImportJob{}
 			errorsList := []string{}
 			for _, item := range request.Items {
+				pool, lookupErr := s.poolByID(item.PoolID)
+				if lookupErr != nil {
+					errorsList = append(errorsList, "找不到儲存池")
+					continue
+				}
+				if pool.Provider == "webdav" {
+					errorsList = append(errorsList, "WebDAV 池目前僅支援索引，尚未支援匯入")
+					continue
+				}
 				job, added, err := s.queue.Enqueue(r.Context(), item.PoolID, item.RelativePath, "", "manual", Metadata{})
 				if err != nil {
 					errorsList = append(errorsList, err.Error())

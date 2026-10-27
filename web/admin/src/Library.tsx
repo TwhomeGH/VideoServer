@@ -10,7 +10,7 @@ import type { Page } from './navigation';
 import { ImportJobs, type ImportJob } from './ImportJobs';
 import { VideoFilters, defaultVideoFilters } from './VideoFilters';
 
-type Pool = { id: string; name: string; path: string; online: boolean; enabled: boolean; scanExcludeSystem: boolean; indexOnly: boolean; wholeDisk: boolean; filesystem?: string; volumeId?: string; volumeStatus?: string };
+type Pool = { id: string; name: string; path: string; online: boolean; enabled: boolean; scanExcludeSystem: boolean; indexOnly: boolean; provider: string; remoteUrl?: string; remoteUser?: string; remoteRoot?: string; wholeDisk: boolean; filesystem?: string; volumeId?: string; volumeStatus?: string };
 type Video = VideoMetadata & {
   id: string; title: string; poolId: string; size: number; fileHash: string;
   available: boolean; unavailableReason?: string; importedAt: string;
@@ -62,7 +62,12 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
   const [loadError, setLoadError] = useState('');
   const [busy, setBusy] = useState(false);
   const [name, setName] = useState('');
+  const [provider, setProvider] = useState<'local' | 'webdav'>('local');
   const [root, setRoot] = useState('');
+  const [remoteUrl, setRemoteUrl] = useState('');
+  const [remoteUser, setRemoteUser] = useState('');
+  const [remotePassword, setRemotePassword] = useState('');
+  const [remoteRoot, setRemoteRoot] = useState('');
   const [poolId, setPoolId] = useState('');
   const [path, setPath] = useState('');
   const [draft, setDraft] = useState<VideoMetadata>(emptyMetadata);
@@ -215,7 +220,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
                 <span className={`state-badge ${statusClass}`}>{status}</span>
               </div>
               <dl className="pool-meta">
-                <div><dt>{t('library.poolPathLabel')}</dt><dd><code>{pool.path}</code></dd></div>
+                <div><dt>{pool.provider === 'webdav' ? t('library.webdavUrl') : t('library.poolPathLabel')}</dt><dd><code>{pool.provider === 'webdav' ? pool.remoteUrl : pool.path}</code></dd></div>
                 <div><dt>{t('library.filesystem')}</dt><dd>{pool.filesystem || t('common.notProvided')}</dd></div>
                 <div><dt>{t('library.volumeGuid')}</dt><dd>{pool.volumeId
                   ? <code className="volume-id" title={pool.volumeId}>{pool.volumeId}</code>
@@ -236,7 +241,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
                     {pool.wholeDisk && <p className="muted">{t('library.wholeDiskWarning')}</p>}
                   </div>
                   <div><strong>{t('library.indexOnly')}</strong>
-                    <label className="checkbox-label"><input type="checkbox" checked={pool.indexOnly} disabled={busy}
+                    <label className="checkbox-label"><input type="checkbox" checked={pool.indexOnly || pool.provider === 'webdav'} disabled={busy || pool.provider === 'webdav'}
                       onChange={() => void submit(async () => { await request<Pool>(`pools/${pool.id}`, { indexOnly: !pool.indexOnly }, 'PATCH'); })} />{t('library.indexOnlyLabel')}</label>
                     <p className="muted">{t('library.indexOnlyHint')}</p>
                   </div>
@@ -262,12 +267,22 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
           <div className="modal-heading"><h2>{t('library.addPoolTitle')}</h2><button type="button" onClick={() => addDialog.current?.close()}>{t('common.cancel')}</button></div>
           <p className="muted">{t('library.addPoolIntro')}</p>
           <form className="form-stack" onSubmit={event => { event.preventDefault(); void submit(async () => {
-            const pool = await request<Pool>('pools', { name, path: root });
-            setPoolId(pool.id); setName(''); setRoot('');
+            const pool = await request<Pool>('pools', provider === 'webdav'
+              ? { name, provider, url: remoteUrl, username: remoteUser, password: remotePassword, root: remoteRoot }
+              : { name, path: root });
+            setPoolId(pool.id); setName(''); setRoot(''); setRemoteUrl(''); setRemoteUser(''); setRemotePassword(''); setRemoteRoot('');
             addDialog.current?.close();
           }); }}>
             <label>{t('library.poolName')}<input required value={name} onChange={event => setName(event.target.value)} placeholder={t('library.poolNamePlaceholder')} /></label>
-            <label>{t('library.poolPath')}<input required value={root} onChange={event => setRoot(event.target.value)} placeholder={t('library.poolPathPlaceholder')} /></label>
+            <label>{t('library.poolProvider')}<select value={provider} onChange={event => setProvider(event.target.value as 'local' | 'webdav')}><option value="local">{t('library.providerLocal')}</option><option value="webdav">{t('library.providerWebdav')}</option></select></label>
+            {provider === 'local'
+              ? <label>{t('library.poolPath')}<input required value={root} onChange={event => setRoot(event.target.value)} placeholder={t('library.poolPathPlaceholder')} /></label>
+              : <>
+                <label>{t('library.webdavUrl')}<input required type="url" value={remoteUrl} onChange={event => setRemoteUrl(event.target.value)} placeholder={t('library.webdavUrlPlaceholder')} /></label>
+                <label>{t('library.webdavRoot')}<input value={remoteRoot} onChange={event => setRemoteRoot(event.target.value)} placeholder={t('library.webdavRootPlaceholder')} /></label>
+                <label>{t('library.webdavUser')}<input value={remoteUser} onChange={event => setRemoteUser(event.target.value)} autoComplete="username" /></label>
+                <label>{t('library.webdavPassword')}<input type="password" value={remotePassword} onChange={event => setRemotePassword(event.target.value)} autoComplete="current-password" /></label>
+              </>}
             <button disabled={busy}>{t('library.registerPool')}</button>
           </form>
         </dialog>

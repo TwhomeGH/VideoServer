@@ -4,7 +4,7 @@ import { useI18n } from './i18n';
 import { useLiveVersion } from './live';
 
 type DiscoveredMedia = {
-  poolId: string; poolName: string; relativePath: string; size: number;
+  poolId: string; poolName: string; provider: string; relativePath: string; size: number;
   modifiedAt: number; firstSeen: string; lastSeen: string;
 };
 type DiscoveredPage = { items: DiscoveredMedia[]; total: number; page: number; pageSize: number };
@@ -52,6 +52,7 @@ export function Discovered() {
 
   const keyOf = (item: DiscoveredMedia) => `${item.poolId}\n${item.relativePath}`;
   const toggle = (item: DiscoveredMedia) => {
+    if (item.provider === 'webdav') return;
     setSelected(current => {
       const next = new Map(current);
       const key = keyOf(item);
@@ -65,7 +66,7 @@ export function Discovered() {
     setSelected(current => {
       const next = new Map(current);
       for (const item of visible) {
-        if (allSelected) next.delete(keyOf(item)); else next.set(keyOf(item), item);
+        if (allSelected) next.delete(keyOf(item)); else if (item.provider !== 'webdav') next.set(keyOf(item), item);
       }
       return next;
     });
@@ -74,7 +75,8 @@ export function Discovered() {
     if (!target.length) return;
     setBusy(true); setError(''); setNotice('');
     try {
-      const items = target.map(item => ({ poolId: item.poolId, relativePath: item.relativePath }));
+      const items = target.filter(item => item.provider !== 'webdav').map(item => ({ poolId: item.poolId, relativePath: item.relativePath }));
+      if (!items.length) return;
       const result = await api<{ imported: number; errors: string[] }>('discovered/import', jsonRequest('POST', { items }));
       setSelected(new Map());
       setNotice(t('discovered.imported', { count: result.imported }));
@@ -114,12 +116,12 @@ export function Discovered() {
         {items.map(item => {
           const key = keyOf(item);
           return <div className="discovered-row" role="row" key={key}>
-            <input type="checkbox" checked={selected.has(key)} onChange={() => toggle(item)} aria-label={item.relativePath} />
+            <input type="checkbox" checked={selected.has(key)} disabled={item.provider === 'webdav'} onChange={() => toggle(item)} aria-label={item.relativePath} />
             <span className="discovered-path" title={item.relativePath}>{item.relativePath}</span>
-            <span className="muted">{item.poolName}</span>
+            <span className="muted">{item.poolName}{item.provider === 'webdav' ? ` · ${t('discovered.remoteOnly')}` : ''}</span>
             <span className="muted">{formatBytes(item.size)}</span>
             <span className="muted">{new Date(item.modifiedAt).toLocaleString(locale)}</span>
-            <button type="button" disabled={busy} onClick={() => void importItems([item])}>{t('discovered.importOne')}</button>
+            <button type="button" disabled={busy || item.provider === 'webdav'} title={item.provider === 'webdav' ? t('discovered.remoteImportUnavailable') : undefined} onClick={() => void importItems([item])}>{t('discovered.importOne')}</button>
           </div>;
         })}
       </div>}

@@ -94,6 +94,10 @@ func (w *Watcher) syncPools(ctx context.Context) {
 		if !pool.Enabled || !pool.Online {
 			continue
 		}
+		if pool.Provider != "" && pool.Provider != "local" {
+			w.setFallback(pool.ID, "WebDAV 池使用輪詢")
+			continue
+		}
 		if pool.WholeDisk {
 			w.setFallback(pool.ID, "整碟池使用輪詢")
 			continue

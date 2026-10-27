@@ -495,5 +495,16 @@
   "library.indexOnlyOn": "只索引",
   "library.autoImportOn": "自動匯入",
   "monitor.watchStatus": "檔案監聽：{pools} 個池 · {events} 個事件",
-  "monitor.watchFallback": "輪詢降級：{reasons}"
+  "monitor.watchFallback": "輪詢降級：{reasons}",
+  "library.poolProvider": "儲存類型",
+  "library.providerLocal": "本機目錄",
+  "library.providerWebdav": "WebDAV（僅索引）",
+  "library.webdavUrl": "WebDAV URL",
+  "library.webdavUrlPlaceholder": "例如 http://192.168.0.102:5244/dav",
+  "library.webdavRoot": "子目錄（選填）",
+  "library.webdavRootPlaceholder": "例如 Video5",
+  "library.webdavUser": "WebDAV 使用者",
+  "library.webdavPassword": "WebDAV 密碼",
+  "discovered.remoteOnly": "WebDAV（僅索引）",
+  "discovered.remoteImportUnavailable": "WebDAV 池目前僅支援索引，尚未支援匯入。"
 }

@@ -55,6 +55,8 @@ Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的
 
 `indexOnly=true` 時，掃描只把找到的支援影片寫入 `discovered_media`，不建立 import job、不計算 SHA-256／FFprobe。使用者可在「找到的影片」頁選取後手動匯入；匯入成功後才會進入正式影片庫。關閉 index-only 後，既有 `discovered_media` 不會自動匯入，之後的新檔才恢復自動匯入。適合全盤查找或先盤點再挑選。
 
+儲存池 provider 目前有 `local` 與 `webdav`。WebDAV 池只支援 index-only discovery，掃描使用 `PROPFIND`、至少每 5 分鐘一次，不啟用 watcher；憑證存 `<dataDirectory>/webdav-secrets.json`（0600）。目前不支援遠端播放與匯入。OpenList 的設定步驟見 [OpenList／WebDAV](openlist-webdav.md)。
+
 儲存池頁可對單一池按「掃描此池」，對應 `POST /api/v1/pools/{id}/scan`；完成後會更新該池活動時間並回到熱級。全域「立即掃描新增影片」會掃描所有池並重置分級。真正大量讀取的是匯入／重新探測的 FFprobe＋SHA-256。
 
 `autoBackfill` 預設關閉。開啟後每 `backfillIntervalSeconds`（預設 60 秒）檢查一次，只在整個佇列閒置時排一筆缺少技術資訊的影片，不會與手動匯入或掃描競爭。「閒置」是指 `import_jobs` 沒有任何 queued／running 工作，包含手動匯入、掃描與手動重讀；不是只看自動補齊。有缺少技術資訊的候選時才會排程。

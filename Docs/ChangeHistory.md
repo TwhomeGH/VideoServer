@@ -2,6 +2,56 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 04:30 唯讀 WebDAV 儲存池與 OpenList 索引
+
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/store.go`
+- `internal/library/webdav_secret.go`
+- `internal/library/webdav_client.go`
+- `internal/library/scanner.go`
+- `internal/library/http.go`
+- `internal/library/watch.go`
+- `internal/library/webdav_test.go`
+- `internal/library/discovery.go`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/Discovered.tsx`
+- `pkg/protocol/openapi.json`
+- `Docs/openlist-webdav.md`
+
+### 問題
+
+- 儲存池只能使用本機目錄；OpenList 必須先自行掛成 OS 磁碟
+- 沒有原生的 WebDAV 認證、PROPFIND 清單或遠端 index-only
+
+### 修改
+
+- 新增 `provider=webdav` 儲存池；schema v10 保存 provider、URL、使用者與 root。
+- 密碼存 `<dataDirectory>/webdav-secrets.json`（0600），不出現在 pool API。
+- 掃描以 WebDAV `PROPFIND Depth:1` 遞迴列出影片，只寫 discovered_media；固定 index-only。
+- 遠端池最低掃描間隔 5 分鐘，不啟用 watcher，fallback 顯示「WebDAV 池使用輪詢」。
+- 「找到的影片」標記 WebDAV 並停用匯入；後端也拒絕遠端匯入。
+- 新增 OpenList／WebDAV 操作文件與 curl／Range 驗證方式。
+- OpenAPI、API 文件與設定文件同步。
+
+### 驗證
+
+- OpenList `http://192.168.0.102:5244/dav` 使用 guest 驗證：PROPFIND 207、影片 HEAD 有 Content-Length／Accept-Ranges、Range 回 206。
+- 建立「OpenList Video5」池（root `Video5`）後掃描出 654 部影片，index-only、沒有 import job。
+- 重啟後遠端池與憑證仍存在；掃描間隔為 300 秒；watcher 顯示 WebDAV 輪詢降級。
+- 「找到的影片」顯示 WebDAV（僅索引），匯入按鈕停用；390px 無水平溢出。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
+### 限制
+
+- 尚未支援遠端播放 Range 代理、匯入下載、FFprobe／SHA-256 與 TLS 憑證政策。
+- WebDAV Basic Auth；正式環境應使用 HTTPS。
+- OpenList 的 SMB 仍是後端儲存，DVN 不直接連 SMB。
+
+---
+
 ## 2026.10.28 04:10 檔案監聽第一版與輪詢降級
 
 **類型**: 功能

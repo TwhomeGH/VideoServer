@@ -319,6 +319,9 @@ func (s *Scanner) runDue(ctx context.Context) {
 			}
 		}
 		state.tier, state.interval = scanTier(now, lastActivity, s.interval, s.idleMax)
+		if byID[id].Provider == "webdav" && state.interval < 5*time.Minute {
+			state.interval = 5 * time.Minute
+		}
 		state.lastActivity = lastActivity
 		state.next = now.Add(state.interval)
 		s.states[id] = state
@@ -495,6 +498,36 @@ func (s *Scanner) scan(ctx context.Context, now time.Time) ScanResult {
 	return result
 }
 
+// scanWebDAVPool 只為遠端 WebDAV 池建立 discovery；目前不支援遠端匯入或播放。
+func (s *Scanner) scanWebDAVPool(ctx context.Context, pool Pool, now time.Time, result *ScanResult, active map[string]bool) {
+	before := *result
+	entries, err := s.store.listWebDAV(ctx, pool)
+	if err != nil {
+		result.failure(err)
+		active[pool.ID] = true
+		return
+	}
+	seen := map[string]bool{}
+	for _, entry := range entries {
+		key := fileKey(pool.ID, entry.Relative)
+		seen[key] = true
+		changed, err := s.store.upsertDiscovered(ctx, pool.ID, entry.Relative, entry.Size, entry.Modified, now)
+		if err != nil {
+			result.failure(err)
+			continue
+		}
+		if changed {
+			result.Discovered++
+		}
+	}
+	if err := s.store.markDiscoveredMissing(ctx, pool.ID, seen); err != nil {
+		result.failure(err)
+	}
+	if result.Discovered > before.Discovered || result.Failed > before.Failed || len(result.Errors) > len(before.Errors) {
+		active[pool.ID] = true
+	}
+}
+
 func (s *Scanner) scanPools(ctx context.Context, now time.Time, pools []Pool, only map[string]bool) (ScanResult, map[string]bool) {
 	result := ScanResult{StartedAt: now, Errors: []string{}}
 	active := map[string]bool{}
@@ -517,6 +550,10 @@ func (s *Scanner) scanPools(ctx context.Context, now time.Time, pools []Pool, on
 		}
 		if !pool.Online {
 			result.OfflinePools++
+			continue
+		}
+		if pool.Provider == "webdav" {
+			s.scanWebDAVPool(ctx, pool, now, &result, active)
 			continue
 		}
 		root, err := s.store.poolPath(pool.ID)

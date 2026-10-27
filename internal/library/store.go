@@ -6,9 +6,11 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/TwhomeGH/VideoServer/internal/media"
@@ -32,6 +34,8 @@ type Store struct {
 	hashLimitBytesPerSecond int64
 	publisher               Publisher
 	videoFormats            *media.VideoFormats
+	dataDirectory           string
+	secretMu                sync.Mutex
 }
 
 // Publisher 接收資料變更通知；實作可以是非阻塞的事件 hub。
@@ -70,6 +74,10 @@ type Pool struct {
 	LastActivityAt    string `json:"lastActivityAt,omitempty"`
 	ScanExcludeSystem bool   `json:"scanExcludeSystem"`
 	IndexOnly         bool   `json:"indexOnly"`
+	Provider          string `json:"provider"`
+	RemoteURL         string `json:"remoteUrl,omitempty"`
+	RemoteUser        string `json:"remoteUser,omitempty"`
+	RemoteRoot        string `json:"remoteRoot,omitempty"`
 	WholeDisk         bool   `json:"wholeDisk"`
 	volumeRelative    string
 }
@@ -118,7 +126,7 @@ func Open(directory string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
-	store := &Store{db: db, videoFormats: media.DefaultVideoFormats()}
+	store := &Store{db: db, videoFormats: media.DefaultVideoFormats(), dataDirectory: directory}
 	if err := store.migrate(); err != nil {
 		db.Close()
 		return nil, err
@@ -143,8 +151,8 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("SELECT COALESCE(MAX(version),0) FROM schema_version").Scan(&version); err != nil {
 		return err
 	}
-	if version > 9 {
-		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 9", version)
+	if version > 10 {
+		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 10", version)
 	}
 	if _, err := tx.Exec(`
  CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
@@ -284,6 +292,31 @@ INSERT INTO schema_version VALUES(9);`); err != nil {
 			return err
 		}
 	}
+	if version < 10 {
+		columns := []struct {
+			name       string
+			definition string
+		}{
+			{"provider", "TEXT NOT NULL DEFAULT 'local'"},
+			{"remote_url", "TEXT NOT NULL DEFAULT ''"},
+			{"remote_user", "TEXT NOT NULL DEFAULT ''"},
+			{"remote_root", "TEXT NOT NULL DEFAULT ''"},
+		}
+		for _, column := range columns {
+			exists, err := columnExists(tx, "pools", column.name)
+			if err != nil {
+				return err
+			}
+			if !exists {
+				if _, err := tx.Exec("ALTER TABLE pools ADD COLUMN " + column.name + " " + column.definition); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := tx.Exec("INSERT INTO schema_version VALUES(10)"); err != nil {
+			return err
+		}
+	}
 	if _, err := tx.Exec("INSERT OR IGNORE INTO metadata VALUES('nodeId', ?)", identifier()); err != nil {
 		return err
 	}
@@ -319,7 +352,7 @@ func (s *Store) Close() error { return s.db.Close() }
 
 // Pools 回傳所有已註冊儲存池，離線或被停用的池保留資料而不刪除。
 func (s *Store) Pools() ([]Pool, error) {
-	rows, err := s.db.Query("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only FROM pools ORDER BY name,id")
+	rows, err := s.db.Query("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only,provider,remote_url,remote_user,remote_root FROM pools ORDER BY name,id")
 	if err != nil {
 		return nil, err
 	}
@@ -328,14 +361,21 @@ func (s *Store) Pools() ([]Pool, error) {
 	for rows.Next() {
 		var pool Pool
 		var enabled, excludeSystem, indexOnly int
-		if err := rows.Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled, &pool.LastActivityAt, &excludeSystem, &indexOnly); err != nil {
+		if err := rows.Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled, &pool.LastActivityAt, &excludeSystem, &indexOnly, &pool.Provider, &pool.RemoteURL, &pool.RemoteUser, &pool.RemoteRoot); err != nil {
 			return nil, err
 		}
 		pool.Enabled = enabled != 0
 		pool.ScanExcludeSystem = excludeSystem != 0
 		pool.IndexOnly = indexOnly != 0
-		pool.WholeDisk = isWholeDisk(pool.Path)
-		applyVolumeStatus(&pool)
+		if pool.Provider == "webdav" {
+			pool.Online = true
+			pool.Filesystem = "WebDAV"
+			pool.VolumeStatus = "unsupported"
+			pool.WholeDisk = false
+		} else {
+			pool.WholeDisk = isWholeDisk(pool.Path)
+			applyVolumeStatus(&pool)
+		}
 		if effective, err := effectivePoolPath(pool.Path, pool.VolumeID, pool.volumeRelative); err == nil {
 			if info, statErr := os.Stat(effective); statErr == nil && info.IsDir() {
 				pool.Online = true
@@ -367,11 +407,39 @@ func (s *Store) AddPool(name, path string) (Pool, error) {
 	volumeID, volumeRelative, filesystem := volumeDetailsFor(path)
 	pool = Pool{
 		ID: identifier(), Name: strings.TrimSpace(name), Path: path, Online: true, Enabled: true,
-		Filesystem: filesystem, VolumeID: volumeID, volumeRelative: volumeRelative, LastActivityAt: timestamp(), ScanExcludeSystem: true, IndexOnly: false, WholeDisk: isWholeDisk(path),
+		Filesystem: filesystem, VolumeID: volumeID, volumeRelative: volumeRelative, LastActivityAt: timestamp(), ScanExcludeSystem: true, IndexOnly: false, Provider: "local", WholeDisk: isWholeDisk(path),
 	}
 	applyVolumeStatus(&pool)
-	_, err = s.db.Exec("INSERT INTO pools(id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only) VALUES(?,?,?,?,?,?,1,?,1,0)", pool.ID, pool.Name, pool.Path, pool.VolumeID, pool.volumeRelative, pool.Filesystem, pool.LastActivityAt)
+	_, err = s.db.Exec("INSERT INTO pools(id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only,provider,remote_url,remote_user,remote_root) VALUES(?,?,?,?,?,?,1,?,1,0,'local','','','')", pool.ID, pool.Name, pool.Path, pool.VolumeID, pool.volumeRelative, pool.Filesystem, pool.LastActivityAt)
 	return pool, err
+}
+
+// AddRemotePool 註冊唯讀 WebDAV 池；目前只支援 index-only discovery。
+func (s *Store) AddRemotePool(name, remoteURL, username, password, root string) (Pool, error) {
+	name = strings.TrimSpace(name)
+	remoteURL = strings.TrimSpace(remoteURL)
+	if name == "" || remoteURL == "" {
+		return Pool{}, fmt.Errorf("請提供名稱與 WebDAV URL")
+	}
+	parsed, err := url.Parse(remoteURL)
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return Pool{}, fmt.Errorf("WebDAV URL 必須是 http 或 https")
+	}
+	pool := Pool{
+		ID: identifier(), Name: name, Path: remoteURL, Online: true, Enabled: true,
+		Provider: "webdav", RemoteURL: remoteURL, RemoteUser: username, RemoteRoot: strings.TrimSpace(root),
+		Filesystem: "WebDAV", VolumeStatus: "unsupported", LastActivityAt: timestamp(),
+		ScanExcludeSystem: true, IndexOnly: true, WholeDisk: false,
+	}
+	_, err = s.db.Exec("INSERT INTO pools(id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only,provider,remote_url,remote_user,remote_root) VALUES(?,?,?,?,?,?,1,?,1,1,'webdav',?,?,?)", pool.ID, pool.Name, pool.Path, pool.VolumeID, pool.volumeRelative, pool.Filesystem, pool.LastActivityAt, pool.RemoteURL, pool.RemoteUser, pool.RemoteRoot)
+	if err != nil {
+		return Pool{}, err
+	}
+	if err := s.saveWebDAVCredentials(pool.ID, username, password); err != nil {
+		_, _ = s.db.Exec("DELETE FROM pools WHERE id=?", pool.ID)
+		return Pool{}, err
+	}
+	return pool, nil
 }
 
 // SetPoolEnabled 切換儲存池的掃描、匯入與播放可用性；影片索引與描述保留。
@@ -439,16 +507,23 @@ func (s *Store) SetPoolScanExcludeSystem(id string, exclude bool) (Pool, error) 
 func (s *Store) poolByID(id string) (Pool, error) {
 	var pool Pool
 	var enabled, excludeSystem, indexOnly int
-	err := s.db.QueryRow("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only FROM pools WHERE id=?", id).
-		Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled, &pool.LastActivityAt, &excludeSystem, &indexOnly)
+	err := s.db.QueryRow("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only,provider,remote_url,remote_user,remote_root FROM pools WHERE id=?", id).
+		Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled, &pool.LastActivityAt, &excludeSystem, &indexOnly, &pool.Provider, &pool.RemoteURL, &pool.RemoteUser, &pool.RemoteRoot)
 	if err != nil {
 		return Pool{}, err
 	}
 	pool.Enabled = enabled != 0
 	pool.ScanExcludeSystem = excludeSystem != 0
 	pool.IndexOnly = indexOnly != 0
-	pool.WholeDisk = isWholeDisk(pool.Path)
-	applyVolumeStatus(&pool)
+	if pool.Provider == "webdav" {
+		pool.Online = true
+		pool.Filesystem = "WebDAV"
+		pool.VolumeStatus = "unsupported"
+		pool.WholeDisk = false
+	} else {
+		pool.WholeDisk = isWholeDisk(pool.Path)
+		applyVolumeStatus(&pool)
+	}
 	if effective, err := effectivePoolPath(pool.Path, pool.VolumeID, pool.volumeRelative); err == nil {
 		if info, statErr := os.Stat(effective); statErr == nil && info.IsDir() {
 			pool.Online = true

@@ -10,6 +10,7 @@ import (
 type DiscoveredMedia struct {
 	PoolID       string `json:"poolId"`
 	PoolName     string `json:"poolName"`
+	Provider     string `json:"provider"`
 	RelativePath string `json:"relativePath"`
 	Size         int64  `json:"size"`
 	ModifiedAt   int64  `json:"modifiedAt"`
@@ -118,7 +119,7 @@ func (s *Store) ListDiscovered(ctx context.Context, poolID, query string, page, 
 	}
 	offset := (page - 1) * pageSize
 	rows, err := s.db.QueryContext(ctx, `
-SELECT d.pool_id,COALESCE(p.name,''),d.relative_path,d.size,d.modified_at,d.first_seen,d.last_seen
+SELECT d.pool_id,COALESCE(p.name,''),p.provider,d.relative_path,d.size,d.modified_at,d.first_seen,d.last_seen
 FROM discovered_media d
 JOIN pools p ON p.id=d.pool_id
 LEFT JOIN videos v ON v.pool_id=d.pool_id AND v.relative_path=d.relative_path
@@ -132,7 +133,7 @@ LIMIT ? OFFSET ?`, append(args, pageSize, offset)...)
 	result := DiscoveredPage{Items: []DiscoveredMedia{}, Total: total, Page: page, PageSize: pageSize}
 	for rows.Next() {
 		item := DiscoveredMedia{}
-		if err := rows.Scan(&item.PoolID, &item.PoolName, &item.RelativePath, &item.Size, &item.ModifiedAt, &item.FirstSeen, &item.LastSeen); err != nil {
+		if err := rows.Scan(&item.PoolID, &item.PoolName, &item.Provider, &item.RelativePath, &item.Size, &item.ModifiedAt, &item.FirstSeen, &item.LastSeen); err != nil {
 			return DiscoveredPage{}, err
 		}
 		result.Items = append(result.Items, item)

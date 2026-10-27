@@ -495,5 +495,16 @@
   "library.indexOnlyOn": "只索引",
   "library.autoImportOn": "自动导入",
   "monitor.watchStatus": "文件监听：{pools} 个池 · {events} 个事件",
-  "monitor.watchFallback": "轮询降级：{reasons}"
+  "monitor.watchFallback": "轮询降级：{reasons}",
+  "library.poolProvider": "保存类型",
+  "library.providerLocal": "本机目录",
+  "library.providerWebdav": "WebDAV（仅索引）",
+  "library.webdavUrl": "WebDAV URL",
+  "library.webdavUrlPlaceholder": "例如 http://192.168.0.102:5244/dav",
+  "library.webdavRoot": "子目录（选填）",
+  "library.webdavRootPlaceholder": "例如 Video5",
+  "library.webdavUser": "WebDAV 用户",
+  "library.webdavPassword": "WebDAV 密码",
+  "discovered.remoteOnly": "WebDAV（仅索引）",
+  "discovered.remoteImportUnavailable": "WebDAV 池目前仅支持索引，尚未支持导入。"
 }
