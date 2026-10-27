@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -22,9 +23,24 @@ func scanVideo(row interface{ Scan(...any) error }) (Video, error) {
 }
 
 func (s *Store) poolPath(id string) (string, error) {
-	var path string
-	err := s.db.QueryRow("SELECT path FROM pools WHERE id=?", id).Scan(&path)
-	return path, err
+	var path, volumeID, relative string
+	var enabled int
+	err := s.db.QueryRow("SELECT path,volume_id,volume_relative,enabled FROM pools WHERE id=?", id).Scan(&path, &volumeID, &relative, &enabled)
+	if err != nil {
+		return "", err
+	}
+	if enabled == 0 {
+		return "", ErrPoolDisabled
+	}
+	effective, err := effectivePoolPath(path, volumeID, relative)
+	if err != nil {
+		return "", ErrPoolOffline
+	}
+	info, err := os.Stat(effective)
+	if err != nil || !info.IsDir() {
+		return "", ErrPoolOffline
+	}
+	return effective, nil
 }
 
 // Import 對 poolID 內的既有影片建立索引並計算 SHA-256，不複製檔案。
@@ -184,9 +200,24 @@ func (s *Store) listVideos(ctx context.Context, query string, args ...any) ([]Vi
 		if err == nil {
 			result[i].Available = true
 			file.Close()
+		} else {
+			result[i].UnavailableReason = unavailableReason(err)
 		}
 	}
 	return result, nil
+}
+
+func unavailableReason(err error) string {
+	switch {
+	case errors.Is(err, ErrPoolDisabled):
+		return "pool_disabled"
+	case errors.Is(err, ErrPoolOffline):
+		return "pool_offline"
+	case errors.Is(err, ErrSourceChanged):
+		return "source_changed"
+	default:
+		return "source_missing"
+	}
 }
 
 func (s *Store) openVideo(v Video) (*os.File, error) {
@@ -196,16 +227,16 @@ func (s *Store) openVideo(v Video) (*os.File, error) {
 	}
 	path, err := resolve(root, v.relativePath)
 	if err != nil {
-		return nil, err
+		return nil, ErrSourceMissing
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, ErrSourceMissing
 	}
 	info, err := file.Stat()
 	if err != nil || !info.Mode().IsRegular() || info.Size() != v.Size || info.ModTime().UnixNano() != v.modifiedAt {
 		file.Close()
-		return nil, fmt.Errorf("來源離線或已變更，請重新檢查影片")
+		return nil, ErrSourceChanged
 	}
 	return file, nil
 }

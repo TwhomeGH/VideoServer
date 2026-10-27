@@ -16,6 +16,7 @@ import (
 var editableConfigFields = []string{
 	"host", "preferredPort", "fallbackPorts", "rememberLastSuccessfulPort",
 	"autoScan", "scanIntervalSeconds", "fileStableSeconds",
+	"autoBackfill", "backfillIntervalSeconds", "hashLimitMiBps",
 }
 
 // ConfigState 保存啟動時載入的基準設定、目前生效值與管理頁覆寫。
@@ -59,6 +60,9 @@ type configInput struct {
 	AutoScan                   *bool   `json:"autoScan"`
 	ScanIntervalSeconds        *int    `json:"scanIntervalSeconds"`
 	FileStableSeconds          *int    `json:"fileStableSeconds"`
+	AutoBackfill               *bool   `json:"autoBackfill"`
+	BackfillIntervalSeconds    *int    `json:"backfillIntervalSeconds"`
+	HashLimitMiBps             *int    `json:"hashLimitMiBps"`
 	RememberLastSuccessfulPort *bool   `json:"rememberLastSuccessfulPort"`
 }
 
@@ -116,7 +120,8 @@ func (c *ConfigState) handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 func (c *ConfigState) applyInput(input configInput) (Config, error) {
 	if input.Host == nil || input.PreferredPort == nil || input.FallbackPorts == nil || input.AutoScan == nil ||
-		input.ScanIntervalSeconds == nil || input.FileStableSeconds == nil || input.RememberLastSuccessfulPort == nil {
+		input.ScanIntervalSeconds == nil || input.FileStableSeconds == nil || input.RememberLastSuccessfulPort == nil ||
+		input.AutoBackfill == nil || input.BackfillIntervalSeconds == nil || input.HashLimitMiBps == nil {
 		return Config{}, errMissingConfigField
 	}
 	next := c.base
@@ -126,6 +131,9 @@ func (c *ConfigState) applyInput(input configInput) (Config, error) {
 	next.AutoScan = *input.AutoScan
 	next.ScanIntervalSeconds = *input.ScanIntervalSeconds
 	next.FileStableSeconds = *input.FileStableSeconds
+	next.AutoBackfill = *input.AutoBackfill
+	next.BackfillIntervalSeconds = *input.BackfillIntervalSeconds
+	next.HashLimitMiBps = *input.HashLimitMiBps
 	next.RememberLastSuccessfulPort = *input.RememberLastSuccessfulPort
 	if len(next.FallbackPorts) == 0 {
 		next.RememberLastSuccessfulPort = false

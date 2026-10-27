@@ -1,0 +1,3108 @@
+{
+  "openapi": "3.1.1",
+  "info": {
+    "title": "DVN HTTP JSON API",
+    "version": "1.0.0",
+    "description": "DVN 協定 v1 的現有管理 API。文件版本與軟體版本獨立。除公開健康、版本、協定及登入查詢外需單一管理員 cookie；寫入依實作檢查 Origin。同一 origin 部署，不提供跨站 CORS。JSON 錯誤以 error 為基礎；未知路由、方法和 HTTP Range 錯誤可能為純文字。SSE、Central 註冊／聯邦及遠端 Worker 派工尚未實作。"
+  },
+  "servers": [
+    {
+      "url": "/",
+      "description": "目前服務 origin"
+    }
+  ],
+  "security": [
+    {
+      "adminSession": []
+    }
+  ],
+  "paths": {
+    "/healthz": {
+      "get": {
+        "operationId": "health",
+        "summary": "程序健康檢查",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "程序健康檢查",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "const": "ok"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "security": [],
+        "tags": [
+          "服務與版本"
+        ]
+      }
+    },
+    "/api/v1/status": {
+      "get": {
+        "operationId": "status",
+        "summary": "版本與監聽狀態",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "版本與監聽狀態",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Status"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "security": [],
+        "tags": [
+          "服務與版本"
+        ]
+      }
+    },
+    "/api/v1/protocol": {
+      "get": {
+        "operationId": "protocol",
+        "summary": "協定版本與已實作能力",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "協定版本與已實作能力",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Protocol"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "security": [],
+        "tags": [
+          "服務與版本"
+        ]
+      }
+    },
+    "/api/v1/openapi.json": {
+      "get": {
+        "operationId": "openapi",
+        "summary": "目前服務的 OpenAPI 規格",
+        "description": "按目前服務移除不適用的 Video Node 路由；不包含 SSE 與尚未實作的聯邦／派工 API。",
+        "responses": {
+          "200": {
+            "description": "目前服務的 OpenAPI 規格",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "tags": [
+          "服務與版本"
+        ]
+      }
+    },
+    "/api/v1/auth/session": {
+      "get": {
+        "operationId": "session",
+        "summary": "查詢登入狀態",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "查詢登入狀態",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Session"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "security": [],
+        "tags": [
+          "登入與授權"
+        ]
+      }
+    },
+    "/api/v1/auth/login": {
+      "post": {
+        "operationId": "login",
+        "summary": "管理員登入",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "管理員登入",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "authenticated": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "authenticated"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "429": {
+            "description": "登入嘗試過多，請稍後重試",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            },
+            "headers": {
+              "Retry-After": {
+                "schema": {
+                  "type": "integer"
+                },
+                "description": "等待秒數"
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "security": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "password": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "password"
+                ],
+                "additionalProperties": false
+              },
+              "examples": {
+                "登入": {
+                  "value": {
+                    "password": "請填入管理員密碼"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "登入與授權"
+        ]
+      }
+    },
+    "/api/v1/auth/logout": {
+      "post": {
+        "operationId": "logout",
+        "summary": "登出並使既有 session 全部失效",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "登出並使既有 session 全部失效",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "authenticated": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "authenticated"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "tags": [
+          "登入與授權"
+        ]
+      }
+    },
+    "/api/v1/auth/password": {
+      "post": {
+        "operationId": "password",
+        "summary": "變更管理員密碼",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "變更管理員密碼",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "authenticated": {
+                      "type": "boolean"
+                    }
+                  },
+                  "required": [
+                    "authenticated"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "currentPassword": {
+                    "type": "string"
+                  },
+                  "newPassword": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "currentPassword",
+                  "newPassword"
+                ],
+                "additionalProperties": false
+              },
+              "examples": {
+                "變更密碼": {
+                  "value": {
+                    "currentPassword": "請填目前密碼",
+                    "newPassword": "請換成自己的新密碼"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "登入與授權"
+        ]
+      }
+    },
+    "/api/v1/config": {
+      "get": {
+        "operationId": "config",
+        "summary": "取得基準、覆寫與有效設定",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "取得基準、覆寫與有效設定",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "tags": [
+          "設定與重啟"
+        ]
+      },
+      "put": {
+        "operationId": "updateConfig",
+        "summary": "儲存完整可編輯設定",
+        "description": "必須提供全部七個可編輯欄位。只寫入資料目錄覆寫檔；生效需重新啟動。 範例為 Video Node；Central、Worker 或自訂端口請先 GET /api/v1/config，以目前 effective 的可編輯欄位為準。",
+        "responses": {
+          "200": {
+            "description": "儲存完整可編輯設定",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfigInput"
+              },
+              "examples": {
+                "Docker固定端口": {
+                  "value": {
+                    "host": "0.0.0.0",
+                    "preferredPort": 18610,
+                    "fallbackPorts": [],
+                    "rememberLastSuccessfulPort": false,
+                    "autoScan": true,
+                    "scanIntervalSeconds": 30,
+                    "fileStableSeconds": 10
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "設定與重啟"
+        ]
+      }
+    },
+    "/api/v1/config/overrides": {
+      "delete": {
+        "operationId": "resetConfig",
+        "summary": "重設設定覆寫",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "重設設定覆寫",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ConfigView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "tags": [
+          "設定與重啟"
+        ]
+      }
+    },
+    "/api/v1/system/restart": {
+      "post": {
+        "operationId": "restart",
+        "summary": "請求監督式重新啟動",
+        "description": "confirm 必須為 true；程序以 75 結束，需由監督程式重啟。",
+        "responses": {
+          "202": {
+            "description": "請求監督式重新啟動",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "const": "restarting"
+                    }
+                  },
+                  "required": [
+                    "status"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "503": {
+            "description": "背景服務尚未啟用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "confirm": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "confirm"
+                ]
+              },
+              "examples": {
+                "確認重啟": {
+                  "value": {
+                    "confirm": true
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "設定與重啟"
+        ]
+      }
+    },
+    "/api/v1/monitor": {
+      "get": {
+        "operationId": "monitor",
+        "summary": "工作與程序資源監看",
+        "description": "CPU 為目前程序，記憶體為 Go runtime，流量為 HTTP 本文。不是宿主機或容器總使用率。",
+        "responses": {
+          "200": {
+            "description": "工作與程序資源監看",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Monitor"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "tags": [
+          "資源與工作監看"
+        ]
+      }
+    },
+    "/api/v1/library": {
+      "x-dvn-service": "video-node",
+      "get": {
+        "operationId": "library",
+        "summary": "分頁查詢影片庫",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "分頁查詢影片庫",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Library"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 1000000,
+              "default": 1
+            },
+            "description": "頁碼，超出結果範圍收斂到末頁"
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100,
+              "default": 24
+            },
+            "description": "每頁筆數"
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "標題或簡介包含文字"
+          },
+          {
+            "name": "tag",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "完整條件比對"
+          },
+          {
+            "name": "category",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "完整條件比對"
+          },
+          {
+            "name": "poolId",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "description": "完整條件比對"
+          },
+          {
+            "name": "adult",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "",
+                "true",
+                "false"
+              ]
+            },
+            "description": "內容標記，並非年齡驗證"
+          },
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "newest",
+                "oldest",
+                "title"
+              ],
+              "default": "newest"
+            },
+            "description": "排序"
+          }
+        ],
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
+    },
+    "/api/v1/pools": {
+      "x-dvn-service": "video-node",
+      "post": {
+        "operationId": "addPool",
+        "summary": "註冊伺服器既有目錄",
+        "description": "",
+        "responses": {
+          "201": {
+            "description": "註冊伺服器既有目錄",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pool"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "path": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "name",
+                  "path"
+                ],
+                "additionalProperties": false
+              },
+              "examples": {
+                "Docker或Linux": {
+                  "value": {
+                    "name": "影片庫",
+                    "path": "/media"
+                  }
+                },
+                "Windows原生": {
+                  "value": {
+                    "name": "影片庫",
+                    "path": "H:\\Video"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
+    },
+    "/api/v1/videos/import": {
+      "x-dvn-service": "video-node",
+      "post": {
+        "operationId": "importVideo",
+        "summary": "加入背景匯入",
+        "description": "不複製檔案；同一路徑已索引或已有工作時回應 409。",
+        "responses": {
+          "202": {
+            "description": "加入背景匯入",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "503": {
+            "description": "背景服務尚未啟用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportInput"
+              },
+              "examples": {
+                "手動匯入": {
+                  "value": {
+                    "poolId": "請換成實際儲存池ID",
+                    "path": "旅行/第一天.mp4",
+                    "title": "旅行第一天",
+                    "description": "這部影片的內容簡介。",
+                    "category": "生活",
+                    "adult": false,
+                    "license": "",
+                    "tags": [
+                      "旅行"
+                    ],
+                    "creators": [],
+                    "workType": "unknown",
+                    "sourceUrl": "",
+                    "sourcePlatform": "",
+                    "sourcePending": false,
+                    "repostNote": "",
+                    "language": "繁體中文"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "匯入與背景工作"
+        ]
+      }
+    },
+    "/api/v1/videos/{id}/metadata": {
+      "x-dvn-service": "video-node",
+      "put": {
+        "operationId": "updateMetadata",
+        "summary": "編輯影片描述",
+        "description": "先查詢影片資料再修改；此 PUT 更新完整描述，省略的描述欄位會回到預設值。",
+        "responses": {
+          "200": {
+            "description": "編輯影片描述",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Video"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "找不到資源",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          },
+          {
+            "$ref": "#/components/parameters/ResourceID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VideoInput"
+              },
+              "examples": {
+                "完整描述": {
+                  "value": {
+                    "title": "旅行第一天",
+                    "description": "這部影片的內容簡介。",
+                    "category": "生活",
+                    "adult": false,
+                    "license": "",
+                    "tags": [
+                      "旅行"
+                    ],
+                    "creators": [],
+                    "workType": "unknown",
+                    "sourceUrl": "",
+                    "sourcePlatform": "",
+                    "sourcePending": false,
+                    "repostNote": "",
+                    "language": "繁體中文"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "影片資料與播放"
+        ]
+      }
+    },
+    "/api/v1/videos/{id}/probe": {
+      "x-dvn-service": "video-node",
+      "post": {
+        "operationId": "probeVideo",
+        "summary": "加入或沿用重新探測工作",
+        "description": "只更新技術資訊；保留標題、描述與識別。同一影片沿用一筆工作，完成前仍可查詢進度。",
+        "responses": {
+          "202": {
+            "description": "加入或沿用重新探測工作",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "找不到資源",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          },
+          {
+            "$ref": "#/components/parameters/ResourceID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              },
+              "examples": {
+                "空物件": {
+                  "value": {}
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "影片資料與播放"
+        ]
+      }
+    },
+    "/api/v1/import-jobs/{id}": {
+      "x-dvn-service": "video-node",
+      "get": {
+        "operationId": "importJob",
+        "summary": "查詢背景工作",
+        "description": "",
+        "responses": {
+          "200": {
+            "description": "查詢背景工作",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "找不到資源",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          },
+          {
+            "$ref": "#/components/parameters/ResourceID"
+          }
+        ],
+        "tags": [
+          "匯入與背景工作"
+        ]
+      }
+    },
+    "/api/v1/import-jobs/{id}/retry": {
+      "x-dvn-service": "video-node",
+      "post": {
+        "operationId": "retryJob",
+        "summary": "重試失敗工作",
+        "description": "只有失敗工作可重試，其他狀態或未知 ID 回應 409。",
+        "responses": {
+          "202": {
+            "description": "重試失敗工作",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportJob"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          },
+          {
+            "$ref": "#/components/parameters/ResourceID"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              },
+              "examples": {
+                "空物件": {
+                  "value": {}
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "匯入與背景工作"
+        ]
+      }
+    },
+    "/api/v1/library/scan": {
+      "x-dvn-service": "video-node",
+      "post": {
+        "operationId": "scan",
+        "summary": "排程儲存池掃描",
+        "description": "對已註冊的儲存池排程一次掃描，不會立即匯入全部檔案；可從監看頁查詢結果。",
+        "responses": {
+          "202": {
+            "description": "排程儲存池掃描",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Empty"
+              },
+              "examples": {
+                "空物件": {
+                  "value": {}
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
+    },
+    "/api/v1/videos/{id}/content": {
+      "x-dvn-service": "video-node",
+      "get": {
+        "operationId": "videoContent",
+        "summary": "讀取原始影片",
+        "description": "需要管理員 session；尚非公開觀眾播放授權。支援 HTTP Range 與條件請求。",
+        "responses": {
+          "200": {
+            "description": "完整檔案或 HEAD 標頭",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "部分內容",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "application/octet-stream": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "未修改，無回應本文"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "找不到資源",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "description": "HTTP 前置條件不符合"
+          },
+          "416": {
+            "description": "Range 無法滿足",
+            "headers": {
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "description": "背景服務尚未啟用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          },
+          {
+            "$ref": "#/components/parameters/ResourceID"
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Range",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "tags": [
+          "影片資料與播放"
+        ]
+      },
+      "head": {
+        "operationId": "videoHead",
+        "summary": "讀取原始影片",
+        "description": "需要管理員 session；尚非公開觀眾播放授權。支援 HTTP Range 與條件請求。",
+        "responses": {
+          "200": {
+            "description": "完整檔案或 HEAD 標頭",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "206": {
+            "description": "部分內容",
+            "headers": {
+              "ETag": {
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "304": {
+            "description": "未修改，無回應本文"
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "找不到資源",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "description": "HTTP 前置條件不符合"
+          },
+          "416": {
+            "description": "Range 無法滿足",
+            "headers": {
+              "Content-Range": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          },
+          "503": {
+            "description": "背景服務尚未啟用",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          },
+          {
+            "$ref": "#/components/parameters/ResourceID"
+          },
+          {
+            "name": "Range",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-None-Match",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "If-Range",
+            "in": "header",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "tags": [
+          "影片資料與播放"
+        ]
+      }
+    },
+    "/api/v1/import-jobs": {
+      "x-dvn-service": "video-node",
+      "get": {
+        "operationId": "importJobs",
+        "summary": "取得最近一百筆背景工作",
+        "description": "只讀取工作狀態，不重新載入影片庫或檢查來源檔案。依建立時間由新至舊顯示；執行佇列仍由舊至新處理。",
+        "tags": [
+          "匯入與背景工作"
+        ],
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "最多一百筆工作，沒有工作時為空陣列",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ImportJob"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "500": {
+            "$ref": "#/components/responses/InternalError"
+          }
+        }
+      }
+    },
+    "/api/v1/pools/{id}": {
+      "x-dvn-service": "video-node",
+      "patch": {
+        "operationId": "setPoolEnabled",
+        "summary": "啟用或停用儲存池",
+        "description": "停用後不掃描、不匯入、不播放；影片索引保留。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "enabled"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新後的儲存池",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Pool"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "找不到儲存池"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
+    },
+    "/api/v1/schedule": {
+      "x-dvn-service": "video-node",
+      "get": {
+        "operationId": "getSchedule",
+        "summary": "查詢掃描與自動補齊排程",
+        "description": "回傳下次掃描／補齊時間、候選數與目前佇列狀態；不包含影片內容。",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "排程狀態",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "scan": {
+                      "$ref": "#/components/schemas/ScanStatus"
+                    },
+                    "backfill": {
+                      "$ref": "#/components/schemas/BackfillStatus"
+                    },
+                    "jobs": {
+                      "$ref": "#/components/schemas/WorkStatus"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "tags": [
+          "資源與工作監看"
+        ]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "adminSession": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "dvn_session",
+        "description": "由登入設定 HttpOnly、SameSite=Strict cookie；閒置七天滑動續期、絕對期限九十天。HTTPS 使用 Secure。"
+      }
+    },
+    "schemas": {
+      "Error": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "error"
+        ]
+      },
+      "ProtocolError": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string"
+          },
+          "code": {
+            "type": "string",
+            "enum": [
+              "invalid_protocol_version",
+              "protocol_incompatible"
+            ]
+          },
+          "protocolVersion": {
+            "type": "integer"
+          },
+          "supportedVersions": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "required": [
+          "error",
+          "code",
+          "protocolVersion",
+          "supportedVersions"
+        ]
+      },
+      "Protocol": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "protocolVersion": {
+            "type": "integer"
+          },
+          "supportedVersions": {
+            "type": "array",
+            "items": {
+              "type": "integer"
+            }
+          },
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "openapi": {
+            "type": "string"
+          },
+          "minProtocolVersion": {
+            "type": "integer"
+          },
+          "maxProtocolVersion": {
+            "type": "integer"
+          },
+          "capabilityVersions": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "array",
+              "items": {
+                "type": "integer"
+              }
+            }
+          }
+        },
+        "required": [
+          "service",
+          "protocolVersion",
+          "supportedVersions",
+          "capabilities",
+          "openapi",
+          "minProtocolVersion",
+          "maxProtocolVersion",
+          "capabilityVersions"
+        ]
+      },
+      "BuildIdentity": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "version": {
+            "type": "string"
+          },
+          "commit": {
+            "type": "string"
+          },
+          "buildTime": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string"
+          },
+          "dirty": {
+            "type": "boolean"
+          },
+          "protocolVersion": {
+            "type": "integer"
+          },
+          "imageBuildTime": {
+            "type": "string"
+          },
+          "imageSourceDigest": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "version",
+          "commit",
+          "buildTime",
+          "channel",
+          "dirty",
+          "protocolVersion",
+          "imageBuildTime",
+          "imageSourceDigest"
+        ]
+      },
+      "Status": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok"
+          },
+          "build": {
+            "$ref": "#/components/schemas/BuildIdentity"
+          },
+          "listenAddress": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "status",
+          "build",
+          "listenAddress"
+        ]
+      },
+      "Session": {
+        "type": "object",
+        "properties": {
+          "authenticated": {
+            "type": "boolean"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "absoluteExpiresAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "authenticated"
+        ]
+      },
+      "Creator": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 120
+          },
+          "url": {
+            "type": "string",
+            "maxLength": 2048
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "additionalProperties": false
+      },
+      "Media": {
+        "type": "object",
+        "properties": {
+          "durationSeconds": {
+            "type": "number"
+          },
+          "width": {
+            "type": "integer"
+          },
+          "height": {
+            "type": "integer"
+          },
+          "videoCodec": {
+            "type": "string"
+          },
+          "audioCodec": {
+            "type": "string"
+          },
+          "format": {
+            "type": "string"
+          },
+          "frameRate": {
+            "type": "number"
+          },
+          "probedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "durationSeconds",
+          "width",
+          "height",
+          "videoCodec",
+          "audioCodec",
+          "format",
+          "frameRate",
+          "probedAt"
+        ]
+      },
+      "Video": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "publicationId": {
+            "type": "string"
+          },
+          "replicaId": {
+            "type": "string"
+          },
+          "poolId": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "fileHash": {
+            "type": "string"
+          },
+          "sourceHash": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "importedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "available": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "adult": {
+            "type": "boolean"
+          },
+          "license": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          "creators": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Creator"
+            }
+          },
+          "workType": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "original",
+              "repost"
+            ]
+          },
+          "sourceUrl": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "sourcePlatform": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "sourcePending": {
+            "type": "boolean"
+          },
+          "repostNote": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "media": {
+            "$ref": "#/components/schemas/Media"
+          },
+          "unavailableReason": {
+            "type": "string",
+            "enum": [
+              "pool_disabled",
+              "pool_offline",
+              "source_changed",
+              "source_missing"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "publicationId",
+          "replicaId",
+          "poolId",
+          "title",
+          "fileHash",
+          "sourceHash",
+          "size",
+          "importedAt",
+          "available",
+          "description",
+          "category",
+          "adult",
+          "license",
+          "tags",
+          "creators",
+          "workType",
+          "sourceUrl",
+          "sourcePlatform",
+          "sourcePending",
+          "repostNote",
+          "language"
+        ]
+      },
+      "Pool": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "online": {
+            "type": "boolean"
+          },
+          "enabled": {
+            "type": "boolean"
+          },
+          "filesystem": {
+            "type": "string"
+          },
+          "volumeId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "path",
+          "online",
+          "enabled"
+        ]
+      },
+      "ImportJob": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "poolId": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "manual",
+              "scan",
+              "reprobe"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "running",
+              "completed",
+              "failed"
+            ]
+          },
+          "phase": {
+            "type": "string",
+            "enum": [
+              "queued",
+              "probing",
+              "hashing",
+              "completed",
+              "failed"
+            ]
+          },
+          "bytesProcessed": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "totalBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "videoId": {
+            "type": "string"
+          },
+          "error": {
+            "type": "string"
+          },
+          "attempts": {
+            "type": "integer"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time"
+          }
+        },
+        "required": [
+          "id",
+          "poolId",
+          "path",
+          "title",
+          "source",
+          "status",
+          "phase",
+          "bytesProcessed",
+          "totalBytes",
+          "videoId",
+          "error",
+          "attempts",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "ScanResult": {
+        "type": "object",
+        "properties": {
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "completedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "imported": {
+            "type": "integer"
+          },
+          "enqueued": {
+            "type": "integer"
+          },
+          "pending": {
+            "type": "integer"
+          },
+          "skipped": {
+            "type": "integer"
+          },
+          "failed": {
+            "type": "integer"
+          },
+          "offlinePools": {
+            "type": "integer"
+          },
+          "errors": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "changed": {
+            "type": "integer"
+          },
+          "deleted": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "startedAt",
+          "completedAt",
+          "imported",
+          "enqueued",
+          "pending",
+          "skipped",
+          "failed",
+          "offlinePools",
+          "errors",
+          "changed",
+          "deleted"
+        ]
+      },
+      "ScanStatus": {
+        "type": "object",
+        "properties": {
+          "automatic": {
+            "type": "boolean"
+          },
+          "intervalSeconds": {
+            "type": "integer"
+          },
+          "stableSeconds": {
+            "type": "integer"
+          },
+          "running": {
+            "type": "boolean"
+          },
+          "queued": {
+            "type": "boolean"
+          },
+          "last": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanResult"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "nextRunAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextRunInSeconds": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "automatic",
+          "intervalSeconds",
+          "stableSeconds",
+          "running",
+          "queued",
+          "last",
+          "nextRunInSeconds"
+        ]
+      },
+      "Pagination": {
+        "type": "object",
+        "properties": {
+          "page": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "pageSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "totalVideos": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "required": [
+          "page",
+          "pageSize",
+          "total",
+          "totalVideos"
+        ]
+      },
+      "Library": {
+        "type": "object",
+        "properties": {
+          "nodeId": {
+            "type": "string"
+          },
+          "pools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Pool"
+            }
+          },
+          "videos": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Video"
+            }
+          },
+          "pagination": {
+            "$ref": "#/components/schemas/Pagination"
+          },
+          "jobs": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportJob"
+            }
+          },
+          "scan": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ScanStatus"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "nodeId",
+          "pools",
+          "videos",
+          "pagination",
+          "jobs",
+          "scan"
+        ]
+      },
+      "Config": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "preferredPort": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "fallbackPorts": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rememberLastSuccessfulPort": {
+            "type": "boolean"
+          },
+          "autoScan": {
+            "type": "boolean"
+          },
+          "scanIntervalSeconds": {
+            "type": "integer"
+          },
+          "fileStableSeconds": {
+            "type": "integer"
+          },
+          "webDirectory": {
+            "type": "string"
+          },
+          "dataDirectory": {
+            "type": "string"
+          },
+          "ffprobePath": {
+            "type": "string"
+          },
+          "probeTimeoutSeconds": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 3600
+          },
+          "autoBackfill": {
+            "type": "boolean"
+          },
+          "backfillIntervalSeconds": {
+            "type": "integer"
+          },
+          "hashLimitMiBps": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "host",
+          "preferredPort",
+          "fallbackPorts",
+          "rememberLastSuccessfulPort",
+          "autoScan",
+          "scanIntervalSeconds",
+          "fileStableSeconds",
+          "webDirectory",
+          "dataDirectory",
+          "ffprobePath",
+          "probeTimeoutSeconds",
+          "autoBackfill",
+          "backfillIntervalSeconds",
+          "hashLimitMiBps"
+        ]
+      },
+      "ConfigInput": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "preferredPort": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "fallbackPorts": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 65535
+            }
+          },
+          "rememberLastSuccessfulPort": {
+            "type": "boolean"
+          },
+          "autoScan": {
+            "type": "boolean"
+          },
+          "scanIntervalSeconds": {
+            "type": "integer"
+          },
+          "fileStableSeconds": {
+            "type": "integer"
+          },
+          "autoBackfill": {
+            "type": "boolean"
+          },
+          "backfillIntervalSeconds": {
+            "type": "integer"
+          },
+          "hashLimitMiBps": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "host",
+          "preferredPort",
+          "fallbackPorts",
+          "rememberLastSuccessfulPort",
+          "autoScan",
+          "scanIntervalSeconds",
+          "fileStableSeconds",
+          "autoBackfill",
+          "backfillIntervalSeconds",
+          "hashLimitMiBps"
+        ],
+        "additionalProperties": false
+      },
+      "Overrides": {
+        "type": "object",
+        "properties": {
+          "host": {
+            "type": "string"
+          },
+          "preferredPort": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 65535
+          },
+          "fallbackPorts": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 65535
+                }
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "rememberLastSuccessfulPort": {
+            "type": "boolean"
+          },
+          "autoScan": {
+            "type": "boolean"
+          },
+          "scanIntervalSeconds": {
+            "type": "integer"
+          },
+          "fileStableSeconds": {
+            "type": "integer"
+          }
+        },
+        "required": []
+      },
+      "Network": {
+        "type": "object",
+        "properties": {
+          "stateFile": {
+            "type": "string"
+          },
+          "rememberEnabled": {
+            "type": "boolean"
+          },
+          "previousPort": {
+            "type": "integer"
+          },
+          "activePort": {
+            "type": "integer"
+          },
+          "saved": {
+            "type": "boolean"
+          },
+          "warning": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "stateFile",
+          "rememberEnabled",
+          "previousPort",
+          "activePort",
+          "saved"
+        ]
+      },
+      "ConfigView": {
+        "type": "object",
+        "properties": {
+          "source": {
+            "type": "string"
+          },
+          "overridePath": {
+            "type": "string"
+          },
+          "base": {
+            "$ref": "#/components/schemas/Config"
+          },
+          "effective": {
+            "$ref": "#/components/schemas/Config"
+          },
+          "overrides": {
+            "$ref": "#/components/schemas/Overrides"
+          },
+          "editable": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "restartRequired": {
+            "type": "boolean"
+          },
+          "network": {
+            "$ref": "#/components/schemas/Network"
+          }
+        },
+        "required": [
+          "source",
+          "overridePath",
+          "base",
+          "effective",
+          "overrides",
+          "editable",
+          "restartRequired"
+        ]
+      },
+      "ImportInput": {
+        "type": "object",
+        "properties": {
+          "poolId": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "adult": {
+            "type": "boolean"
+          },
+          "license": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          "creators": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Creator"
+            }
+          },
+          "workType": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "original",
+              "repost"
+            ]
+          },
+          "sourceUrl": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "sourcePlatform": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "sourcePending": {
+            "type": "boolean"
+          },
+          "repostNote": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "poolId",
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "VideoInput": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 10000
+          },
+          "category": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "adult": {
+            "type": "boolean"
+          },
+          "license": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "tags": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "maxLength": 40
+            }
+          },
+          "creators": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Creator"
+            }
+          },
+          "workType": {
+            "type": "string",
+            "enum": [
+              "unknown",
+              "original",
+              "repost"
+            ]
+          },
+          "sourceUrl": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "sourcePlatform": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "sourcePending": {
+            "type": "boolean"
+          },
+          "repostNote": {
+            "type": "string",
+            "maxLength": 2000
+          },
+          "language": {
+            "type": "string",
+            "maxLength": 80
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "additionalProperties": false
+      },
+      "Empty": {
+        "type": "object",
+        "properties": {},
+        "required": [],
+        "additionalProperties": false
+      },
+      "WorkStatus": {
+        "type": "object",
+        "properties": {
+          "counts": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "integer"
+            }
+          },
+          "active": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ImportJob"
+            }
+          }
+        },
+        "required": [
+          "counts",
+          "active"
+        ]
+      },
+      "Monitor": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string"
+          },
+          "startedAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "sampledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "uptimeSeconds": {
+            "type": "number"
+          },
+          "cpuPercent": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "cpuError": {
+            "type": "string"
+          },
+          "logicalCPUs": {
+            "type": "integer"
+          },
+          "goMaxProcs": {
+            "type": "integer"
+          },
+          "heapAllocBytes": {
+            "type": "integer"
+          },
+          "goReservedBytes": {
+            "type": "integer"
+          },
+          "goroutines": {
+            "type": "integer"
+          },
+          "requests": {
+            "type": "integer"
+          },
+          "inFlight": {
+            "type": "integer"
+          },
+          "errors5xx": {
+            "type": "integer"
+          },
+          "receivedBytes": {
+            "type": "integer"
+          },
+          "sentBytes": {
+            "type": "integer"
+          },
+          "receiveBytesPerSecond": {
+            "type": "number"
+          },
+          "sendBytesPerSecond": {
+            "type": "number"
+          },
+          "requestsPerSecond": {
+            "type": "number"
+          },
+          "tasks": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "jobs": {
+                    "$ref": "#/components/schemas/WorkStatus"
+                  },
+                  "scan": {
+                    "$ref": "#/components/schemas/ScanStatus"
+                  }
+                },
+                "required": [
+                  "jobs",
+                  "scan"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "tasksError": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "service",
+          "startedAt",
+          "sampledAt",
+          "uptimeSeconds",
+          "cpuPercent",
+          "logicalCPUs",
+          "goMaxProcs",
+          "heapAllocBytes",
+          "goReservedBytes",
+          "goroutines",
+          "requests",
+          "inFlight",
+          "errors5xx",
+          "receivedBytes",
+          "sentBytes",
+          "receiveBytesPerSecond",
+          "sendBytesPerSecond",
+          "requestsPerSecond",
+          "tasks"
+        ]
+      },
+      "BackfillStatus": {
+        "type": "object",
+        "properties": {
+          "enabled": {
+            "type": "boolean"
+          },
+          "intervalSeconds": {
+            "type": "integer"
+          },
+          "nextCheckAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextCheckInSeconds": {
+            "type": "integer"
+          },
+          "candidateCount": {
+            "type": "integer"
+          },
+          "lastScheduledAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "lastVideoId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "intervalSeconds",
+          "nextCheckInSeconds",
+          "candidateCount"
+        ]
+      }
+    },
+    "parameters": {
+      "ProtocolVersion": {
+        "name": "X-DVN-Protocol-Version",
+        "in": "header",
+        "required": false,
+        "description": "可選正整數。省略沿用目前版本；不相容回應 409。",
+        "schema": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$",
+          "examples": [
+            "1"
+          ],
+          "default": "1"
+        }
+      },
+      "ResourceID": {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string"
+        },
+        "description": "影片或工作識別碼：影片 ID 由 GET /api/v1/library 取得；工作 ID 由匯入、重新探測或工作清單取得。"
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "請求格式或參數無效（包含協定標頭）；一般為 Error，版本問題另含 code 與支援版本。",
+        "content": {
+          "application/json": {
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Error"
+                },
+                {
+                  "$ref": "#/components/schemas/ProtocolError"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "協定版本不相容；部分操作也可能回傳一般工作衝突。",
+        "content": {
+          "application/json": {
+            "schema": {
+              "anyOf": [
+                {
+                  "$ref": "#/components/schemas/Error"
+                },
+                {
+                  "$ref": "#/components/schemas/ProtocolError"
+                }
+              ]
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "需要管理員登入或密碼不正確",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "InternalError": {
+        "description": "服務處理或持久保存失敗",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "不允許跨站管理請求",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      },
+      "UnsupportedMediaType": {
+        "description": "請使用 application/json",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/Error"
+            }
+          }
+        }
+      }
+    }
+  },
+  "x-dvn-protocol-version": 1,
+  "tags": [
+    {
+      "name": "服務與版本",
+      "description": "先確認服務健康、建置識別與協定相容性。"
+    },
+    {
+      "name": "登入與授權",
+      "description": "目前頁面已沿用登入 cookie；登出或改密碼會影響既有 session。"
+    },
+    {
+      "name": "設定與重啟",
+      "description": "取得目前設定後修改完整表單；儲存覆寫後需重新啟動才能生效。"
+    },
+    {
+      "name": "資源與工作監看",
+      "description": "查詢目前服務程序的資源、HTTP 流量與背景活動。"
+    },
+    {
+      "name": "影片庫與儲存池",
+      "description": "先註冊伺服器可讀目錄，再查詢影片庫及其 ID。容器必須使用容器內掛載路徑。"
+    },
+    {
+      "name": "匯入與背景工作",
+      "description": "匯入回傳 202 只代表排入工作；使用工作 ID 查詢結果或重試失敗工作。"
+    },
+    {
+      "name": "影片資料與播放",
+      "description": "修改影片描述、補齊技術資訊與讀取原始影片；影片 ID 可由影片庫取得。"
+    }
+  ]
+}

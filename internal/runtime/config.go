@@ -24,6 +24,9 @@ type Config struct {
 	AutoScan                   bool   `json:"autoScan"`
 	ScanIntervalSeconds        int    `json:"scanIntervalSeconds"`
 	FileStableSeconds          int    `json:"fileStableSeconds"`
+	AutoBackfill               bool   `json:"autoBackfill"`
+	BackfillIntervalSeconds    int    `json:"backfillIntervalSeconds"`
+	HashLimitMiBps             int    `json:"hashLimitMiBps"`
 	RememberLastSuccessfulPort bool   `json:"rememberLastSuccessfulPort"`
 	FFprobePath                string `json:"ffprobePath"`
 	ProbeTimeoutSeconds        int    `json:"probeTimeoutSeconds"`
@@ -52,7 +55,7 @@ func LoadConfig(path string, port int, service ...string) (Config, error) {
 			}
 		}
 	}
-	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, FileStableSeconds: 10, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", ProbeTimeoutSeconds: 60}
+	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, FileStableSeconds: 10, AutoBackfill: false, BackfillIntervalSeconds: 60, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", ProbeTimeoutSeconds: 60}
 	if path != "" {
 		file, err := os.Open(path)
 		if err != nil {
@@ -83,6 +86,9 @@ type Override struct {
 	AutoScan                   *bool   `json:"autoScan,omitempty"`
 	ScanIntervalSeconds        *int    `json:"scanIntervalSeconds,omitempty"`
 	FileStableSeconds          *int    `json:"fileStableSeconds,omitempty"`
+	AutoBackfill               *bool   `json:"autoBackfill,omitempty"`
+	BackfillIntervalSeconds    *int    `json:"backfillIntervalSeconds,omitempty"`
+	HashLimitMiBps             *int    `json:"hashLimitMiBps,omitempty"`
 	RememberLastSuccessfulPort *bool   `json:"rememberLastSuccessfulPort,omitempty"`
 }
 
@@ -129,6 +135,15 @@ func (o Override) Apply(base Config) Config {
 	if o.FileStableSeconds != nil {
 		value.FileStableSeconds = *o.FileStableSeconds
 	}
+	if o.AutoBackfill != nil {
+		value.AutoBackfill = *o.AutoBackfill
+	}
+	if o.BackfillIntervalSeconds != nil {
+		value.BackfillIntervalSeconds = *o.BackfillIntervalSeconds
+	}
+	if o.HashLimitMiBps != nil {
+		value.HashLimitMiBps = *o.HashLimitMiBps
+	}
 	if o.RememberLastSuccessfulPort != nil {
 		value.RememberLastSuccessfulPort = *o.RememberLastSuccessfulPort
 	}
@@ -138,7 +153,8 @@ func (o Override) Apply(base Config) Config {
 // Empty 回傳覆寫是否沒有任何欄位。
 func (o Override) Empty() bool {
 	return o.Host == nil && o.PreferredPort == nil && o.FallbackPorts == nil && o.AutoScan == nil &&
-		o.ScanIntervalSeconds == nil && o.FileStableSeconds == nil && o.RememberLastSuccessfulPort == nil
+		o.ScanIntervalSeconds == nil && o.FileStableSeconds == nil && o.AutoBackfill == nil &&
+		o.BackfillIntervalSeconds == nil && o.HashLimitMiBps == nil && o.RememberLastSuccessfulPort == nil
 }
 
 // BuildOverride 比較基準與新設定，只保存有差異的可編輯欄位。
@@ -163,6 +179,15 @@ func BuildOverride(base, next Config) Override {
 	}
 	if next.FileStableSeconds != base.FileStableSeconds {
 		value.FileStableSeconds = &next.FileStableSeconds
+	}
+	if next.AutoBackfill != base.AutoBackfill {
+		value.AutoBackfill = &next.AutoBackfill
+	}
+	if next.BackfillIntervalSeconds != base.BackfillIntervalSeconds {
+		value.BackfillIntervalSeconds = &next.BackfillIntervalSeconds
+	}
+	if next.HashLimitMiBps != base.HashLimitMiBps {
+		value.HashLimitMiBps = &next.HashLimitMiBps
 	}
 	if next.RememberLastSuccessfulPort != base.RememberLastSuccessfulPort {
 		value.RememberLastSuccessfulPort = &next.RememberLastSuccessfulPort
@@ -194,6 +219,12 @@ func (c Config) Validate() error {
 	}
 	if c.ScanIntervalSeconds < 1 || c.ScanIntervalSeconds > 86400 || c.FileStableSeconds < 1 || c.FileStableSeconds > 86400 {
 		return fmt.Errorf("掃描間隔與檔案穩定秒數須介於 1 到 86400")
+	}
+	if c.BackfillIntervalSeconds < 10 || c.BackfillIntervalSeconds > 86400 {
+		return fmt.Errorf("自動補齊檢查間隔必須介於 10 到 86400")
+	}
+	if c.HashLimitMiBps < 0 || c.HashLimitMiBps > 102400 {
+		return fmt.Errorf("SHA-256 讀取上限必須介於 0 到 102400 MiB/s")
 	}
 	for _, p := range append([]int{c.PreferredPort}, c.FallbackPorts...) {
 		if p < 1 || p > 65535 {

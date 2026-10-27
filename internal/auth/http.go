@@ -24,7 +24,7 @@ func (m *Manager) Middleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		path := r.URL.Path
 		if !strings.HasPrefix(path, "/api/") || path == "/api/v1/status" ||
-			path == "/api/v1/auth/session" || path == "/api/v1/auth/login" {
+			path == "/api/v1/auth/session" || path == "/api/v1/auth/login" || path == "/api/v1/protocol" {
 			next.ServeHTTP(w, r)
 			return
 		}

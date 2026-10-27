@@ -52,6 +52,17 @@ func decode(w http.ResponseWriter, r *http.Request, value any) bool {
 // Register 將 Video Node 的儲存池、影片匯入與 Range 播放路由加入 mux。
 // 登入授權由 runtime 的 auth middleware 統一執行；寫入另檢查 Origin。
 func (s *Store) Register(mux *http.ServeMux) {
+	mux.HandleFunc("GET /api/v1/schedule", func(w http.ResponseWriter, r *http.Request) {
+		var scan, backfill, jobs any
+		if s.scanner != nil {
+			scan = s.scanner.Status()
+		}
+		if s.queue != nil {
+			backfill, _ = s.queue.BackfillStatus(r.Context())
+			jobs, _ = s.queue.WorkStatus(r.Context())
+		}
+		respond(w, 200, map[string]any{"scan": scan, "backfill": backfill, "jobs": jobs})
+	})
 	mux.HandleFunc("GET /api/v1/library", func(w http.ResponseWriter, r *http.Request) {
 		values, err := url.ParseQuery(r.URL.RawQuery)
 		if err != nil {
@@ -105,6 +116,28 @@ func (s *Store) Register(mux *http.ServeMux) {
 			s.scanner.Request()
 		}
 	})
+	mux.HandleFunc("PATCH /api/v1/pools/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var request struct {
+			Enabled *bool `json:"enabled"`
+		}
+		if !decode(w, r, &request) {
+			return
+		}
+		if request.Enabled == nil {
+			failure(w, 400, "請提供 enabled")
+			return
+		}
+		pool, err := s.SetPoolEnabled(r.PathValue("id"), *request.Enabled)
+		if errors.Is(err, sql.ErrNoRows) {
+			failure(w, 404, "找不到儲存池")
+			return
+		}
+		if err != nil {
+			failure(w, 500, "無法更新儲存池狀態")
+			return
+		}
+		respond(w, 200, pool)
+	})
 	mux.HandleFunc("POST /api/v1/videos/import", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
 			PoolID string `json:"poolId"`
@@ -126,6 +159,10 @@ func (s *Store) Register(mux *http.ServeMux) {
 		job, _, err := s.queue.Enqueue(r.Context(), request.PoolID, request.Path, request.Title, "manual", request.Metadata)
 		if err != nil {
 			if errors.Is(err, ErrImportExists) {
+				failure(w, 409, err.Error())
+				return
+			}
+			if errors.Is(err, ErrPoolDisabled) || errors.Is(err, ErrPoolOffline) {
 				failure(w, 409, err.Error())
 				return
 			}
@@ -168,6 +205,14 @@ func (s *Store) Register(mux *http.ServeMux) {
 		})
 	}
 	if s.queue != nil {
+		mux.HandleFunc("GET /api/v1/import-jobs", func(w http.ResponseWriter, r *http.Request) {
+			jobs, err := s.queue.Jobs()
+			if err != nil {
+				failure(w, 500, "無法讀取背景工作")
+				return
+			}
+			respond(w, 200, jobs)
+		})
 		mux.HandleFunc("POST /api/v1/videos/{id}/probe", func(w http.ResponseWriter, r *http.Request) {
 			var request struct{}
 			if !decode(w, r, &request) {
@@ -176,6 +221,10 @@ func (s *Store) Register(mux *http.ServeMux) {
 			job, err := s.queue.EnqueueProbe(r.Context(), r.PathValue("id"))
 			if errors.Is(err, sql.ErrNoRows) {
 				failure(w, 404, "找不到影片")
+				return
+			}
+			if errors.Is(err, ErrPoolDisabled) || errors.Is(err, ErrPoolOffline) {
+				failure(w, 409, err.Error())
 				return
 			}
 			if err != nil {
@@ -224,7 +273,16 @@ func (s *Store) play(w http.ResponseWriter, r *http.Request) {
 	}
 	file, err := s.openVideo(video)
 	if err != nil {
-		failure(w, 503, "來源離線或已變更")
+		switch {
+		case errors.Is(err, ErrPoolDisabled):
+			failure(w, 409, "所屬儲存池已停用")
+		case errors.Is(err, ErrPoolOffline):
+			failure(w, 503, "所屬儲存池目前離線")
+		case errors.Is(err, ErrSourceChanged):
+			failure(w, 503, "來源檔案已變更")
+		default:
+			failure(w, 503, "來源檔案遺失或無法讀取")
+		}
 		return
 	}
 	defer file.Close()

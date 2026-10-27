@@ -20,6 +20,8 @@ type ScanResult struct {
 	Enqueued     int       `json:"enqueued"`
 	Pending      int       `json:"pending"`
 	Skipped      int       `json:"skipped"`
+	Changed      int       `json:"changed"`
+	Deleted      int       `json:"deleted"`
 	Failed       int       `json:"failed"`
 	OfflinePools int       `json:"offlinePools"`
 	Errors       []string  `json:"errors"`
@@ -27,12 +29,14 @@ type ScanResult struct {
 
 // ScanStatus 提供排程設定、執行狀態與最近掃描結果。
 type ScanStatus struct {
-	Automatic       bool        `json:"automatic"`
-	IntervalSeconds int         `json:"intervalSeconds"`
-	StableSeconds   int         `json:"stableSeconds"`
-	Running         bool        `json:"running"`
-	Queued          bool        `json:"queued"`
-	Last            *ScanResult `json:"last"`
+	Automatic        bool        `json:"automatic"`
+	IntervalSeconds  int         `json:"intervalSeconds"`
+	StableSeconds    int         `json:"stableSeconds"`
+	Running          bool        `json:"running"`
+	Queued           bool        `json:"queued"`
+	NextRunAt        string      `json:"nextRunAt,omitempty"`
+	NextRunInSeconds int         `json:"nextRunInSeconds"`
+	Last             *ScanResult `json:"last"`
 }
 
 type observation struct {
@@ -62,7 +66,18 @@ func NewScanner(store *Store, automatic bool, interval, stable time.Duration, lo
 }
 
 // Status 回傳狀態快照；結果完成後不再修改，供診斷 API 讀取。
-func (s *Scanner) Status() ScanStatus { s.mu.Lock(); defer s.mu.Unlock(); return s.status }
+func (s *Scanner) Status() ScanStatus {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.status.NextRunAt != "" {
+		if next, err := time.Parse(time.RFC3339Nano, s.status.NextRunAt); err == nil {
+			if remaining := int(time.Until(next).Seconds()); remaining > 0 {
+				s.status.NextRunInSeconds = remaining
+			}
+		}
+	}
+	return s.status
+}
 
 // Request 合併重複的掃描請求，回傳是否成功加入佇列。
 func (s *Scanner) Request() bool {
@@ -113,8 +128,14 @@ func (s *Scanner) Run(ctx context.Context) {
 		s.mu.Lock()
 		s.status.Last = &result
 		s.status.Running = false
+		if s.status.Automatic {
+			s.status.NextRunAt = time.Now().Add(s.interval).UTC().Format(time.RFC3339Nano)
+		} else {
+			s.status.NextRunAt = ""
+			s.status.NextRunInSeconds = 0
+		}
 		s.mu.Unlock()
-		s.logger.Info("儲存池掃描完成", "enqueued", result.Enqueued, "imported", result.Imported, "pending", result.Pending, "failed", result.Failed, "offlinePools", result.OfflinePools)
+		s.logger.Info("儲存池掃描完成", "enqueued", result.Enqueued, "imported", result.Imported, "pending", result.Pending, "changed", result.Changed, "deleted", result.Deleted, "failed", result.Failed, "offlinePools", result.OfflinePools)
 	}
 }
 
@@ -142,25 +163,55 @@ func fileKey(poolID, path string) string {
 	return poolID + ":" + path
 }
 
-func (s *Scanner) indexed(ctx context.Context) (map[string]bool, error) {
-	query := "SELECT pool_id,relative_path FROM videos"
-	if s.store.queue != nil {
-		query += " UNION SELECT pool_id,relative_path FROM import_jobs"
-	}
-	rows, err := s.store.db.QueryContext(ctx, query)
+type catalogVideo struct {
+	poolID   string
+	size     int64
+	modified int64
+}
+
+// catalog 讀取已索引影片的中繼資料與匯入工作路徑；不讀取影片內容。
+func (s *Scanner) catalog(ctx context.Context) (map[string]catalogVideo, map[string]bool, error) {
+	videos := map[string]catalogVideo{}
+	rows, err := s.store.db.QueryContext(ctx, "SELECT pool_id,relative_path,size,modified_at FROM videos")
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
-	defer rows.Close()
-	result := map[string]bool{}
 	for rows.Next() {
-		var pool, path string
-		if err := rows.Scan(&pool, &path); err != nil {
-			return nil, err
+		var poolID, relative string
+		var size, modified int64
+		if err := rows.Scan(&poolID, &relative, &size, &modified); err != nil {
+			rows.Close()
+			return nil, nil, err
 		}
-		result[fileKey(pool, path)] = true
+		videos[fileKey(poolID, relative)] = catalogVideo{poolID: poolID, size: size, modified: modified}
 	}
-	return result, rows.Err()
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return nil, nil, err
+	}
+	rows.Close()
+
+	jobs := map[string]bool{}
+	if s.store.queue != nil {
+		rows, err := s.store.db.QueryContext(ctx, "SELECT pool_id,relative_path FROM import_jobs")
+		if err != nil {
+			return nil, nil, err
+		}
+		for rows.Next() {
+			var poolID, relative string
+			if err := rows.Scan(&poolID, &relative); err != nil {
+				rows.Close()
+				return nil, nil, err
+			}
+			jobs[fileKey(poolID, relative)] = true
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return nil, nil, err
+		}
+		rows.Close()
+	}
+	return videos, jobs, nil
 }
 
 func (s *Scanner) scan(ctx context.Context, now time.Time) ScanResult {
@@ -170,7 +221,7 @@ func (s *Scanner) scan(ctx context.Context, now time.Time) ScanResult {
 		result.failure(err)
 		return result
 	}
-	indexed, err := s.indexed(ctx)
+	catalog, importJobs, err := s.catalog(ctx)
 	if err != nil {
 		result.failure(err)
 		return result
@@ -180,11 +231,21 @@ func (s *Scanner) scan(ctx context.Context, now time.Time) ScanResult {
 		if ctx.Err() != nil {
 			break
 		}
+		if !pool.Enabled {
+			continue
+		}
 		if !pool.Online {
 			result.OfflinePools++
 			continue
 		}
-		err := filepath.WalkDir(pool.Path, func(path string, entry fs.DirEntry, walkErr error) error {
+		root, err := s.store.poolPath(pool.ID)
+		if err != nil {
+			result.failure(err)
+			continue
+		}
+		seen := map[string]bool{}
+		complete := true
+		err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 			if err := ctx.Err(); err != nil {
 				return err
 			}
@@ -196,14 +257,9 @@ func (s *Scanner) scan(ctx context.Context, now time.Time) ScanResult {
 			if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || !supportedVideo(path) {
 				return nil
 			}
-			relative, err := filepath.Rel(pool.Path, path)
+			relative, err := filepath.Rel(root, path)
 			if err != nil {
 				result.failure(err)
-				return nil
-			}
-			key := fileKey(pool.ID, relative)
-			if indexed[key] {
-				result.Skipped++
 				return nil
 			}
 			info, err := entry.Info()
@@ -212,6 +268,19 @@ func (s *Scanner) scan(ctx context.Context, now time.Time) ScanResult {
 				return nil
 			}
 			if !info.Mode().IsRegular() {
+				return nil
+			}
+			key := fileKey(pool.ID, relative)
+			seen[key] = true
+			if video, exists := catalog[key]; exists {
+				result.Skipped++
+				if info.Size() != video.size || info.ModTime().UnixNano() != video.modified {
+					result.Changed++
+				}
+				return nil
+			}
+			if importJobs[key] {
+				result.Skipped++
 				return nil
 			}
 			previous, exists := s.observed[key]
@@ -253,6 +322,14 @@ func (s *Scanner) scan(ctx context.Context, now time.Time) ScanResult {
 		})
 		if err != nil {
 			result.failure(err)
+			complete = false
+		}
+		if complete {
+			for key, video := range catalog {
+				if video.poolID == pool.ID && !seen[key] {
+					result.Deleted++
+				}
+			}
 		}
 	}
 	s.observed = next

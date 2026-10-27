@@ -4,6 +4,7 @@ package library
 import (
 	"crypto/rand"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -14,20 +15,32 @@ import (
 	_ "modernc.org/sqlite"
 )
 
+var (
+	ErrPoolDisabled  = errors.New("儲存池已停用")
+	ErrPoolOffline   = errors.New("儲存池目前離線")
+	ErrSourceMissing = errors.New("來源檔案遺失")
+	ErrSourceChanged = errors.New("來源檔案已變更")
+)
+
 // Store 持有單一節點的 SQLite 索引；使用完畢需呼叫 Close。
 type Store struct {
-	db      *sql.DB
-	nodeID  string
-	scanner *Scanner
-	queue   *ImportQueue
+	db                      *sql.DB
+	nodeID                  string
+	scanner                 *Scanner
+	queue                   *ImportQueue
+	hashLimitBytesPerSecond int64
 }
 
-// Pool 表示已註冊的儲存根目錄；Online 每次查詢時重新檢查。
+// Pool 表示已註冊的儲存根目錄；Online 每次查詢時重新檢查，Enabled 是管理者的開關。
 type Pool struct {
-	ID     string `json:"id"`
-	Name   string `json:"name"`
-	Path   string `json:"path"`
-	Online bool   `json:"online"`
+	ID             string `json:"id"`
+	Name           string `json:"name"`
+	Path           string `json:"path"`
+	Online         bool   `json:"online"`
+	Enabled        bool   `json:"enabled"`
+	Filesystem     string `json:"filesystem,omitempty"`
+	VolumeID       string `json:"volumeId,omitempty"`
+	volumeRelative string
 }
 
 // Video 表示一部影片與第一份原始檔案副本，路徑不對外公開。
@@ -38,14 +51,15 @@ type Video struct {
 	PoolID        string `json:"poolId"`
 	Title         string `json:"title"`
 	Metadata
-	FileHash     string      `json:"fileHash"`
-	SourceHash   string      `json:"sourceHash"`
-	Size         int64       `json:"size"`
-	ImportedAt   string      `json:"importedAt"`
-	Available    bool        `json:"available"`
-	Media        *media.Info `json:"media,omitempty"`
-	relativePath string
-	modifiedAt   int64
+	FileHash          string      `json:"fileHash"`
+	SourceHash        string      `json:"sourceHash"`
+	Size              int64       `json:"size"`
+	ImportedAt        string      `json:"importedAt"`
+	Available         bool        `json:"available"`
+	UnavailableReason string      `json:"unavailableReason,omitempty"`
+	Media             *media.Info `json:"media,omitempty"`
+	relativePath      string
+	modifiedAt        int64
 }
 
 func identifier() string { return fmt.Sprintf("%x", mustRandom()) }
@@ -78,6 +92,7 @@ func Open(directory string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
+	_ = store.backfillPoolMetadata()
 	return store, nil
 }
 
@@ -94,8 +109,8 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("SELECT COALESCE(MAX(version),0) FROM schema_version").Scan(&version); err != nil {
 		return err
 	}
-	if version > 4 {
-		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 4", version)
+	if version > 5 {
+		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 5", version)
 	}
 	if _, err := tx.Exec(`
  CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
@@ -146,6 +161,31 @@ INSERT INTO schema_version VALUES(4);`); err != nil {
 			return err
 		}
 	}
+	if version < 5 {
+		columns := []struct {
+			name       string
+			definition string
+		}{
+			{"volume_id", "TEXT NOT NULL DEFAULT ''"},
+			{"volume_relative", "TEXT NOT NULL DEFAULT ''"},
+			{"filesystem", "TEXT NOT NULL DEFAULT ''"},
+			{"enabled", "INTEGER NOT NULL DEFAULT 1 CHECK(enabled IN (0,1))"},
+		}
+		for _, column := range columns {
+			exists, err := columnExists(tx, "pools", column.name)
+			if err != nil {
+				return err
+			}
+			if !exists {
+				if _, err := tx.Exec("ALTER TABLE pools ADD COLUMN " + column.name + " " + column.definition); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := tx.Exec("INSERT INTO schema_version VALUES(5)"); err != nil {
+			return err
+		}
+	}
 	if _, err := tx.Exec("INSERT OR IGNORE INTO metadata VALUES('nodeId', ?)", identifier()); err != nil {
 		return err
 	}
@@ -155,12 +195,33 @@ INSERT INTO schema_version VALUES(4);`); err != nil {
 	return tx.Commit()
 }
 
+// columnExists 讓 schema 遷移可在測試重設版本或部分欄位已存在時安全重跑。
+func columnExists(tx *sql.Tx, table, column string) (bool, error) {
+	rows, err := tx.Query("PRAGMA table_info(" + table + ")")
+	if err != nil {
+		return false, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var cid, notNull, primaryKey int
+		var name, kind string
+		var defaultValue any
+		if err := rows.Scan(&cid, &name, &kind, &notNull, &defaultValue, &primaryKey); err != nil {
+			return false, err
+		}
+		if name == column {
+			return true, nil
+		}
+	}
+	return false, rows.Err()
+}
+
 // Close 釋放資料庫連線，回傳資料庫關閉錯誤。
 func (s *Store) Close() error { return s.db.Close() }
 
-// Pools 回傳所有已註冊儲存池，離線池保留資料而不刪除。
+// Pools 回傳所有已註冊儲存池，離線或被停用的池保留資料而不刪除。
 func (s *Store) Pools() ([]Pool, error) {
-	rows, err := s.db.Query("SELECT id,name,path FROM pools ORDER BY name,id")
+	rows, err := s.db.Query("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled FROM pools ORDER BY name,id")
 	if err != nil {
 		return nil, err
 	}
@@ -168,17 +229,23 @@ func (s *Store) Pools() ([]Pool, error) {
 	result := []Pool{}
 	for rows.Next() {
 		var pool Pool
-		if err := rows.Scan(&pool.ID, &pool.Name, &pool.Path); err != nil {
+		var enabled int
+		if err := rows.Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled); err != nil {
 			return nil, err
 		}
-		info, err := os.Stat(pool.Path)
-		pool.Online = err == nil && info.IsDir()
+		pool.Enabled = enabled != 0
+		if effective, err := effectivePoolPath(pool.Path, pool.VolumeID, pool.volumeRelative); err == nil {
+			if info, statErr := os.Stat(effective); statErr == nil && info.IsDir() {
+				pool.Online = true
+			}
+		}
 		result = append(result, pool)
 	}
 	return result, rows.Err()
 }
 
 // AddPool 註冊現存目錄，不移動或刪除原始檔案；重複目錄會回傳錯誤。
+// Windows 額外保存 volume GUID 與相對路徑，之後盤符改變仍可解析到同一個磁碟區。
 func (s *Store) AddPool(name, path string) (Pool, error) {
 	var pool Pool
 	if strings.TrimSpace(name) == "" || !filepath.IsAbs(path) {
@@ -195,9 +262,99 @@ func (s *Store) AddPool(name, path string) (Pool, error) {
 	if !info.IsDir() {
 		return pool, fmt.Errorf("儲存池必須是目錄")
 	}
-	pool = Pool{ID: identifier(), Name: strings.TrimSpace(name), Path: path, Online: true}
-	_, err = s.db.Exec("INSERT INTO pools(id,name,path) VALUES(?,?,?)", pool.ID, pool.Name, pool.Path)
+	volumeID, volumeRelative, filesystem := volumeDetailsFor(path)
+	pool = Pool{
+		ID: identifier(), Name: strings.TrimSpace(name), Path: path, Online: true, Enabled: true,
+		Filesystem: filesystem, VolumeID: volumeID, volumeRelative: volumeRelative,
+	}
+	_, err = s.db.Exec("INSERT INTO pools(id,name,path,volume_id,volume_relative,filesystem,enabled) VALUES(?,?,?,?,?,?,1)", pool.ID, pool.Name, pool.Path, pool.VolumeID, pool.volumeRelative, pool.Filesystem)
 	return pool, err
+}
+
+// SetPoolEnabled 切換儲存池的掃描、匯入與播放可用性；影片索引與描述保留。
+func (s *Store) SetPoolEnabled(id string, enabled bool) (Pool, error) {
+	result, err := s.db.Exec("UPDATE pools SET enabled=? WHERE id=?", enabled, id)
+	if err != nil {
+		return Pool{}, err
+	}
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return Pool{}, err
+	}
+	if affected == 0 {
+		return Pool{}, sql.ErrNoRows
+	}
+	return s.poolByID(id)
+}
+
+func (s *Store) poolByID(id string) (Pool, error) {
+	var pool Pool
+	var enabled int
+	err := s.db.QueryRow("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled FROM pools WHERE id=?", id).
+		Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled)
+	if err != nil {
+		return Pool{}, err
+	}
+	pool.Enabled = enabled != 0
+	if effective, err := effectivePoolPath(pool.Path, pool.VolumeID, pool.volumeRelative); err == nil {
+		if info, statErr := os.Stat(effective); statErr == nil && info.IsDir() {
+			pool.Online = true
+		}
+	}
+	return pool, nil
+}
+
+// effectivePoolPath 優先使用 volume GUID；一旦記錄了 volume ID 就不回退到可能被其他磁碟佔用的盤符。
+func effectivePoolPath(path, volumeID, relative string) (string, error) {
+	if volumeID == "" {
+		return path, nil
+	}
+	return resolveVolumePath(volumeID, relative)
+}
+
+// backfillPoolMetadata 為舊資料補上 volume GUID/檔案系統；路徑離線時先跳過，下次啟動再試。
+func (s *Store) backfillPoolMetadata() error {
+	rows, err := s.db.Query("SELECT id,path,volume_id,volume_relative,filesystem FROM pools WHERE volume_id='' OR filesystem=''")
+	if err != nil {
+		return err
+	}
+	type item struct {
+		id             string
+		path           string
+		volumeID       string
+		volumeRelative string
+		filesystem     string
+	}
+	items := []item{}
+	for rows.Next() {
+		var current item
+		if err := rows.Scan(&current.id, &current.path, &current.volumeID, &current.volumeRelative, &current.filesystem); err != nil {
+			rows.Close()
+			return err
+		}
+		items = append(items, current)
+	}
+	if err := rows.Err(); err != nil {
+		rows.Close()
+		return err
+	}
+	rows.Close()
+	for _, current := range items {
+		volumeID, volumeRelative, filesystem := volumeDetailsFor(current.path)
+		if volumeID == "" {
+			volumeID, volumeRelative = current.volumeID, current.volumeRelative
+		}
+		if filesystem == "" {
+			filesystem = current.filesystem
+		}
+		if volumeID == current.volumeID && volumeRelative == current.volumeRelative && filesystem == current.filesystem {
+			continue
+		}
+		if _, err := s.db.Exec("UPDATE pools SET volume_id=?,volume_relative=?,filesystem=? WHERE id=?", volumeID, volumeRelative, filesystem, current.id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // resolve 僅允許儲存池內的相對檔案路徑，解析連結後再次檢查邊界。

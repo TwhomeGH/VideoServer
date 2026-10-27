@@ -138,6 +138,23 @@ func TestStartupPersistsFallbackAndKeepsConfigUnchanged(t *testing.T) {
 		t.Fatal(err)
 	}
 	client.Jar = jar
+	baseURL := "http://127.0.0.1:" + strconv.Itoa(port)
+	capabilities, err := client.Get(baseURL + "/api/v1/protocol")
+	if err != nil {
+		t.Fatal(err)
+	}
+	capabilities.Body.Close()
+	if capabilities.StatusCode != http.StatusOK || capabilities.Header.Get("X-DVN-Protocol-Version") != "1" {
+		t.Fatal("public protocol discovery unavailable")
+	}
+	spec, err := client.Get(baseURL + "/api/v1/openapi.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	spec.Body.Close()
+	if spec.StatusCode != http.StatusUnauthorized {
+		t.Fatal("OpenAPI did not require login")
+	}
 	unauthorized, err := client.Get("http://127.0.0.1:" + strconv.Itoa(port) + "/api/v1/monitor")
 	if err != nil {
 		t.Fatal(err)
@@ -154,6 +171,32 @@ func TestStartupPersistsFallbackAndKeepsConfigUnchanged(t *testing.T) {
 	login.Body.Close()
 	if login.StatusCode != http.StatusOK {
 		t.Fatalf("login status = %d", login.StatusCode)
+	}
+	spec, err = client.Get(baseURL + "/api/v1/openapi.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document struct {
+		Paths map[string]json.RawMessage `json:"paths"`
+	}
+	decodeErr := json.NewDecoder(spec.Body).Decode(&document)
+	spec.Body.Close()
+	if decodeErr != nil || spec.StatusCode != http.StatusOK || document.Paths["/api/v1/config"] == nil || document.Paths["/api/v1/library"] != nil {
+		t.Fatalf("invalid Central specification: %v", decodeErr)
+	}
+	incompatible, err := http.NewRequest("POST", baseURL+"/api/v1/system/restart", strings.NewReader(`{"confirm":true}`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	incompatible.Header.Set("Content-Type", "application/json")
+	incompatible.Header.Set("X-DVN-Protocol-Version", "2")
+	rejected, err := client.Do(incompatible)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rejected.Body.Close()
+	if rejected.StatusCode != http.StatusConflict {
+		t.Fatal("incompatible restart was not rejected")
 	}
 	monitor, err := client.Get("http://127.0.0.1:" + strconv.Itoa(port) + "/api/v1/monitor")
 	if err != nil {

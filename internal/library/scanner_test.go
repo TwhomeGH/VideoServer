@@ -113,6 +113,56 @@ func TestScanSkipsManualImportAndUnsafeLinks(t *testing.T) {
 	}
 }
 
+func TestScanReconciliationCountsChangedAndDeleted(t *testing.T) {
+	store, scanner, pool := scannerFixture(t)
+	scanner.stable = 0
+	path := filepath.Join(pool.Path, "video.mp4")
+	if err := os.WriteFile(path, []byte("original"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	video, err := store.Import(context.Background(), pool.ID, "video.mp4", "video")
+	if err != nil {
+		t.Fatal(err)
+	}
+	initial := scanner.scan(context.Background(), time.Now())
+	if initial.Changed != 0 || initial.Deleted != 0 {
+		t.Fatalf("unexpected initial diff: %+v", initial)
+	}
+	if err := os.WriteFile(path, []byte("modified and longer"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	changed := scanner.scan(context.Background(), time.Now())
+	if changed.Changed != 1 || changed.Deleted != 0 {
+		t.Fatalf("changed diff: %+v", changed)
+	}
+	afterChange, err := store.video(video.ID)
+	if err != nil || afterChange.FileHash != video.FileHash {
+		t.Fatal("changed source modified the index")
+	}
+	page, err := store.QueryVideos(context.Background(), VideoQuery{Page: 1, PageSize: 24})
+	if err != nil || len(page.Videos) != 1 || page.Videos[0].UnavailableReason != "source_changed" {
+		t.Fatalf("changed status: %+v %v", page, err)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	deleted := scanner.scan(context.Background(), time.Now())
+	if deleted.Changed != 0 || deleted.Deleted != 1 {
+		t.Fatalf("deleted diff: %+v", deleted)
+	}
+	page, err = store.QueryVideos(context.Background(), VideoQuery{Page: 1, PageSize: 24})
+	if err != nil || len(page.Videos) != 1 || page.Videos[0].UnavailableReason != "source_missing" {
+		t.Fatalf("deleted status: %+v %v", page, err)
+	}
+	if err := os.WriteFile(filepath.Join(pool.Path, "new.mp4"), []byte("new"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	added := scanner.scan(context.Background(), time.Now())
+	if added.Imported != 1 || added.Deleted != 1 {
+		t.Fatalf("new file diff: %+v", added)
+	}
+}
+
 func TestScannerManualQueueAndShutdown(t *testing.T) {
 	_, scanner, _ := scannerFixture(t)
 	scanner.status.Automatic = false

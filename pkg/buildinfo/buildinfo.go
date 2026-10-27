@@ -4,6 +4,8 @@ package buildinfo
 import (
 	"os"
 	"runtime/debug"
+
+	"github.com/TwhomeGH/VideoServer/pkg/protocol"
 )
 
 // Version、BuildTime、Channel 可由建置時的 -ldflags 獨立注入。
@@ -32,7 +34,7 @@ type Identity struct {
 // Current 回傳指定 service 的識別；go run 無 VCS 資訊時明確標示 unknown。
 func Current(service string) Identity {
 	i := Identity{
-		Service: service, Version: Version, Commit: "unknown", BuildTime: BuildTime, Channel: Channel, ProtocolVersion: 1,
+		Service: service, Version: Version, Commit: "unknown", BuildTime: BuildTime, Channel: Channel, ProtocolVersion: protocol.Current,
 		ImageBuildTime: envOr("DVN_IMAGE_BUILT_AT"), ImageSourceDigest: envOr("DVN_IMAGE_SOURCE_DIGEST"),
 	}
 	if info, ok := debug.ReadBuildInfo(); ok {

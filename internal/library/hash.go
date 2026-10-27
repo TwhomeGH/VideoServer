@@ -16,6 +16,8 @@ func (s *Store) hashSource(ctx context.Context, file *os.File, size int64, jobID
 	buffer := make([]byte, 1024*1024)
 	var processed int64
 	lastProgress := time.Time{}
+	started := time.Now()
+	limit := s.hashLimitBytesPerSecond
 	for {
 		if err := ctx.Err(); err != nil {
 			return "", err
@@ -29,6 +31,18 @@ func (s *Store) hashSource(ctx context.Context, file *os.File, size int64, jobID
 					return "", err
 				}
 				lastProgress = time.Now()
+			}
+			if limit > 0 {
+				expected := time.Duration(float64(processed) / float64(limit) * float64(time.Second))
+				if wait := expected - time.Since(started); wait > 0 {
+					timer := time.NewTimer(wait)
+					select {
+					case <-ctx.Done():
+						timer.Stop()
+						return "", ctx.Err()
+					case <-timer.C:
+					}
+				}
 			}
 		}
 		if err == io.EOF {

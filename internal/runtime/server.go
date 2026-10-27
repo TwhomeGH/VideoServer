@@ -21,6 +21,7 @@ import (
 	"github.com/TwhomeGH/VideoServer/internal/diagnostics"
 	"github.com/TwhomeGH/VideoServer/internal/library"
 	"github.com/TwhomeGH/VideoServer/pkg/buildinfo"
+	"github.com/TwhomeGH/VideoServer/pkg/protocol"
 )
 
 // Listen 依設定順序綁定實際端口；全部失敗時回傳所有監聽錯誤。
@@ -44,6 +45,7 @@ func listenPorts(c Config, ports []int) (net.Listener, error) {
 // address 是實際監聽位址，非公開 Endpoint；webDirectory 指向已打包管理頁面。
 func Handler(identity buildinfo.Identity, address, webDirectory string, extensions ...func(*http.ServeMux)) http.Handler {
 	mux := http.NewServeMux()
+	protocol.Register(mux, identity.Service)
 	for _, register := range extensions {
 		register(mux)
 	}
@@ -159,6 +161,7 @@ func Main(service string, port int) int {
 			logger.Error("初始化匯入佇列失敗", "error", err)
 			return 1
 		}
+		queue.SetHashLimit(config.HashLimitMiBps)
 		scanner = library.NewScanner(store, config.AutoScan, time.Duration(config.ScanIntervalSeconds)*time.Second, time.Duration(config.FileStableSeconds)*time.Second, logger)
 		extensions = append(extensions, store.Register)
 	}
@@ -183,10 +186,14 @@ func Main(service string, port int) int {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"jobs": work, "scan": scanner.Status()}, nil
+		backfill, err := queue.BackfillStatus(ctx)
+		if err != nil {
+			return nil, err
+		}
+		return map[string]any{"jobs": work, "scan": scanner.Status(), "backfill": backfill}, nil
 	})
 	extensions = append(extensions, monitor.Register)
-	server := &http.Server{Handler: monitor.Middleware(authManager.Middleware(Handler(identity, listener.Addr().String(), config.WebDirectory, extensions...))), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
+	server := &http.Server{Handler: monitor.Middleware(protocol.Middleware(authManager.Middleware(Handler(identity, listener.Addr().String(), config.WebDirectory, extensions...)))), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	monitorDone := make(chan struct{})
@@ -203,9 +210,14 @@ func Main(service string, port int) int {
 	}()
 	if queue != nil {
 		queueContext, cancelQueue := context.WithCancel(ctx)
-		done := make(chan struct{})
-		go func() { defer close(done); queue.Run(queueContext) }()
-		defer func() { cancelQueue(); <-done }()
+		queueDone := make(chan struct{})
+		backfillDone := make(chan struct{})
+		go func() { defer close(queueDone); queue.Run(queueContext) }()
+		go func() {
+			defer close(backfillDone)
+			queue.RunBackfill(queueContext, time.Duration(config.BackfillIntervalSeconds)*time.Second, config.AutoBackfill)
+		}()
+		defer func() { cancelQueue(); <-queueDone; <-backfillDone }()
 	}
 	if scanner != nil {
 		scanContext, cancelScan := context.WithCancel(ctx)
