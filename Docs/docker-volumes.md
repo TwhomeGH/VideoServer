@@ -117,6 +117,29 @@ docker compose -f testing/compose.yaml -f testing/compose.local.yaml up -d --no-
 例如主機的 `H:\Video\旅行\第一天.mp4`，在 H 槽影片庫內的相對路徑是 `旅行/第一天.mp4`。註冊後會定期自動掃描新增影片；描述、Tag 與授權可再於影片庫編輯。
 避免把同一批檔案以重疊目錄反覆註冊為多個池；目前不同池會建立各自的索引。
 
+## 其他綁定方式
+
+Compose 以合併後的設定為準：`testing/compose.yaml` 加上 `testing/compose.local.yaml`，或根目錄 `compose.yaml` 加上 `compose.override.yaml`。`testing:up` 會自動疊加 local 檔；網頁要填的仍是容器內 target，不是主機 source。
+
+| 方式 | 寫法 | 適用與注意 |
+| --- | --- | --- |
+| 短語法 | `- H:/Video:/storage/h-video:ro` | 最快，但沒有 `create_host_path:false`；source 打錯時可能自動建立空目錄 |
+| 長語法（目前） | `type: bind`、`source`、`target`、`read_only`、`bind.create_host_path:false` | 可明確控制唯讀與來源不存在時失敗，建議日常使用 |
+| 本機 overlay | `testing/compose.local.yaml` 或 `compose.override.yaml` | 目前推薦；主機路徑不進 Git，`testing:up` 自動套用 |
+| 環境變數 | `source: ${DVN_MEDIA_HOST_PATH:?set path}` | 多主機／CI；變數放被忽略的 `.env`，不要提交實際路徑 |
+| 具名 volume＋local bind | `driver: local`、`driver_opts: {type: none, o: bind, device: H:/Video}` | 實際仍是 bind，但多一層 volume；除非需要 volume 名稱／生命週期，不建議 |
+| CIFS／NFS volume | `driver_opts` 的 `type: cifs` 或 `nfs` | NAS 用；要處理憑證、uid/gid、網路中斷與事件語意，通常搭配 polling |
+| `docker run --mount` | `--mount type=bind,source=H:/Video,target=/storage/h-video,readonly` | 只用於臨時排查；日常仍用 Compose |
+
+補充：
+
+- 影片來源建議一律 `read_only: true`；DVN 只讀取，不會把檔案寫回媒體目錄。
+- `create_host_path: false` 讓來源不存在時直接失敗，避免服務看到空目錄後把池標成在線。
+- `bind.propagation: rslave` 只在 Linux 主機掛載變動需要傳進容器時使用；Docker Desktop 不一定支援，靜態媒體不需要。
+- SELinux 的 `:z`／`:Z` 只適用 Linux；Windows 不用。
+- Docker Desktop 的 9p／virtiofs 是容器視角，volume GUID 不可見；原生 Windows 才有 GUID 自動追蹤。
+- 改掛載後要重新 `up` 讓容器重建；`restart` 不會套用新的 volumes。
+
 ## 讀不到時如何確認
 
 確認容器內是否真的有掛載路徑：
