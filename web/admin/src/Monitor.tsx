@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, jsonRequest } from './api';
 import { useI18n } from './i18n';
 import { formatDuration } from './format';
-import { ScanTierBadge } from './ScanTierBadge';
+import { ScanTierBadge, scanTierActivity } from './ScanTierBadge';
 import type { ImportJob } from './ImportJobs';
 import { JobProgress } from './JobProgress';
 
@@ -151,7 +151,8 @@ export function Monitor() {
                 {data.tasks.scan.pools?.length
                   ? data.tasks.scan.pools.map(item => <li key={item.poolId}>
                     <strong>{item.name || item.poolId}</strong>
-                    <span className="monitor-scan-meta"><ScanTierBadge tier={item.tier} /><span className="muted">{t('monitor.scanPoolNext', { duration: formatDuration(item.nextRunInSeconds, t) })}{t('common.dot')}{t('monitor.scanPoolBackoff', { duration: formatDuration(item.backoffSeconds, t) })}</span></span>
+                    <span className="monitor-scan-meta"><ScanTierBadge tier={item.tier} lastActivityAt={item.lastActivityAt} /><span className="muted">{t('monitor.scanPoolNext', { duration: formatDuration(item.nextRunInSeconds, t) })}{t('common.dot')}{t('monitor.scanPoolBackoff', { duration: formatDuration(item.backoffSeconds, t) })}</span></span>
+                    <span className="monitor-scan-activity muted">{scanTierActivity(item.tier, item.lastActivityAt, t, locale)}</span>
                   </li>)
                   : <li className="muted">{t('monitor.scanNoPools')}</li>}
               </ul>

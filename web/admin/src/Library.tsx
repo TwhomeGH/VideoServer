@@ -209,7 +209,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
                   ? <code className="volume-id" title={pool.volumeId}>{pool.volumeId}</code>
                   : pool.volumeStatus === 'unsupported' ? t('library.volumeNotApplicable')
                     : pool.volumeStatus === 'unbound' ? t('library.volumeUnbound') : t('common.notProvided')}</dd></div>
-                <div><dt>{t('library.poolScanLabel')}</dt><dd>{scanInfo && <><ScanTierBadge tier={scanInfo.tier} /> </>}{scanLabel}</dd></div>
+                <div><dt>{t('library.poolScanLabel')}</dt><dd>{scanInfo && <><ScanTierBadge tier={scanInfo.tier} lastActivityAt={scanInfo.lastActivityAt} /> </>}{scanLabel}</dd></div>
               </dl>
               <div className="pool-actions">
                 {pool.volumeId && <span className="muted">{t('library.volumeTracked')}</span>}
