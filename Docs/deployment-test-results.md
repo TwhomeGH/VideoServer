@@ -83,7 +83,7 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 ## 檔案監聽與 9p 降級驗收
 
-2026-10-28 在 `dvn-testing`（image 來源 `eaed5ca3238a`）驗證：
+2026-10-28 在 `dvn-testing`（image 來源 `978f0e4bfc91`）驗證：
 
 - Monitor 顯示 watcher 狀態；兩個 9p 池都未啟用 OS watcher，fallback 顯示「9p 檔案系統使用輪詢」。
 - 關閉 watcher 的池仍由既有掃描週期運作；status 可區分 active／fallback。
