@@ -1,5 +1,223 @@
 # ChangeHistory
 
+## 2026.10.27 13:00 週期掃描加入 changed／deleted reconciliation
+
+**類型**: 功能 · **檔案**: `internal/library/scanner.go`、`internal/library/scanner_test.go`、`pkg/protocol/openapi.json`、`web/admin/src/Library.tsx`、`web/admin/src/Monitor.tsx`、`web/admin/src/lang/`
+
+### 問題 - 掃描只處理新檔，既有影片變更或檔案遺失沒有掃描層級的統計；使用者只能逐部開啟後才知道來源不可用
+
+### 修改 - 掃描建立已索引 catalog，比對 size／mtime，回報 changed／deleted，但不改 hash、不刪索引
+
+- `catalog` 讀取 `videos` 與匯入工作路徑；掃描時仍跳過既有索引。
+- 已索引檔案 size 或 mtime 不同 → `changed++`；線上池掃描完成後，catalog 中未再看到的路徑 → `deleted++`。
+- changed／deleted 只提供統計與來源狀態提示；索引、描述、hash、原始檔都不動。實際播放仍由 `openVideo` 的來源檢查回報。
+- `ScanResult` 與工作監看／儲存池頁顯示 changed／deleted；OpenAPI 與測試同步。
+- 離線或停用池不參與 deleted 統計；rename 仍視為 deleted＋new，file identity 留待下一階段。
+
+### 驗證 - 新增 changed／deleted reconciliation 測試；既有掃描穩定性、離線、手動匯入、volume GUID 測試維持通過。測試站 image `316d1362e1da` 的 `scan.last` 實測包含 changed／deleted，穩定庫為 0／0、skipped 179；儲存池頁顯示統計。
+
+---
+
+## 2026.10.27 12:40 Protocol 版本範圍與能力版本（向後相容）
+
+**類型**: 功能 · **檔案**: `pkg/protocol/protocol.go`、`pkg/protocol/http.go`、`pkg/protocol/openapi.json`、`pkg/protocol/protocol_test.go`、`Docs/peer-protocol.md`、`Docs/api/README.md`
+
+### 問題 - Protocol 只接受與 `Current` 完全相同的版本，能力公告沒有版本資訊，之後的握手與 catalog 協商會被鎖死在單一版本
+
+### 修改 - 加入 min/max、`SupportedVersions`、`Negotiate` 與 `capabilityVersions`，保留既有 capabilities 與 `/api/v1` 行為
+
+- `MinSupported`／`MaxSupported` 目前都是 1；`Compatible` 改為範圍檢查，`Negotiate` 取交集最高版本。
+- `/api/v1/protocol` 新增 `minProtocolVersion`、`maxProtocolVersion`、`capabilityVersions`；既有 `capabilities` 名稱與順序不變。
+- 協定錯誤回應同步附版本範圍；OpenAPI Protocol schema 更新。
+- `capabilityVersions` 讓 client 可先偵測版本，不必等到改成 `name.vN` 才能協商；peer 註冊／heartbeat 仍未實作。
+
+### 驗證 - 新增 protocol 公告與 Negotiate 測試；既有 middleware 版本拒絕、OpenAPI 路由與能力測試通過。
+
+---
+
+## 2026.10.27 12:15 新增 peer 握手與檔案監聽設計契約
+
+**類型**: 文件 · **檔案**: `Docs/peer-protocol.md`、`Docs/file-monitoring.md`、`Docs/architecture.md`、`Docs/onboarding.md`、`TODO.md`
+
+### 問題 - Central／Worker 尚無註冊與 heartbeat 契約；目前自動掃描是完整 polling，沒有檔案變更監聽或 modified/deleted/rename 語意
+
+### 修改 - 先定控制平面與資料平面契約，避免之後被 watcher 或 registry 實作綁死
+
+- Peer 契約：serviceType、nodeId、instanceId、endpointRevision、版本範圍、帶版本能力、register/heartbeat/lease、peer 認證、split brain、catalog cursor 與失敗模式。
+- 檔案監聽：以 watcher 作提示、reconciliation 作權威；catalog/file identity、debounce、overflow、backpressure、new/changed/deleted/rename 語意、Docker／Windows／Linux 限制與狀態欄位。
+- 明確標示目前尚未實作；先不動 runtime 行為。
+- 更新文件地圖、架構連結與 TODO。
+
+### 驗證 - 設計文件交叉檢查現有 protocol、scanner、volume GUID、queue 與 Central/Worker 骨架；未變更程式碼。
+
+---
+
+## 2026.10.27 11:30 排程可見度、自動補齊開關與 SHA-256 限速
+
+**類型**: 功能 · **檔案**: `internal/library/scanner.go`、`internal/library/reprobe.go`、`internal/library/hash.go`、`internal/library/http.go`、`internal/runtime/config.go`、`internal/runtime/configapi.go`、`internal/runtime/server.go`、`web/admin/src/Settings.tsx`、`web/admin/src/Monitor.tsx`、`web/admin/src/ImportJobs.tsx`、`web/admin/src/Library.tsx`、`pkg/protocol/openapi.json`
+
+### 問題 - 自動掃描與補齊沒有下次執行時間；自動補齊預設一直排程，大檔案完整 SHA-256 可能長時間佔用磁碟；設定頁無法停用或限速
+
+### 修改 - 公開排程倒數與候選數、分開自動補齊開關、閒置才補齊，並限制 SHA-256 讀取速度
+
+- `autoBackfill` 預設關閉；開啟後 `backfillIntervalSeconds`（預設 60 秒）檢查一次，只在整個佇列閒置時排一筆，避免與手動匯入／掃描競爭。
+- `hashLimitMiBps`（預設 64 MiB/s，0 不限）以 token bucket 限制匯入與重新探測的 SHA-256 完整讀取；佇列仍一次只跑一個工作。
+- 掃描狀態加入 `nextRunAt`／`nextRunInSeconds`；補齊狀態加入 `enabled`、`nextCheckAt`、候選數與上次排程影片。
+- `GET /api/v1/schedule`、工作監看與影片工作頁顯示下次掃描／補齊倒數、候選數與目前佇列；設定頁可調整自動補齊、間隔與讀取上限。
+- 自動掃描仍只讀目錄 metadata，不讀影片內容；只有匯入／重新探測會做 FFprobe 與完整雜湊。
+
+### 驗證 - 新增補齊停用／背壓／排程狀態／掃描倒數／限速測試；Go 測試、`go vet`、前端建置、`lang:check` 與 OpenAPI 路由檢查通過。測試站重建後自動補齊預設關閉，既有候選保留待手動開啟。`GET /api/v1/schedule` 實測下次掃描倒數、候選 16 部與佇列狀態；工作頁、監看頁與設定頁顯示一致。
+
+---
+
+## 2026.10.27 11:10 儲存池 volume GUID、檔案系統與啟停狀態
+
+**類型**: 功能 · **檔案**: `internal/library/volume_*.go`、`internal/library/store.go`、`internal/library/videos.go`、`internal/library/scanner.go`、`internal/library/reprobe.go`、`internal/library/http.go`、`web/admin/src/Library.tsx`、`pkg/protocol/openapi.json`、`web/admin/src/lang/`
+
+### 問題 - 儲存池只存路徑，Windows 盤符改變後找不到同一個 volume；也沒有檔案系統、啟停或影片不可用原因
+
+### 修改 - 加入 volume GUID／檔案系統、儲存池啟停與影片來源原因
+
+- SQLite schema v5 新增 `pools.volume_id`、`volume_relative`、`filesystem`、`enabled`；舊池啟動時自動補齊可讀取的中繼資料。
+- Windows 原生以 `GetVolumePathNameW`／`GetVolumeNameForVolumeMountPointW` 記錄 volume GUID 與相對路徑，執行時優先使用 GUID；Linux 顯示容器／主機看到的檔案系統類型，Docker 內沒有可用的 volume GUID。
+- `PATCH /api/v1/pools/{id}` 與儲存池 UI 可停用／啟用；停用池不掃描、不匯入、不重新探測、不自動補齊，影片索引與描述保留。
+- `Pool` 回傳 `enabled`、`filesystem`、`volumeId`；影片新增 `unavailableReason`（`pool_disabled`、`pool_offline`、`source_changed`、`source_missing`），前端顯示原因並停用播放／重讀，描述仍可編輯。
+- 掃描器改用實際解析路徑；播放端點對停用、離線、來源遺失／變更回傳不同錯誤。
+- 更新 OpenAPI、i18n 與文件；SMART 健康診斷列為後續選配，不影響目前可用性。
+
+### 驗證 - Go 單元測試（含 Windows volume GUID 盤符變更與 scanner）、`go vet`、前端建置與 `lang:check`；測試站重建後檢查 schema v5、檔案系統顯示與啟停切換。
+
+---
+
+## 2026.10.27 10:20 自動補齊缺少技術資訊的既有影片
+
+**類型**: 功能 · **檔案**: `internal/library/reprobe.go`、`internal/library/jobs.go`、`internal/library/backfill_test.go`、`internal/runtime/server.go`
+
+### 問題 - 自動掃描只處理新檔，既有影片若沒有 `video_media` 不會自動重新探測；測試庫 179 部中有 176 部缺少技術資訊
+
+### 修改 - 服務啟動後自動排入缺少技術資訊且沒有任何 reprobe 工作記錄的影片，一次一筆
+
+- 補齊查詢只挑 `video_media` 不存在、且該影片沒有任何 `source='reprobe'` 工作記錄的資料；有 queued／running 工作時不再排下一筆。
+- 來源離線、大小或修改時間與索引不符時跳過，不建立失敗工作；曾失敗或已完成的工作也排除，避免自動無限重試。
+- 每 10 秒檢查一次，與手動重新讀取共用單一 FIFO 佇列；完成後 media 寫回，下一次查詢自然往下一部。
+- 沒有新增設定或 UI；工作會出現在「影片工作」，技術資訊補齊後影片庫會顯示。
+
+### 驗證 - `TestBackfillMissingMediaOneAtATime` 與 `TestBackfillMissingMediaSkipsUnavailableAndRecorded` 通過；`go test ./...` 與 `go vet ./...` 通過。測試站重建後未按任何按鈕即自動排入並完成多筆，缺少技術資訊由 176 降至 172（背景持續處理）。
+
+---
+
+## 2026.10.27 09:35 修正 Swagger UI 深色 Responses 表與範例區
+
+**類型**: 修正 · **檔案**: `web/admin/src/api-docs.css`
+
+### 問題 - responses 表頭的 Description 對比不足，範例 JSON 仍是棕色方塊
+
+### 原因 - Swagger UI 的 responses 表頭是 `td.col_header` 而不是 `th`，既有覆寫只涵蓋 `th`；範例區 `pre.microlight` 由元件寫入 inline `background:#333; color:white`，一般主題變數無法覆蓋
+
+### 修改 - 補上 `td.col_header`／`thead td` 的顏色與表格框線，並以 `!important` 覆寫範例區的 inline 背景與文字
+
+- 表格標題、內文與框線改用 `--text`／`--line`。
+- `pre.microlight` 改用 `--bg`／`--text`，加上 `--line` 邊框與 8px 圓角。
+- 同一個規則套用到 request body 與 responses 的範例，light／dark 主題都使用目前變數。
+
+### 驗證 - dark 範例區 `#111820`、文字 `#edf3f9`；light 範例區 `#f1f4f8`、文字 `#172434`；Description 標題恢復為 `--text`；截圖確認 responses 表與 request body 一致；`lang:check`、前端建置與 `check:testing` 通過。
+
+---
+
+## 2026.10.27 08:42 調整頁首語言選單間距、字體與簡體登出文字
+
+**類型**: 修正 · **檔案**: `web/admin/src/style.css`、`web/admin/src/main.tsx`、`web/admin/src/lang/zh_CN.overrides.json`
+
+### 問題 - 語言標籤與選單間距不一致，下拉選單未繼承頁面字體；zh_CN 的登出顯示為「注销」
+
+### 修改 - 統一頁首標籤間距、固定語言選單最小寬度，讓 select／option 繼承頁面字體，並修正簡體登出用語
+
+- `.header-actions label` 改為 inline-flex，固定 8px 間距並避免換行。
+- 語言選單固定最小寬度 7.5rem，切換語言時不再因文字長度改變寬度。
+- `select` 與 `option` 都使用 `font: inherit`，與頁面其他控制項一致。
+- `zh_CN` 轉換後將「注销」修正為「退出登录」。
+
+### 驗證 - 頁首間距 8px、select 寬 120px、select／option 皆為 16px system-ui；en／zh-CN／zh-TW 在 375px 的影片、匯入、設定、儲存池與工作頁皆無水平溢出。
+
+---
+
+## 2026.10.27 08:20 管理介面本地化、語言註冊器與缺值檢查
+
+**類型**: 功能 · **檔案**: `web/admin/src/lang/`、`web/admin/src/i18n/`、`web/admin/scripts/lang.mjs`、`web/admin/src/*.tsx`、`web/admin/package.json`、`package.json`、`.github/workflows/release.yml`、`Docs/localization.md`
+
+### 問題 - 管理介面文字直接寫在元件裡，無法切換語言，也沒有缺鍵或翻譯過期的檢查
+
+### 修改 - 以 zh_TW 為來源，zh_CN 由 OpenCC 台灣片語轉換產生，加入 en、語言註冊器與執行期切換
+
+- `zh_TW.json` 是唯一手動維護的中文來源；`en.json` 手動維護；`zh_CN.json` 由 `opencc-js` 的 `twp → cn` 產生，轉換後用 `zh_CN.overrides.json` 修正少數用語。
+- `src/i18n/registry.ts` 是語言清單；新增 `ja.json` 後加入一筆即可出現在選單，瀏覽器語言前綴也會自動對應。
+- `I18nProvider` 處理瀏覽器語言、`localStorage` 的 `dvn-locale`、`html lang`、`{name}` 插值與缺鍵回退；日期時間依語言格式化。
+- `npm run lang:build` 產生 `zh_CN.json`；`npm run lang:check` 檢查缺鍵、空值、插值參數、程式使用未定義的 `t()` 鍵與 zh_CN 是否過期，CI 也會執行。
+- 管理介面所有元件改用 `t()`；頁首加入語言選單。Go 錯誤訊息與 OpenAPI 文件內容仍維持中文，列為後續工作。
+- 驗證：`lang:check`（356 鍵）、前端建置、Go 測試與 vet、測試站三語言切換、登入／登出，以及 375px 無水平溢出。
+
+---
+
+## 2026.10.27 07:22 改善背景工作進度動畫與更新頻率
+
+**類型**: 修正 · **檔案**: `web/admin/src/JobProgress.tsx`
+
+### 問題 - 後端每 250 毫秒保存進度，工作頁每五秒更新，導致進度跳動且原生活動動畫不一致
+
+### 修改 - 新增輕量工作列表 API，工作頁活動時每半秒獨立更新並保留快照，避免反覆載入影片庫
+
+- 共用 GPU transform 進度條，只平順呈現已知實際進度；未知長度使用活動動畫，支援減少動態效果
+- 補齊單工 FIFO 與離線查詢測試，實測瀏覽器更新 504–517ms，文件說明重試與重新排程語意
+
+**相關文件**: Docs/import-processing.md
+
+---
+
+## 2026.10.27 06:59 加入部署測試最近五組保留與清理流程
+
+**類型**: 維護 · **檔案**: `scripts/cleanup-deployment-tests.mjs`
+
+### 問題 - 獨立部署測試持續留下容器、資料卷及本機產物，沒有保留上限
+
+### 修改 - 新增獨立測試執行入口、來源標記與最近五組保留政策，提供唯讀預覽及逐項執行紀錄
+
+- 排除執行中、跨工作區、連結與共用資源；永久刪除需顯式開關，回收失敗不降級
+- 13 項 Node 測試通過；實際預覽確認六組超額目錄，Windows 回收工具失敗，原資料保留待確認永久清理政策
+
+**相關文件**: Docs/test-retention.md
+
+---
+
+## 2026.10.27 06:41 加入 Swagger UI API 參考與測試頁
+
+**類型**: 功能 · **檔案**: `web/admin/src/ApiDocs.tsx`
+
+### 問題 - 原始 OpenAPI JSON 不適合直接閱讀，缺少可填參數與執行請求的介面
+
+### 修改 - 加入延後載入的 Swagger UI、功能分組與請求範例，沿用登入 cookie 並限制同源 API 測試
+
+- 透過外掛停用外部驗證元件，資源隨本機與 Docker 打包，適配深淺色與窄螢幕
+- 實際瀏覽器驗證 GET 200、協定錯誤 409、POST 探測 202 及無外部連線，補齊操作文件
+
+**相關文件**: Docs/api/README.md
+
+---
+
+## 2026.10.27 06:15 建立 OpenAPI 與協定版本相容性檢查
+
+**類型**: 功能 · **檔案**: `pkg/protocol/http.go`
+
+### 問題 - 既有 API 缺少正式規格，協定版本只顯示數字而未阻止不相容請求
+
+### 修改 - 嵌入現有 OpenAPI 3.1.1，依服務角色提供規格，加入公開版本與能力公告
+
+- 集中 Build Identity 協定版本並檢查 API 請求標頭，不相容請求在寫入前拒絕；前端宣告支援版本
+- 新增路由、回應欄位與參照檢查，完成實際服務及 Docker 驗收；SSE 與跨服務握手列為後續
+
+**相關文件**: Docs/api/README.md
+
+---
+
 ## 2026.10.27 05:49 新增既有影片重新探測與服務工作監看
 
 **類型**: 功能 · **檔案**: `internal/library/reprobe.go`

@@ -6,12 +6,14 @@
 - React + Vite + TypeScript：共用管理介面，支援 Light / Dark / System。
 - SQLite + database/sql + migrations：Video Node MVP 索引；PostgreSQL 後續擴充。
 - FFmpeg / FFprobe：本機與遠端共用的轉碼執行能力。
-- HTTP JSON + SSE：管理 API 與事件；HTTPS 由後續部署設計處理。
+- HTTP JSON + OpenAPI：管理 API、協定版本與能力公告；SSE 事件規劃中，HTTPS 由部署層處理。
 - Windows / Linux / Docker；Valkey 為選配。
 
 Central 負責搜尋、索引與聯邦協調，不承擔所有影片流量。
 Video Node 自主管理儲存、影片、播放及政策，不依賴 Central 才能啟動。
 Worker 依派工條件轉碼，不能變更影片所有權或放寬政策。
+
+未來的 peer 握手與檔案監聽契約分別見 [peer protocol](peer-protocol.md) 與 [file monitoring](file-monitoring.md)；目前尚未實作。
 
 ## 識別與儲存
 
@@ -25,6 +27,8 @@ Worker 依派工條件轉碼，不能變更影片所有權或放寬政策。
 付費及致謝條件須派工前公告，輸出驗證通過後才提交儲存池。
 
 ## 網路與版本
+
+共用協定版本由 `pkg/protocol.Current` 定義，服務提供 `/api/v1/protocol` 能力公告與登入後的 OpenAPI 文件。明確指定不相容版本的 API 請求在操作前拒絕；跨服務連線與啟動時遠端握手尚待 Central／Worker 協作接入。詳見 [API 與協定文件](api/README.md)。
 
 依 preferredPort / fallbackPorts 實際綁定；本機監聽位址不能直接當作已驗證的公開 Endpoint。
 預設綁定 `0.0.0.0` 涵蓋所有 IPv4 網卡，可由 host 設定限制單一介面；公開公告仍須使用實際可達位址。

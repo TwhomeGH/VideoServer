@@ -25,13 +25,29 @@
 根目錄 `.env` 由根目錄 Compose 讀取；`testing/.env` 由測試 Compose 讀取。Go 不直接讀取這些 .env，開發腳本也不拿它們覆蓋服務 JSON。
 NodeID、儲存池與影片資料存在 SQLite，不寫回主機設定檔。管理頁的設定修改會寫入資料目錄的 `config.override.json`，主機 JSON 仍是唯讀基準；儲存後需重新啟動才會套用。
 
+## 儲存池狀態
+
+儲存池保存 `enabled`、實際 `online`、`filesystem` 與 Windows `volumeId`。`enabled` 是管理者的開關；`online` 只表示目前能不能解析並讀取路徑。兩者分開，所以「已停用」和「離線」不會混在一起。
+
+Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的路徑；之後盤符改變時，服務會優先使用 GUID 路徑，不依賴舊盤符。Docker／Linux 沒有同等的 volume GUID，仍以容器內路徑為準；顯示的檔案系統是容器看到的類型（可能是 9p、overlay 或 fuse），不一定是主機磁碟的 NTFS。
+
+停用儲存池會停止掃描、匯入、重新探測與自動補齊；既有影片索引、描述與原始檔案保留。影片會標示所屬儲存池已停用，播放與重新讀取停用，描述仍可編輯；重新啟用後會重新檢查來源。
+
 ## 管理頁設定編輯
 
 主機 JSON 是唯讀基準；管理頁只寫入資料目錄的 `<dataDirectory>/config.override.json`，因此 Docker 的單檔唯讀掛載不需要改成可寫。
-可編輯欄位是 host、preferredPort、fallbackPorts、rememberLastSuccessfulPort、autoScan、scanIntervalSeconds、fileStableSeconds。dataDirectory、webDirectory 與基準檔路徑只顯示，不能從網頁變更。
+可編輯欄位是 host、preferredPort、fallbackPorts、rememberLastSuccessfulPort、autoScan、scanIntervalSeconds、fileStableSeconds、autoBackfill、backfillIntervalSeconds、hashLimitMiBps。dataDirectory、webDirectory 與基準檔路徑只顯示，不能從網頁變更。
 儲存時只記錄與基準不同的欄位；欄位改回基準值會從覆寫檔移除，按「重設為基準」則刪除整個覆寫檔。覆寫檔使用原子替換保存，主機 JSON 不會被修改。
 
 程序啟動時先讀基準 JSON，再套用覆寫並重新驗證；未知欄位、無效端口或無效秒數會讓啟動失敗。管理頁儲存後會顯示「需重新啟動」，按下確認後服務以 exit code 75 結束，交由 Docker `restart: unless-stopped`、systemd `Restart=on-failure` 或 `npm run dev` 的監督流程重新啟動並套用。直接手動執行二進位且沒有監督程式時，服務會停止，需自行重新啟動。
+
+## 自動排程與背景負載
+
+`autoScan` 控制目錄 metadata 掃描（`WalkDir`／`Stat`），不讀影片內容；`scanIntervalSeconds` 預設 30 秒。真正大量讀取的是匯入與重新探測的 FFprobe＋SHA-256。
+
+`autoBackfill` 預設關閉。開啟後每 `backfillIntervalSeconds`（預設 60 秒）檢查一次，只在整個佇列閒置時排一筆缺少技術資訊的影片，不會與手動匯入或掃描競爭。`hashLimitMiBps` 限制 SHA-256 讀取速度（預設 64 MiB/s，0 表示不限），套用到匯入與重新探測；佇列仍一次只處理一個工作。
+
+影音工作頁與工作監看會顯示下次掃描／補齊檢查的倒數、候選數量與目前佇列；`GET /api/v1/schedule` 提供相同摘要。停止自動補齊不影響手動「重新讀取影片資訊」。
 
 ## 管理授權與 session
 
@@ -50,7 +66,7 @@ HTTPS/TLS 尚未內建；直接以 HTTP 提供時 cookie 不會標記 Secure。�
 Video Node 預設啟用 `autoScan: true`，`scanIntervalSeconds: 30`，`fileStableSeconds: 10`。既有 JSON 沒有這些欄位時同樣套用預設。要停用自動掃描可設定 autoScan 為 false，仍可在儲存池頁面手動排程掃描。
 服務啟動與註冊新池時會檢查，之後每 30 秒遞迴掃描已註冊池。檔案需至少兩次觀察大小與修改時間一致、觀察間隔達 10 秒且修改時間足夠久，才計算雜湊並建立索引；通常在新增後約 30–60 秒出現在清單。重啟會重新觀察尚未索引的檔案。
 自動匯入使用檔名作為標題，作品類型為「未確認」，不推定作者、授權、分類或 18+ 狀態。可以在影片庫編輯補填。管理頁面每五秒重新讀取清單及掃描狀態。
-掃描略過既有索引、既有匯入工作與符號連結，不重寫描述、不刪除離線紀錄，也不自動重新索引已變更檔案。穩定檔案交由背景工作執行 FFprobe 與雜湊計算；失敗工作須手動重試。儲存池仍須先註冊一次，程式不會擅自搜尋未註冊的磁碟。
+掃描略過既有索引、既有匯入工作、停用池與符號連結，不重寫描述、不刪除離線紀錄，也不自動重新索引已變更檔案；週期掃描會統計 `changed` 與 `deleted`，但只作為狀態提示，不會改 hash 或刪除索引。穩定檔案交由背景工作執行 FFprobe 與雜湊計算；失敗工作須手動重試。儲存池仍須先註冊一次，程式不會擅自搜尋未註冊的磁碟。
 穩定觀察只是降低讀到未完成檔案的機率，不能保證來源已完成傳輸。建議複製時使用 `.part` 等暫存副檔名，完成後再改為 `.mp4`。大型影片的 SHA-256 計算在背景序列執行，不會同時重複掃描。
 
 ## Git 與測試隔離
@@ -61,7 +77,7 @@ Video Node 預設啟用 `autoScan: true`，`scanIntervalSeconds: 30`，`fileStab
 ## 最後成功端口與執行狀態
 
 `rememberLastSuccessfulPort: true` 會在下次啟動時優先嘗試上次成功的端口，再依 preferredPort、fallbackPorts 順序遞補。只接受仍在目前候選清單內且監聽介面相同的記錄；重複候選只嘗試一次。
-想強制回到 preferredPort，可暫時停用 rememberLastSuccessfulPort，或從候選清單移除不再允許的舊端口。沒有 fallbackPorts 時自動停用端口記憶，因此既有 Docker 設定不會自行更換容器內端口。
+想強制回到 preferredPort，可暫時停用 rememberLastSuccessfulPort，或從候選清單移除不再允許的舊端口。沒有 fallbackPorts 時自動停用端口記憶，因此既有 Docker 設定不會自行更換容器內端口。Docker 的 host port 衝突發生在 port mapping，應用程式看不到也無法處理；請改 Compose 的 host 端口或先釋放佔用者。若在容器內加入 fallbackPorts，還必須發佈對應的容器端口，否則服務可能監聽在未映射的端口，一般不建議。
 
 每個服務完成初始化後，將 schemaVersion、service、host、lastSuccessfulPort、updatedAt 存到自己的 `dataDirectory/runtime.json`。即使端口記憶停用，也會記錄本次端口供診斷，但不拿它改變下次端口順序。
 直接執行服務而未指定 dataDirectory 時，預設使用 `data/服務名/`，避免三服務互相覆寫狀態；Video Node 若偵測到舊 `data/library.sqlite` 則先沿用舊 data。明確指定的 JSON 路徑不會被這個預設取代。

@@ -40,9 +40,10 @@
 
 - NodeID、儲存池、影片描述與 Tag 存在 SQLite；影片原檔**不複製**，只在原目錄建立索引。
 - 已有單一管理員登入、HttpOnly session、管理 API 授權、密碼變更與設定保存／重啟流程；尚未提供多使用者與角色權限。
+- 管理介面提供繁體中文、简体中文與 English，語言選單保存在瀏覽器；Go 錯誤訊息與 OpenAPI 內容尚未多語化。
 - 轉碼、Central 索引協作、遠端 Worker 派工與封面擷取尚未實作。
 - 管理 API 同時使用登入授權與 Origin 檢查。跨網路部署仍需規劃 HTTPS；公開健康檢查與版本端點不等同管理權限。
-- 更完整的模型與限制見 [架構文件](architecture.md)、[TODO](../TODO.md)。
+- 更完整的模型與限制見 [架構文件](architecture.md)、[API 與協定](api/README.md)、[TODO](../TODO.md)。
 
 ## A. 本機開發
 
@@ -175,6 +176,8 @@ docker compose ps
 | `pkg/buildinfo/` | 版本、commit、dirty 與 image 建置資訊 |
 | `deployments/docker/` | 根目錄 Compose 使用的容器設定 |
 | `web/admin/` | React + Vite 管理介面；`src/` 是原始碼，`dist/` 是建置產物 |
+| `web/admin/src/lang/` | 翻譯來源、產生的 `zh_CN.json` 與語言資料說明 |
+| `web/admin/src/i18n/` | 語言註冊器、Provider、`t()` 與瀏覽器語言比對 |
 | `scripts/` | 開發啟動、image 建置、測試環境檢查與工作區初始化 |
 | `test/` | Node 單元測試；Go 測試依慣例放在各套件旁 |
 | `Docs/` | 操作手冊；行為改變時同步更新 `ChangeHistory.md` |
@@ -186,6 +189,7 @@ go test ./...
 go vet ./...
 npm --prefix web/admin run build
 npm run test:unit
+npm run lang:check
 npm run testing:up        # 有動到 Docker、靜態頁或部署路徑時
 ```
 
@@ -227,7 +231,10 @@ npm run testing:up         # 建置、啟動並檢查測試環境
 | [進階部署參考](deployment-reference.md) | 三服務、Linux 原生執行、systemd、正式發版 |
 | [Docker 掛載與多磁碟影片庫](docker-volumes.md) | 加入其他磁碟、多個影片目錄、volume 欄位 |
 | [設定管理](configuration.md) | 端口、資料目錄、掃描間隔、runtime.json |
+| [本地化](localization.md) | 新增語言、zh_CN 產生、缺值檢查 |
 | [架構文件](architecture.md) | 資料模型、服務邊界與後續方向 |
+| [Peer 握手設計](peer-protocol.md) | Central／Worker 註冊、能力協商、lease 與 catalog 邊界 |
+| [檔案監聽設計](file-monitoring.md) | watcher＋reconciliation、變更語意與平台限制 |
 | [部署驗收紀錄](deployment-test-results.md) | 已經實測過哪些 Docker 行為 |
 | [ChangeHistory](ChangeHistory.md) | 某個設計為什麼變成現在這樣 |
 | [TODO](../TODO.md) | 還沒做的功能與已知缺口 |

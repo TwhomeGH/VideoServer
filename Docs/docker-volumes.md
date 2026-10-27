@@ -111,6 +111,7 @@ docker compose -f testing/compose.yaml -f testing/compose.local.yaml up -d --no-
 | I 槽電影庫 | /storage/i-movies | I:\Movies |
 
 **掛載只是讓容器看得到目錄，每個來源仍須註冊一次儲存池。** 網頁不要填 H:/Video 或 I:/Movies。
+容器看不到主機磁碟的 volume GUID；儲存池的身分是容器內 target。主機盤符改變時，更新 Compose 的 source 並維持相同 target；若 target 改名，池會離線。網頁顯示的檔案系統是容器視角（例如 9p、overlay 或 fuse），不一定是主機的 NTFS。
 例如主機的 `H:\Video\旅行\第一天.mp4`，在 H 槽影片庫內的相對路徑是 `旅行/第一天.mp4`。註冊後會定期自動掃描新增影片；描述、Tag 與授權可再於影片庫編輯。
 避免把同一批檔案以重疊目錄反覆註冊為多個池；目前不同池會建立各自的索引。
 
@@ -124,4 +125,4 @@ docker compose exec -T video-node ls -ld /storage/h-video
 
 若仍失敗，先檢查修改的是測試還是根目錄 Compose、是否已執行 up、source 是否存在及容器讀取權限。服務使用 UID/GID 10001，Linux 主機目錄需讓該身分可讀且可進入。
 NAS／網路映射磁碟／OpenList 虛擬磁碟，即使主機能瀏覽，也要額外確認 Docker Desktop 的引擎能掛載；目前 DVN 不會自動把遠端網址轉成目錄，也尚無原生 WebDAV 儲存池。
-卸載或移除已註冊池的掛載會讓原有索引顯示離線，不代表影片已刪除。NodeID 與索引保存在 /data 資料卷，請保留原本 node-data 掛載。
+卸載或移除已註冊池的掛載會讓原有索引顯示離線，不代表影片已刪除。NodeID 與索引保存在 /data 資料卷，請保留原本 node-data 掛載。儲存池可停用；停用後不掃描、不匯入、不播放，但影片索引與描述會保留，影片會標示所屬池已停用。

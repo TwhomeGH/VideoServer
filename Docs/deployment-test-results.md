@@ -1,5 +1,25 @@
 # Docker 部署驗收紀錄
 
+## 工作進度與排程驗證
+
+2026-10-27（Asia/Taipei）Go 測試確認單工 FIFO、第一部完成後直接處理後續工作，以及來源離線時仍可查詢輕量工作列表。API 契約與 OpenAPI 檢查、前端建置均通過。
+
+瀏覽器重用既有測試容器，以模擬工作回應驗證前端：實測更新間隔約 504–517 毫秒、進度過渡 450 毫秒；FFprobe 階段不含百分比，雜湊階段的畫面在相鄰影格間持續移動。「減少動態效果」設定下過渡為 0 秒。此瀏覽器驗證不代表新增輕量 API 已在舊容器後端部署；真實 API 行為由 Go HTTP 測試驗證。
+
+## Swagger UI 互動文件驗收
+
+2026-10-27（Asia/Taipei）使用 Playwright 操作獨立 Docker 測試環境：登入後開啟「API 文件與測試」，驗證分組與路徑搜尋、參數編輯、GET 影片清單回應 200、修改協定版本後回應 409，以及使用空 JSON 範例 POST 重新探測回應 202。
+
+確認沿用 HttpOnly session、curl 範例與實際回應可見，深／淺色外觀與 390px 窄螢幕下無整頁橫向溢出。瀏覽器請求清單僅有本機服務，無 CDN 或線上規格驗證請求；測試最終頁面無 JavaScript 執行錯誤。
+
+Swagger UI 隨前端打包並延後至文件頁載入；Go 測試、vet、Node 單元測試、前端建置、OpenAPI 格式檢查及 Docker 部署回歸通過。測試容器與瀏覽器使用獨立資源，固定 testing 環境未更新。
+
+## OpenAPI 與協定相容性驗收
+
+2026-10-27（Asia/Taipei）完成獨立 Docker 部署驗收：協定能力可公開讀取、OpenAPI 下載需登入、Video Node 規格包含影片 API。帶 v2 標頭建立儲存池回應 409 與 `protocol_incompatible`，確認資料庫未新增儲存池；使用 v1 後正常匯入、播放、探測、監看及容器重建資料保留皆通過。
+
+Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及不相容的重啟請求遭拒絕後服務仍可使用。Go 測試、vet、Node 測試、前端建置與 Redocly OpenAPI minimal 檢查皆通過；尚未驗收跨服務握手或 SSE。
+
 ## 重新探測與工作監看驗收
 
 2026-10-27（Asia/Taipei）在獨立 Docker 專案執行 `npm run test:deployment` 通過。確認重新探測更新 FFprobe 資訊並保留影片識別、SHA-256、標題、Tag 與作者；來源離線時工作失敗且保留舊技術資訊，恢復後可重試完成。
@@ -56,6 +76,37 @@
 測試時將掃描間隔改為 45 秒、重啟後確認生效，再重設回 30 秒並再次重啟；未留下設定覆寫。密碼變更測試後已改回測試用密碼。瀏覽器 localStorage 只有 `dvn-theme`，session token 只存在 HttpOnly cookie。
 
 範圍限制：HTTPS/TLS、多使用者與角色權限、session 個別撤銷（目前登出/改密碼會讓全部 session 失效）尚未實作。
+
+## 自動補齊缺少技術資訊
+
+2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
+
+## Reconciliation diff 驗收
+
+2026-10-27 在 `dvn-testing`（image 來源 `316d1362e1da`）驗證：
+
+- `/api/v1/schedule` 的 `scan.last` 包含 `changed`、`deleted`；穩定測試庫兩者為 0、`skipped` 179，掃描仍未讀取影片內容。
+- 儲存池頁的「上次完成」顯示變更／遺失統計；自動補齊預設關閉，下次掃描倒數正常。
+- 單元測試會修改既有檔並刪除檔案，確認 changed／deleted 計數、索引與 hash 不變，影片讀取時分別回報 `source_changed`／`source_missing`。
+- `go test ./...`、`go vet ./...`、前端建置、`lang:check` 與 `check:testing` 通過。
+
+## Protocol 版本與能力公告驗收
+
+2026-10-27 在 `dvn-testing`（image 來源 `34ce4defbbd7`）驗證：
+
+- `GET /api/v1/protocol` 回傳 `protocolVersion: 1`、`minProtocolVersion: 1`、`maxProtocolVersion: 1`。
+- 既有 `capabilities` 名稱與順序保留；新增 `capabilityVersions`，Video Node 的 `library.query` 等能力皆公告版本 1。
+- `Negotiate` 與版本範圍測試通過；自動補齊仍預設關閉，測試站下次掃描倒數正常。
+- `go test ./...`、`go vet ./...` 與 `check:testing` 通過。
+
+## 儲存池狀態與排程控制驗收
+
+2026-10-27 在 `dvn-testing`（image 來源 `a679d1e2a341`）驗證：
+
+- schema v5 遷移成功；兩個 Docker 儲存池顯示 `filesystem: 9p`，`volumeId` 在容器內為空；停用／啟用 API 與 UI 正常，停用池影片保留索引。
+- `GET /api/v1/schedule` 回傳下次掃描約 12 秒、`autoBackfill: false`、候選 16 部、佇列沒有執行中工作；影片工作頁、工作監看與設定頁都顯示排程／開關資訊。
+- 設定頁新欄位 `autoBackfill`、`backfillIntervalSeconds`、`hashLimitMiBps` 預設 false／60／64；先前自動補齊已停止，不再持續讀取。
+- Go 測試包含 Windows volume GUID 在儲存路徑改變後仍可解析、掃描器使用實際解析路徑、補齊停用／佇列背壓、下次執行倒數與 SHA-256 限速；`go test ./...`、`go vet ./...`、前端建置與 `lang:check` 通過。
 
 ## v0.1.0 首次發版本機驗收
 
