@@ -46,16 +46,16 @@ func (b *limitedBuffer) Write(value []byte) (int, error) {
 // 僅允許本機檔案及支援的影片容器，輸出有大小上限；無有效視訊串流時回傳錯誤。
 // 此檢查不會完整解碼每一影格，不能保證整部影片無損壞。
 func Probe(ctx context.Context, path, executable string, timeout time.Duration) (Info, error) {
-	return probe(ctx, path, executable, timeout, "", false)
+	return probe(ctx, path, executable, timeout, "", "", false)
 }
 
 // ProbeRemote 讓 FFprobe 直接讀取 WebDAV URL，Authorization 只放在 FFprobe 參數，不寫入日誌。
-func ProbeRemote(ctx context.Context, remoteURL, username, password string, tlsSkipVerify bool, executable string, timeout time.Duration) (Info, error) {
+func ProbeRemote(ctx context.Context, remoteURL, username, password, caFile string, tlsSkipVerify bool, executable string, timeout time.Duration) (Info, error) {
 	auth := base64.StdEncoding.EncodeToString([]byte(username + ":" + password))
-	return probe(ctx, remoteURL, executable, timeout, "Authorization: Basic "+auth+"\r\n", tlsSkipVerify)
+	return probe(ctx, remoteURL, executable, timeout, "Authorization: Basic "+auth+"\r\n", caFile, tlsSkipVerify)
 }
 
-func probe(ctx context.Context, target, executable string, timeout time.Duration, headers string, tlsSkipVerify bool) (Info, error) {
+func probe(ctx context.Context, target, executable string, timeout time.Duration, headers, caFile string, tlsSkipVerify bool) (Info, error) {
 	var result Info
 	ctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -65,6 +65,8 @@ func probe(ctx context.Context, target, executable string, timeout time.Duration
 	}
 	if tlsSkipVerify {
 		args = append(args, "-tls_verify", "0")
+	} else if caFile != "" {
+		args = append(args, "-ca_file", caFile)
 	}
 	args = append(args, target)
 	command := exec.CommandContext(ctx, executable, args...)

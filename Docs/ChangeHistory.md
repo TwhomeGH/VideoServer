@@ -2,6 +2,45 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 06:30 WebDAV per-pool 自訂 CA
+
+**類型**: 安全性
+
+**檔案**:
+
+- `internal/library/store.go`
+- `internal/library/webdav_http.go`
+- `internal/library/remote_probe.go`
+- `internal/library/http.go`
+- `internal/media/probe.go`
+- `web/admin/src/Library.tsx`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- 只有系統 CA 或全域 skip-verify，自簽／私有 CA 無法安全接入
+- FFprobe 與 Go HTTP client 需要一致的 CA 設定
+
+### 修改
+
+- pools schema v13 新增 `tls_ca`；API 只回傳 `tlsCaSet`，不回傳 PEM。
+- 新增池可上傳 `.pem/.crt/.cer`；驗證 PEM、上限 64 KiB、拒絕 private key 內容。
+- 自訂 CA 會加入系統 CA 一起信任；與 `tlsSkipVerify` 互斥。
+- WebDAV list／HEAD／Range／probe／verify／OpenList hash 共用 CA。
+- FFprobe 使用暫存 CA 檔（`-ca_file`），probe 後刪除。
+- UI 顯示「HTTPS · 自訂 CA」與檔案選擇；無效 PEM、互斥設定在建立時就回 400。
+
+### 驗證
+
+- 自簽 TLS 測試：無 CA 失敗、帶正確 CA 成功、`tlsSkipVerify=true` 也可成功。
+- 無效 PEM 回 400「自訂 CA 不是有效的 PEM 憑證」。
+- CA 與 skipVerify 同時設定回 400「不可同時設定」。
+- 現有 HTTP 池仍顯示「HTTP · 未加密」，`tlsCaSet=false`。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：尚無 CA 輪換／PATCH；目前需重建池或直接更新資料。
+
+---
+
 ## 2026.10.28 06:15 WebDAV TLS 驗證與明確 opt-in
 
 **類型**: 安全性

@@ -10,7 +10,7 @@ import type { Page } from './navigation';
 import { ImportJobs, type ImportJob } from './ImportJobs';
 import { VideoFilters, defaultVideoFilters } from './VideoFilters';
 
-type Pool = { id: string; name: string; path: string; online: boolean; enabled: boolean; scanExcludeSystem: boolean; indexOnly: boolean; provider: string; remoteUrl?: string; remoteUser?: string; remoteRoot?: string; tlsSkipVerify: boolean; wholeDisk: boolean; filesystem?: string; volumeId?: string; volumeStatus?: string };
+type Pool = { id: string; name: string; path: string; online: boolean; enabled: boolean; scanExcludeSystem: boolean; indexOnly: boolean; provider: string; remoteUrl?: string; remoteUser?: string; remoteRoot?: string; tlsSkipVerify: boolean; tlsCaSet: boolean; wholeDisk: boolean; filesystem?: string; volumeId?: string; volumeStatus?: string };
 type Video = VideoMetadata & {
   id: string; title: string; poolId: string; size: number; fileHash: string;
   available: boolean; unavailableReason?: string; importedAt: string; provider: string; hashStatus: string;
@@ -69,6 +69,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
   const [remotePassword, setRemotePassword] = useState('');
   const [remoteRoot, setRemoteRoot] = useState('');
   const [tlsSkipVerify, setTLSSkipVerify] = useState(false);
+  const [tlsCA, setTLSCA] = useState('');
   const [poolId, setPoolId] = useState('');
   const [path, setPath] = useState('');
   const [draft, setDraft] = useState<VideoMetadata>(emptyMetadata);
@@ -229,7 +230,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
               </div>
               <dl className="pool-meta">
                 <div><dt>{pool.provider === 'webdav' ? t('library.webdavUrl') : t('library.poolPathLabel')}</dt><dd><code>{pool.provider === 'webdav' ? pool.remoteUrl : pool.path}</code></dd></div>
-              {pool.provider === 'webdav' && <p className="muted">{pool.remoteUrl?.startsWith('https://') ? (pool.tlsSkipVerify ? t('library.tlsInsecure') : t('library.tlsVerified')) : t('library.httpWarning')}</p>}
+              {pool.provider === 'webdav' && <p className="muted">{pool.remoteUrl?.startsWith('https://') ? (pool.tlsSkipVerify ? t('library.tlsInsecure') : pool.tlsCaSet ? t('library.tlsCustomCA') : t('library.tlsVerified')) : t('library.httpWarning')}</p>}
                 <div><dt>{t('library.filesystem')}</dt><dd>{pool.filesystem || t('common.notProvided')}</dd></div>
                 <div><dt>{t('library.volumeGuid')}</dt><dd>{pool.volumeId
                   ? <code className="volume-id" title={pool.volumeId}>{pool.volumeId}</code>
@@ -277,9 +278,9 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
           <p className="muted">{t('library.addPoolIntro')}</p>
           <form className="form-stack" onSubmit={event => { event.preventDefault(); void submit(async () => {
             const pool = await request<Pool>('pools', provider === 'webdav'
-              ? { name, provider, url: remoteUrl, username: remoteUser, password: remotePassword, root: remoteRoot, tlsSkipVerify }
+              ? { name, provider, url: remoteUrl, username: remoteUser, password: remotePassword, root: remoteRoot, tlsSkipVerify, tlsCa: tlsCA }
               : { name, path: root });
-            setPoolId(pool.id); setName(''); setRoot(''); setRemoteUrl(''); setRemoteUser(''); setRemotePassword(''); setRemoteRoot(''); setTLSSkipVerify(false);
+            setPoolId(pool.id); setName(''); setRoot(''); setRemoteUrl(''); setRemoteUser(''); setRemotePassword(''); setRemoteRoot(''); setTLSSkipVerify(false); setTLSCA('');
             addDialog.current?.close();
           }); }}>
             <label>{t('library.poolName')}<input required value={name} onChange={event => setName(event.target.value)} placeholder={t('library.poolNamePlaceholder')} /></label>
@@ -291,8 +292,10 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
                 <label>{t('library.webdavRoot')}<input value={remoteRoot} onChange={event => setRemoteRoot(event.target.value)} placeholder={t('library.webdavRootPlaceholder')} /></label>
                 <label>{t('library.webdavUser')}<input value={remoteUser} onChange={event => setRemoteUser(event.target.value)} autoComplete="username" /></label>
                 <label>{t('library.webdavPassword')}<input type="password" value={remotePassword} onChange={event => setRemotePassword(event.target.value)} autoComplete="current-password" /></label>
-                <label className="checkbox-label"><input type="checkbox" checked={tlsSkipVerify} onChange={event => setTLSSkipVerify(event.target.checked)} />{t('library.tlsSkipVerify')}</label>
+                <label className="checkbox-label"><input type="checkbox" checked={tlsSkipVerify} onChange={event => { setTLSSkipVerify(event.target.checked); if (event.target.checked) setTLSCA(''); }} />{t('library.tlsSkipVerify')}</label>
                 <p className="muted">{t('library.tlsSkipVerifyHint')}</p>
+                <label>{t('library.tlsCA')}<input type="file" accept=".pem,.crt,.cer" disabled={tlsSkipVerify} onChange={async event => { const file = event.target.files?.[0]; setTLSCA(file ? await file.text() : ''); }} /></label>
+                <p className="muted">{t('library.tlsCAHint')}</p>
               </>}
             <button disabled={busy}>{t('library.registerPool')}</button>
           </form>

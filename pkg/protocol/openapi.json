@@ -891,6 +891,10 @@
                   },
                   "tlsSkipVerify": {
                     "type": "boolean"
+                  },
+                  "tlsCa": {
+                    "type": "string",
+                    "maxLength": 65536
                   }
                 },
                 "required": [
@@ -2865,6 +2869,9 @@
           },
           "tlsSkipVerify": {
             "type": "boolean"
+          },
+          "tlsCaSet": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -2877,7 +2884,8 @@
           "wholeDisk",
           "indexOnly",
           "provider",
-          "tlsSkipVerify"
+          "tlsSkipVerify",
+          "tlsCaSet"
         ]
       },
       "ImportJob": {

@@ -3,9 +3,36 @@ package library
 import (
 	"context"
 	"encoding/json"
+	"os"
 
 	"github.com/TwhomeGH/VideoServer/internal/media"
 )
+
+func (s *Store) webDAVCATempFile(pool Pool) (string, func(), error) {
+	if pool.TLSCA == "" {
+		return "", func() {}, nil
+	}
+	file, err := os.CreateTemp(s.dataDirectory, ".webdav-ca-*.pem")
+	if err != nil {
+		return "", func() {}, err
+	}
+	path := file.Name()
+	if err := file.Chmod(0600); err != nil {
+		file.Close()
+		os.Remove(path)
+		return "", func() {}, err
+	}
+	if _, err := file.WriteString(pool.TLSCA); err != nil {
+		file.Close()
+		os.Remove(path)
+		return "", func() {}, err
+	}
+	if err := file.Close(); err != nil {
+		os.Remove(path)
+		return "", func() {}, err
+	}
+	return path, func() { _ = os.Remove(path) }, nil
+}
 
 func (q *ImportQueue) processRemoteProbe(ctx context.Context, job ImportJob, video Video) error {
 	pool, err := q.store.poolByID(video.PoolID)
@@ -20,7 +47,12 @@ func (q *ImportQueue) processRemoteProbe(ctx context.Context, job ImportJob, vid
 	if err != nil {
 		return err
 	}
-	info, err := media.ProbeRemote(ctx, target.String(), username, password, pool.TLSSkipVerify, q.ffprobePath, q.probeTimeout)
+	caFile, cleanup, err := q.store.webDAVCATempFile(pool)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+	info, err := media.ProbeRemote(ctx, target.String(), username, password, caFile, pool.TLSSkipVerify, q.ffprobePath, q.probeTimeout)
 	if err != nil {
 		return err
 	}

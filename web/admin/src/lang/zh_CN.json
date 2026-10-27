@@ -522,5 +522,8 @@
   "library.tlsSkipVerifyHint": "默认会验证系统 CA；仅在自签凭证且了解风险时勾选。",
   "library.tlsInsecure": "HTTPS · TLS 验证已禁用",
   "library.tlsVerified": "HTTPS · 验证系统 CA",
-  "library.httpWarning": "HTTP · 未加密"
+  "library.httpWarning": "HTTP · 未加密",
+  "library.tlsCA": "自订 CA PEM（选填）",
+  "library.tlsCAHint": "凭证链会加入系统 CA 一起信任；不要上传 private key。",
+  "library.tlsCustomCA": "HTTPS · 自订 CA"
 }

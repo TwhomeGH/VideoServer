@@ -4,7 +4,7 @@ import "testing"
 
 func TestAddRemotePoolPersistsCredentials(t *testing.T) {
 	store, _, _ := scannerFixture(t)
-	pool, err := store.AddRemotePool("OpenList", "https://example.test/dav", "guest", "secret", "Video5", false)
+	pool, err := store.AddRemotePool("OpenList", "https://example.test/dav", "guest", "secret", "Video5", "", false)
 	if err != nil {
 		t.Fatal(err)
 	}

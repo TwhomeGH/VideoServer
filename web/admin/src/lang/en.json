@@ -522,5 +522,8 @@
   "library.tlsSkipVerifyHint": "System CAs are verified by default; only enable for self-signed certificates when you understand the risk.",
   "library.tlsInsecure": "HTTPS · TLS verification disabled",
   "library.tlsVerified": "HTTPS · system CA verified",
-  "library.httpWarning": "HTTP · unencrypted"
+  "library.httpWarning": "HTTP · unencrypted",
+  "library.tlsCA": "Custom CA PEM (optional)",
+  "library.tlsCAHint": "Certificate chain is trusted in addition to system CAs; never upload a private key.",
+  "library.tlsCustomCA": "HTTPS · custom CA"
 }

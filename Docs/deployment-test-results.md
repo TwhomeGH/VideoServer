@@ -81,6 +81,18 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## WebDAV per-pool 自訂 CA
+
+2026-10-28 在 `dvn-testing`（image 來源 `1dc8772d48c5`）驗證：
+
+- 自簽 TLS 測試：預設失敗、自訂 CA 成功、`tlsSkipVerify=true` 成功。
+- 無效 PEM 新增池回 400，訊息為「自訂 CA 不是有效的 PEM 憑證」。
+- CA 與 skipVerify 同時設定回 400「不可同時設定」。
+- 現有 HTTP OpenList 池 `tlsCaSet=false`、`tlsSkipVerify=false`。
+- UI 提供 CA 檔案選擇；390px 無水平溢出。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：尚無 CA 輪換／PATCH。
+
 ## WebDAV TLS 驗證
 
 2026-10-28 在 `dvn-testing`（image 來源 `7de2198ef30f`）驗證：

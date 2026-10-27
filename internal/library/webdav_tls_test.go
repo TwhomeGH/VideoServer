@@ -1,6 +1,7 @@
 package library
 
 import (
+	"encoding/pem"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -18,6 +19,13 @@ func TestWebDAVHTTPClientTLSVerification(t *testing.T) {
 		response.Body.Close()
 		t.Fatal("self-signed certificate was accepted by default")
 	}
+	caPEM := pem.EncodeToMemory(&pem.Block{Type: "CERTIFICATE", Bytes: server.Certificate().Raw})
+	custom := store.webDAVHTTPClient(Pool{RemoteURL: server.URL, TLSCA: string(caPEM)}, 2*time.Second)
+	customResponse, err := custom.Get(server.URL)
+	if err != nil {
+		t.Fatalf("custom CA failed: %v", err)
+	}
+	customResponse.Body.Close()
 	insecure := store.webDAVHTTPClient(Pool{RemoteURL: server.URL, TLSSkipVerify: true}, 2*time.Second)
 	response, err := insecure.Get(server.URL)
 	if err != nil {

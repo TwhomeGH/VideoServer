@@ -196,6 +196,7 @@ func (s *Store) Register(mux *http.ServeMux) {
 			Password      string `json:"password"`
 			Root          string `json:"root"`
 			TLSSkipVerify bool   `json:"tlsSkipVerify"`
+			TLSCA         string `json:"tlsCa"`
 		}
 		if !decode(w, r, &request) {
 			return
@@ -203,12 +204,12 @@ func (s *Store) Register(mux *http.ServeMux) {
 		var pool Pool
 		var err error
 		if request.Provider == "webdav" || (request.Provider == "" && request.URL != "") {
-			pool, err = s.AddRemotePool(request.Name, request.URL, request.Username, request.Password, request.Root, request.TLSSkipVerify)
+			pool, err = s.AddRemotePool(request.Name, request.URL, request.Username, request.Password, request.Root, request.TLSCA, request.TLSSkipVerify)
 		} else {
 			pool, err = s.AddPool(request.Name, request.Path)
 		}
 		if err != nil {
-			failure(w, 400, "無法註冊目錄：請確認路徑、權限與是否已註冊")
+			failure(w, 400, "無法註冊儲存池："+err.Error())
 			return
 		}
 		respond(w, 201, pool)

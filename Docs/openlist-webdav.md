@@ -50,7 +50,7 @@ curl -D - -o NUL -u USER:PASS -H "Range: bytes=0-1023" \
 
 HTTPS 預設會驗證系統 CA。自簽憑證可在新增 WebDAV 池時勾選「略過 TLS 憑證驗證」，這是明確的不安全 opt-in；UI 會標示，取消後恢復驗證。HTTP 仍可用於區網測試，但卡片會顯示「HTTP · 未加密」。
 
-WebDAV list／HEAD／Range／播放代理／遠端 probe／verify 與 OpenList hash API 都共用同一個 TLS 設定；遠端 FFprobe 在 skip-verify 時會加 `-tls_verify 0`。自訂 CA 目前請放進容器的系統 trust store，尚未提供 per-pool CA 上傳。
+WebDAV list／HEAD／Range／播放代理／遠端 probe／verify 與 OpenList hash API 都共用同一個 TLS 設定；遠端 FFprobe 在 skip-verify 時會加 `-tls_verify 0`。新增池時可上傳 `.pem/.crt/.cer` 自訂 CA；它會加入系統 CA 一起信任，且與 `tlsSkipVerify` 互斥。FFprobe 使用暫存 CA 檔，probe 結束後刪除。
 
 ## Docker 與網路
 
