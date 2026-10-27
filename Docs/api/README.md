@@ -69,7 +69,7 @@ npx --yes @redocly/cli lint pkg/protocol/openapi.json --extends=minimal
 
 新增或修改 API 時，需同步更新規格、能力公告及契約測試。新增可選欄位通常可保留協定 v1；改變欄位語意、移除欄位、改動必要授權／工作流程等破壞相容性的變更，須先安排新協定與遷移策略。
 
-`POST /api/v1/pools` 支援本機目錄與 WebDAV：本機用 `{ "name", "path" }`；WebDAV 用 `{ "name", "provider": "webdav", "url", "username", "password", "root", "tlsSkipVerify", "tlsCa" }`（`tlsCa` 為選填 PEM，回應只給 `tlsCaSet`），其中 `root` 是 `/dav` 下的子目錄。WebDAV 池固定 index-only；discovered 項目可加入遠端 library。回應不會包含密碼。
+`POST /api/v1/pools` 支援本機目錄與 WebDAV：本機用 `{ "name", "path" }`；WebDAV 用 `{ "name", "provider": "webdav", "url", "username", "password", "root", "tlsSkipVerify", "tlsCa" }`（`tlsCa` 為選填 PEM，回應只給 `tlsCaSet`），其中 `root` 是 `/dav` 下的子目錄。WebDAV 池固定 index-only；discovered 項目可加入遠端 library。`PATCH /api/v1/pools/{id}` 可用 `tlsCa`／`tlsSkipVerify` 輪換 TLS 設定，不需重建池。回應不會包含密碼或 CA PEM，只給 `tlsCaSet`。
 
 ## Index-only 找到的影片
 

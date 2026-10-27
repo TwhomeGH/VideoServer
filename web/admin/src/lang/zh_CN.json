@@ -525,5 +525,11 @@
   "library.httpWarning": "HTTP · 未加密",
   "library.tlsCA": "自订 CA PEM（选填）",
   "library.tlsCAHint": "凭证链会加入系统 CA 一起信任；不要上传 private key。",
-  "library.tlsCustomCA": "HTTPS · 自订 CA"
+  "library.tlsCustomCA": "HTTPS · 自订 CA",
+  "common.save": "保存",
+  "library.tlsEdit": "TLS 设置",
+  "library.tlsEditTitle": "更新 WebDAV TLS",
+  "library.tlsCurrent": "目前：",
+  "library.tlsRemoveCA": "移除自订 CA",
+  "library.tlsEditHint": "不选文件会保留目前 CA；勾选 skip 会清除 CA。"
 }

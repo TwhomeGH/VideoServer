@@ -2,6 +2,40 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 07:15 WebDAV CA 輪換與 TLS 設定 dialog
+
+**類型**: 改善
+
+**檔案**:
+
+- `internal/library/store.go`
+- `internal/library/http.go`
+- `web/admin/src/Library.tsx`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- 自訂 CA 只能在新增池時設定；CA 更新或移除只能重建池
+- 沒有 UI 可以切換 skip-verify
+
+### 修改
+
+- 新增 `SetPoolTLS`；PATCH `/pools/{id}` 支援 `tlsCa` 與 `tlsSkipVerify`。
+- CA 驗證、PEM 上限與 skip-verify 互斥沿用建立池規則。
+- UI 新增「TLS 設定」dialog：替換 CA、移除 CA、切換 skip-verify；留空檔案保留目前 CA。
+- 更新不需要重啟或重建 pool；下一次請求即使用新設定。
+- OpenAPI 與文件同步。
+
+### 驗證
+
+- 單元測試：有效 CA 設定成功、無效 CA 失敗、CA+skip 同時設定失敗、清除 CA 並切 skip 成功。
+- 現有 HTTP 池以 PATCH 設定無效 CA 回 400，池狀態不變。
+- UI dialog 可開啟，包含 CA 檔案與 skip-verify。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：沒有 live 私有 CA 可做端到端輪換。
+
+---
+
 ## 2026.10.28 07:05 WebDAV ETag rename 偵測
 
 **類型**: 改善

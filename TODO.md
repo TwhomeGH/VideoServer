@@ -61,7 +61,8 @@
 - [x] WebDAV HTTPS 系統 CA 驗證與明確 tlsSkipVerify opt-in。
 - [x] per-pool 自訂 CA PEM（系統 CA + 自訂 CA，與 skipVerify 互斥）。
 - [x] WebDAV ETag+size 唯一配對的 rename 偵測，同步 discovered 與 library 路徑。
-- [ ] CA 輪換／PATCH、本機 file ID rename。
+- [x] CA 輪換／PATCH 與 TLS 設定 dialog。
+- [ ] 本機 file ID rename 與 DVN 管理介面 HTTPS ingress。
 - [ ] 儲存池自訂 include／exclude globs。
 - [ ] 儲存池 SMART 健康診斷（選配；需平台權限與裝置支援，不影響可用性）。
 - [x] 影片庫分頁、標題／簡介搜尋、Tag／分類／儲存池／18+ 篩選與排序。

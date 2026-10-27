@@ -525,5 +525,11 @@
   "library.httpWarning": "HTTP · unencrypted",
   "library.tlsCA": "Custom CA PEM (optional)",
   "library.tlsCAHint": "Certificate chain is trusted in addition to system CAs; never upload a private key.",
-  "library.tlsCustomCA": "HTTPS · custom CA"
+  "library.tlsCustomCA": "HTTPS · custom CA",
+  "common.save": "Save",
+  "library.tlsEdit": "TLS settings",
+  "library.tlsEditTitle": "Update WebDAV TLS",
+  "library.tlsCurrent": "Current:",
+  "library.tlsRemoveCA": "Remove custom CA",
+  "library.tlsEditHint": "Leave the file empty to keep the current CA; enabling skip clears it."
 }

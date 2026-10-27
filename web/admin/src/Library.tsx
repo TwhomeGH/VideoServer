@@ -84,7 +84,11 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
     ? new URLSearchParams({ ...filters, page: String(videoPage) }).toString() : 'pageSize=1';
   const playerDialog = useRef<HTMLDialogElement>(null);
   const addDialog = useRef<HTMLDialogElement>(null);
+  const tlsDialog = useRef<HTMLDialogElement>(null);
   const editDialog = useRef<HTMLDialogElement>(null);
+  const [tlsEdit, setTLSEdit] = useState<Pool | null>(null);
+  const [tlsEditCA, setTLSEditCA] = useState<string | null>(null);
+  const [tlsEditSkip, setTLSEditSkip] = useState(false);
 
   async function refresh(signal?: AbortSignal) {
     const version = ++refreshVersion.current;
@@ -264,6 +268,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
                 {pool.volumeId && <span className="muted">{t('library.volumeTracked')}</span>}
                 <button type="button" disabled={busy || data.scan?.running || data.scan?.queued || !pool.enabled || !pool.online}
                   onClick={() => void submit(async () => { await request(`pools/${pool.id}/scan`, {}); })}>{t('library.scanPool')}</button>
+                {pool.provider === 'webdav' && <button type="button" disabled={busy} onClick={() => { setTLSEdit(pool); setTLSEditCA(null); setTLSEditSkip(pool.tlsSkipVerify); tlsDialog.current?.showModal(); }}>{t('library.tlsEdit')}</button>}
                 <button type="button" disabled={busy} onClick={() => void submit(async () => {
                   await request<Pool>(`pools/${pool.id}`, { enabled: !pool.enabled }, 'PATCH');
                 })}>{pool.enabled ? t('library.disablePool') : t('library.enablePool')}</button>
@@ -299,6 +304,26 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
               </>}
             <button disabled={busy}>{t('library.registerPool')}</button>
           </form>
+        </dialog>
+        <dialog ref={tlsDialog} className="modal add-pool-modal" aria-label={t('library.tlsEditTitle')}
+          onClose={() => setTLSEdit(null)}
+          onClick={event => { if (event.target === event.currentTarget) tlsDialog.current?.close(); }}>
+          <div className="modal-heading"><h2>{t('library.tlsEditTitle')}</h2><button type="button" onClick={() => tlsDialog.current?.close()}>{t('common.cancel')}</button></div>
+          {tlsEdit && <form className="form-stack" onSubmit={event => { event.preventDefault(); void submit(async () => {
+            const body: { tlsSkipVerify: boolean; tlsCa?: string } = { tlsSkipVerify: tlsEditSkip };
+            if (tlsEditCA !== null) body.tlsCa = tlsEditCA;
+            await request<Pool>(`pools/${tlsEdit.id}`, body, 'PATCH');
+            tlsDialog.current?.close();
+          }); }}>
+            <p className="muted"><code>{tlsEdit.remoteUrl}</code></p>
+            <p className="muted">{t('library.tlsCurrent')} {tlsEdit.tlsSkipVerify ? t('library.tlsInsecure') : tlsEdit.tlsCaSet ? t('library.tlsCustomCA') : t('library.tlsVerified')}</p>
+            <label className="checkbox-label"><input type="checkbox" checked={tlsEditSkip} onChange={event => { setTLSEditSkip(event.target.checked); if (event.target.checked) setTLSEditCA(''); }} />{t('library.tlsSkipVerify')}</label>
+            <p className="muted">{t('library.tlsSkipVerifyHint')}</p>
+            <label>{t('library.tlsCA')}<input type="file" accept=".pem,.crt,.cer" disabled={tlsEditSkip} onChange={async event => { const file = event.target.files?.[0]; setTLSEditCA(file ? await file.text() : null); }} /></label>
+            <p className="muted">{t('library.tlsEditHint')}</p>
+            {tlsEdit.tlsCaSet && !tlsEditSkip && <button type="button" onClick={() => setTLSEditCA('')}>{t('library.tlsRemoveCA')}</button>}
+            <button disabled={busy}>{t('common.save')}</button>
+          </form>}
         </dialog>
       </>}
       {page === 'import' && <form className="import-layout" onSubmit={event => { event.preventDefault(); void submit(async () => {

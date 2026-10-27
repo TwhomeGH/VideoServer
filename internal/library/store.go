@@ -491,17 +491,8 @@ func (s *Store) AddRemotePool(name, remoteURL, username, password, root, tlsCA s
 	name = strings.TrimSpace(name)
 	remoteURL = strings.TrimSpace(remoteURL)
 	tlsCA = strings.TrimSpace(tlsCA)
-	if tlsSkipVerify && tlsCA != "" {
-		return Pool{}, fmt.Errorf("tlsSkipVerify 與自訂 CA 不可同時設定")
-	}
-	if len(tlsCA) > 64<<10 {
-		return Pool{}, fmt.Errorf("自訂 CA 超過 64 KiB")
-	}
-	if tlsCA != "" {
-		certs := x509.NewCertPool()
-		if !certs.AppendCertsFromPEM([]byte(tlsCA)) {
-			return Pool{}, fmt.Errorf("自訂 CA 不是有效的 PEM 憑證")
-		}
+	if err := validateWebDAVTLS(tlsCA, tlsSkipVerify); err != nil {
+		return Pool{}, err
 	}
 	if name == "" || remoteURL == "" {
 		return Pool{}, fmt.Errorf("請提供名稱與 WebDAV URL")
@@ -525,6 +516,43 @@ func (s *Store) AddRemotePool(name, remoteURL, username, password, root, tlsCA s
 		return Pool{}, err
 	}
 	return pool, nil
+}
+
+func validateWebDAVTLS(tlsCA string, tlsSkipVerify bool) error {
+	tlsCA = strings.TrimSpace(tlsCA)
+	if tlsSkipVerify && tlsCA != "" {
+		return fmt.Errorf("tlsSkipVerify 與自訂 CA 不可同時設定")
+	}
+	if len(tlsCA) > 64<<10 {
+		return fmt.Errorf("自訂 CA 超過 64 KiB")
+	}
+	if tlsCA != "" {
+		certs := x509.NewCertPool()
+		if !certs.AppendCertsFromPEM([]byte(tlsCA)) {
+			return fmt.Errorf("自訂 CA 不是有效的 PEM 憑證")
+		}
+	}
+	return nil
+}
+
+// SetPoolTLS 更新既有 WebDAV 池的 CA／skip-verify，不重建 pool。
+func (s *Store) SetPoolTLS(id, tlsCA string, tlsSkipVerify bool) (Pool, error) {
+	pool, err := s.poolByID(id)
+	if err != nil {
+		return Pool{}, err
+	}
+	if pool.Provider != "webdav" {
+		return Pool{}, fmt.Errorf("只有 WebDAV 池支援 TLS 設定")
+	}
+	tlsCA = strings.TrimSpace(tlsCA)
+	if err := validateWebDAVTLS(tlsCA, tlsSkipVerify); err != nil {
+		return Pool{}, err
+	}
+	_, err = s.db.Exec("UPDATE pools SET tls_ca=?,tls_skip_verify=? WHERE id=?", tlsCA, tlsSkipVerify, id)
+	if err != nil {
+		return Pool{}, err
+	}
+	return s.poolByID(id)
 }
 
 // SetPoolEnabled 切換儲存池的掃描、匯入與播放可用性；影片索引與描述保留。
@@ -592,8 +620,8 @@ func (s *Store) SetPoolScanExcludeSystem(id string, exclude bool) (Pool, error) 
 func (s *Store) poolByID(id string) (Pool, error) {
 	var pool Pool
 	var enabled, excludeSystem, indexOnly int
-	err := s.db.QueryRow("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only,provider,remote_url,remote_user,remote_root FROM pools WHERE id=?", id).
-		Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled, &pool.LastActivityAt, &excludeSystem, &indexOnly, &pool.Provider, &pool.RemoteURL, &pool.RemoteUser, &pool.RemoteRoot)
+	err := s.db.QueryRow("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only,provider,remote_url,remote_user,remote_root,tls_skip_verify,tls_ca FROM pools WHERE id=?", id).
+		Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled, &pool.LastActivityAt, &excludeSystem, &indexOnly, &pool.Provider, &pool.RemoteURL, &pool.RemoteUser, &pool.RemoteRoot, &pool.TLSSkipVerify, &pool.TLSCA)
 	if err != nil {
 		return Pool{}, err
 	}

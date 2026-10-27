@@ -81,6 +81,16 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## WebDAV CA 輪換
+
+2026-10-28 在 `dvn-testing`（image 來源 `d1a11f6ecbf2`）驗證：
+
+- store 測試：設定/替換/移除 CA、切換 skip-verify、拒絕無效 CA 與互斥設定。
+- 現有 HTTP 池 PATCH 無效 CA 回 400，`tlsCaSet` 與 `tlsSkipVerify` 不變。
+- UI「TLS 設定」dialog 可開啟，包含 CA 檔案與 skip-verify；390px 無水平溢出。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：沒有 live 私有 CA 可測端到端輪換。
+
 ## WebDAV ETag rename 偵測
 
 2026-10-28 在 `dvn-testing`（image 來源 `821615c5ff3a`）驗證：

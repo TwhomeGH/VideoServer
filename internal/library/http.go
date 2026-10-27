@@ -251,14 +251,16 @@ func (s *Store) Register(mux *http.ServeMux) {
 	}
 	mux.HandleFunc("PATCH /api/v1/pools/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
-			Enabled           *bool `json:"enabled"`
-			ScanExcludeSystem *bool `json:"scanExcludeSystem"`
-			IndexOnly         *bool `json:"indexOnly"`
+			Enabled           *bool   `json:"enabled"`
+			ScanExcludeSystem *bool   `json:"scanExcludeSystem"`
+			IndexOnly         *bool   `json:"indexOnly"`
+			TLSCA             *string `json:"tlsCa"`
+			TLSSkipVerify     *bool   `json:"tlsSkipVerify"`
 		}
 		if !decode(w, r, &request) {
 			return
 		}
-		if request.Enabled == nil && request.ScanExcludeSystem == nil && request.IndexOnly == nil {
+		if request.Enabled == nil && request.ScanExcludeSystem == nil && request.IndexOnly == nil && request.TLSCA == nil && request.TLSSkipVerify == nil {
 			failure(w, 400, "請提供 enabled、scanExcludeSystem 或 indexOnly")
 			return
 		}
@@ -284,6 +286,26 @@ func (s *Store) Register(mux *http.ServeMux) {
 				} else {
 					failure(w, 500, "無法更新掃描政策")
 				}
+				return
+			}
+		}
+		if request.TLSCA != nil || request.TLSSkipVerify != nil {
+			current, lookupErr := s.poolByID(id)
+			if lookupErr != nil {
+				failure(w, 404, "找不到儲存池")
+				return
+			}
+			ca := current.TLSCA
+			if request.TLSCA != nil {
+				ca = *request.TLSCA
+			}
+			skip := current.TLSSkipVerify
+			if request.TLSSkipVerify != nil {
+				skip = *request.TLSSkipVerify
+			}
+			pool, err = s.SetPoolTLS(id, ca, skip)
+			if err != nil {
+				failure(w, 400, err.Error())
 				return
 			}
 		}
