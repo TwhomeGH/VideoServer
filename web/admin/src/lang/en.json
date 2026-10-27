@@ -290,7 +290,7 @@
   "library.scanAutoOff": "Automatic check is off; you can scan manually.",
   "library.scanNext": "Next automatic scan in about {duration}.",
   "library.scanStable": "New files must remain stable for at least {duration} before import.",
-  "library.scanBackoff": "Tiered scan: hot {hot}, warm 5 min, cold 30 min, dormant {dormant}.",
+  "library.scanBackoff": "Tiered scan: hot {hot}, warm 1–6h 5m, 6–24h 15m, cold 30m, dormant {dormant}.",
   "library.scanPool": "Scan this pool",
   "library.poolScanLabel": "Scan",
   "library.poolScanNext": "Next in about {duration} (interval {interval})",
@@ -449,12 +449,13 @@
   "duration.unitMinutes": "minutes",
   "duration.unitHours": "hours",
   "duration.unitDays": "days",
-  "scanTier.legend": "Hot: under 1h · Warm: 1–24h · Cold: 1–7d · Dormant: over 7d",
+  "scanTier.legend": "Hot: under 1h · Warm: 1–6h 5m, 6–24h 15m · Cold: 1–7d 30m · Dormant: over 7d",
   "scanTier.lastActivity": "Last activity {time}",
   "scanTier.noActivity": "No activity recorded",
   "scanTier.turnWarm": "becomes warm around {time}",
   "scanTier.turnCold": "becomes cold around {time}",
   "scanTier.turnDormant": "becomes dormant around {time}",
   "scanTier.transitionNote": "effective at the next scan",
-  "scanTier.stayDormant": "dormant: no automatic demotion"
+  "scanTier.stayDormant": "dormant: no automatic demotion",
+  "scanTier.warmStep": "interval becomes 15m around {time}"
 }

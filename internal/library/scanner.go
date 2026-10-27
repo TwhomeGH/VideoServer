@@ -355,6 +355,10 @@ func scanTier(now, lastActivity time.Time, base, idleMax time.Duration) (string,
 	if cold < base {
 		cold = base
 	}
+	slowerWarm := 15 * time.Minute
+	if slowerWarm < base {
+		slowerWarm = base
+	}
 	dormant := idleMax
 	if dormant < cold {
 		dormant = cold
@@ -363,6 +367,9 @@ func scanTier(now, lastActivity time.Time, base, idleMax time.Duration) (string,
 		return "hot", base
 	}
 	if now.Sub(lastActivity) < 24*time.Hour {
+		if now.Sub(lastActivity) >= 6*time.Hour {
+			return "warm", slowerWarm
+		}
 		return "warm", warm
 	}
 	if now.Sub(lastActivity) < 7*24*time.Hour {

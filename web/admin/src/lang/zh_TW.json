@@ -290,7 +290,7 @@
   "library.scanAutoOff": "自動檢查已停用，可手動掃描。",
   "library.scanNext": "下次自動掃描：約 {duration}後。",
   "library.scanStable": "新增檔案需連續觀察穩定至少 {duration}才匯入。",
-  "library.scanBackoff": "分級掃描：熱 {hot}、暖 5 分、冷 30 分、休眠 {dormant}。",
+  "library.scanBackoff": "分級掃描：熱 {hot}、暖 1–6 小時 5 分、6–24 小時 15 分、冷 30 分、休眠 {dormant}。",
   "library.scanPool": "掃描此池",
   "library.poolScanLabel": "掃描",
   "library.poolScanNext": "下次約 {duration}後（間隔 {interval}）",
@@ -449,12 +449,13 @@
   "duration.unitMinutes": "分",
   "duration.unitHours": "小時",
   "duration.unitDays": "天",
-  "scanTier.legend": "熱：1 小時內 · 暖：1–24 小時 · 冷：1–7 天 · 休眠：超過 7 天",
+  "scanTier.legend": "熱：1 小時內 · 暖：1–6 小時 5 分、6–24 小時 15 分 · 冷：1–7 天 30 分 · 休眠：超過 7 天",
   "scanTier.lastActivity": "上次活動 {time}",
   "scanTier.noActivity": "尚無活動紀錄",
   "scanTier.turnWarm": "約 {time} 轉暖",
   "scanTier.turnCold": "約 {time} 轉冷",
   "scanTier.turnDormant": "約 {time} 轉休眠",
   "scanTier.transitionNote": "實際於下次掃描時判定",
-  "scanTier.stayDormant": "休眠：不再自動降級"
+  "scanTier.stayDormant": "休眠：不再自動降級",
+  "scanTier.warmStep": "約 {time} 間隔改 15 分"
 }

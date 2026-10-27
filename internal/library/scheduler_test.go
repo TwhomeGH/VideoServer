@@ -90,6 +90,11 @@ func TestScannerTierAndPoolScan(t *testing.T) {
 	if state.tier != "warm" || state.interval != 5*time.Minute {
 		t.Fatalf("warm tier: %+v", state)
 	}
+	setAge(7 * time.Hour)
+	state = readState()
+	if state.tier != "warm" || state.interval != 15*time.Minute {
+		t.Fatalf("slow warm tier: %+v", state)
+	}
 	setAge(2 * 24 * time.Hour)
 	state = readState()
 	if state.tier != "cold" || state.interval != 30*time.Minute {

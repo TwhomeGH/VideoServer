@@ -33,6 +33,12 @@ export function scanTierActivity(tier: string | undefined, lastActivityAt: strin
   const last = new Date(lastActivityAt);
   if (Number.isNaN(last.getTime())) return t('scanTier.noActivity');
   const parts = [t('scanTier.lastActivity', { time: formatTime(lastActivityAt, locale) })];
+  if (tier === 'warm') {
+    const warmStep = new Date(last.getTime() + 6 * hour);
+    if (Date.now() < warmStep.getTime()) {
+      parts.push(t('scanTier.warmStep', { time: formatTime(warmStep.toISOString(), locale) }));
+    }
+  }
   const next = transition(tier);
   if (next) {
     const boundary = new Date(last.getTime() + next.after);
