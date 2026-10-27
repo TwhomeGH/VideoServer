@@ -2606,6 +2606,12 @@
           },
           "scanIdleMaxSeconds": {
             "type": "integer"
+          },
+          "backfillDailyLimit": {
+            "type": "integer"
+          },
+          "backfillDailyGiB": {
+            "type": "integer"
           }
         },
         "required": [
@@ -2623,7 +2629,9 @@
           "autoBackfill",
           "backfillIntervalSeconds",
           "hashLimitMiBps",
-          "scanIdleMaxSeconds"
+          "scanIdleMaxSeconds",
+          "backfillDailyLimit",
+          "backfillDailyGiB"
         ]
       },
       "ConfigInput": {
@@ -2668,6 +2676,12 @@
           },
           "scanIdleMaxSeconds": {
             "type": "integer"
+          },
+          "backfillDailyLimit": {
+            "type": "integer"
+          },
+          "backfillDailyGiB": {
+            "type": "integer"
           }
         },
         "required": [
@@ -2681,7 +2695,9 @@
           "autoBackfill",
           "backfillIntervalSeconds",
           "hashLimitMiBps",
-          "scanIdleMaxSeconds"
+          "scanIdleMaxSeconds",
+          "backfillDailyLimit",
+          "backfillDailyGiB"
         ],
         "additionalProperties": false
       },
@@ -3113,13 +3129,42 @@
           },
           "nextVideoTitle": {
             "type": "string"
+          },
+          "dailyVideoLimit": {
+            "type": "integer"
+          },
+          "dailyVideos": {
+            "type": "integer"
+          },
+          "dailyGiBLimit": {
+            "type": "integer"
+          },
+          "dailyBytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "dailyResetAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "limitReached": {
+            "type": "boolean"
+          },
+          "queueIdle": {
+            "type": "boolean"
           }
         },
         "required": [
           "enabled",
           "intervalSeconds",
           "nextCheckInSeconds",
-          "candidateCount"
+          "candidateCount",
+          "dailyVideoLimit",
+          "dailyVideos",
+          "dailyGiBLimit",
+          "dailyBytes",
+          "limitReached",
+          "queueIdle"
         ]
       },
       "PoolScanStatus": {

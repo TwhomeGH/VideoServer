@@ -38,7 +38,7 @@ Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的
 ## 管理頁設定編輯
 
 主機 JSON 是唯讀基準；管理頁只寫入資料目錄的 `<dataDirectory>/config.override.json`，因此 Docker 的單檔唯讀掛載不需要改成可寫。
-可編輯欄位是 host、preferredPort、fallbackPorts、rememberLastSuccessfulPort、autoScan、scanIntervalSeconds、fileStableSeconds、autoBackfill、backfillIntervalSeconds、hashLimitMiBps。dataDirectory、webDirectory 與基準檔路徑只顯示，不能從網頁變更。
+可編輯欄位是 host、preferredPort、fallbackPorts、rememberLastSuccessfulPort、autoScan、scanIntervalSeconds、scanIdleMaxSeconds、fileStableSeconds、autoBackfill、backfillIntervalSeconds、backfillDailyLimit、backfillDailyGiB、hashLimitMiBps。dataDirectory、webDirectory 與基準檔路徑只顯示，不能從網頁變更。
 儲存時只記錄與基準不同的欄位；欄位改回基準值會從覆寫檔移除，按「重設為基準」則刪除整個覆寫檔。覆寫檔使用原子替換保存，主機 JSON 不會被修改。
 
 程序啟動時先讀基準 JSON，再套用覆寫並重新驗證；未知欄位、無效端口或無效秒數會讓啟動失敗。管理頁儲存後會顯示「需重新啟動」，按下確認後服務以 exit code 75 結束，交由 Docker `restart: unless-stopped`、systemd `Restart=on-failure` 或 `npm run dev` 的監督流程重新啟動並套用。直接手動執行二進位且沒有監督程式時，服務會停止，需自行重新啟動。
@@ -49,7 +49,11 @@ Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的
 
 儲存池頁可對單一池按「掃描此池」，對應 `POST /api/v1/pools/{id}/scan`；完成後重置該池退避。全域「立即掃描新增影片」仍會掃描所有池。真正大量讀取的是匯入／重新探測的 FFprobe＋SHA-256。
 
-`autoBackfill` 預設關閉。開啟後每 `backfillIntervalSeconds`（預設 60 秒）檢查一次，只在整個佇列閒置時排一筆缺少技術資訊的影片，不會與手動匯入或掃描競爭。`hashLimitMiBps` 限制 SHA-256 讀取速度（預設 64 MiB/s，0 表示不限），套用到匯入與重新探測；佇列仍一次只處理一個工作。
+`autoBackfill` 預設關閉。開啟後每 `backfillIntervalSeconds`（預設 60 秒）檢查一次，只在整個佇列閒置時排一筆缺少技術資訊的影片，不會與手動匯入或掃描競爭。「閒置」是指 `import_jobs` 沒有任何 queued／running 工作，包含手動匯入、掃描與手動重讀；不是只看自動補齊。有缺少技術資訊的候選時才會排程。
+
+每日上限 `backfillDailyLimit`（預設 50 部）與 `backfillDailyGiB`（預設 20 GiB）取先到者，`0` 表示不限；只限制**自動**補齊，手動「重新讀取影片資訊」不受限。用量以排程當下計入，持久化在 `backfill_usage`，以服務本地日切換，重啟不會歸零；達到上限後停止自動排程，候選保留，隔日重新開始。Docker 的時區預設可能是 UTC，會影響跨日時間，可用 `TZ` 設定服務時區。
+
+`hashLimitMiBps` 限制 SHA-256 讀取速度（預設 64 MiB/s，0 表示不限），套用到匯入與重新探測；佇列仍一次只處理一個工作。
 
 影音工作頁與工作監看會顯示下次掃描／補齊檢查的倒數、候選數量與目前佇列；`GET /api/v1/schedule` 提供相同摘要。停止自動補齊不影響手動「重新讀取影片資訊」。
 

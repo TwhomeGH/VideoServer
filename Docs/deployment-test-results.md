@@ -81,6 +81,16 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## 自動補齊每日上限與佇列閒置驗收
+
+2026-10-27 在 `dvn-testing`（image 來源 `979097139948`）驗證：
+
+- 監看頁顯示「今日 0／50 部 · 0 B／20 GiB」與候選目標；`queueIdle` 為 true 時可排程。
+- 設定頁出現每日部數與 GiB 上限，0 表示不限；兩者取先到者。
+- 佇列有 queued／running 工作時 `queueIdle` 為 false，候選仍會顯示，但自動補齊不排程。
+- 每日用量寫入 schema v6 `backfill_usage`；重置時間依服務時區，Docker 可用 `TZ` 調整。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
 ## 自動補齊候選目標提示驗收
 
 2026-10-27 在 `dvn-testing`（image 來源 `7f59876b9f7d`）驗證：

@@ -17,6 +17,8 @@ type MonitorData = {
   }; backfill: {
     enabled: boolean; intervalSeconds: number; nextCheckAt?: string; nextCheckInSeconds: number;
     candidateCount: number; nextVideoId?: string; nextVideoTitle?: string;
+    dailyVideoLimit: number; dailyVideos: number; dailyGiBLimit: number; dailyBytes: number;
+    dailyResetAt?: string; limitReached: boolean; queueIdle?: boolean;
     lastScheduledAt?: string; lastVideoId?: string;
   } } | null;
 };
@@ -139,6 +141,16 @@ export function Monitor() {
               {data.tasks.backfill.enabled
                 ? <>
                   <p>{t('monitor.backfillNext', { seconds: data.tasks.backfill.nextCheckInSeconds || 0 })}{t('common.dot')}{t('monitor.backfillCandidates', { count: data.tasks.backfill.candidateCount })}</p>
+                  {data.tasks.backfill.queueIdle === false && <p className="muted">{t('monitor.backfillWaitingQueue')}</p>}
+                  <p className="muted">{t('monitor.backfillUsage', {
+                    videos: data.tasks.backfill.dailyVideos,
+                    videoLimit: data.tasks.backfill.dailyVideoLimit || t('monitor.unlimited'),
+                    bytes: bytes(data.tasks.backfill.dailyBytes),
+                    byteLimit: data.tasks.backfill.dailyGiBLimit ? `${data.tasks.backfill.dailyGiBLimit} GiB` : t('monitor.unlimited'),
+                  })}</p>
+                  {data.tasks.backfill.limitReached && <p role="status">{t('monitor.backfillLimitReached', {
+                    time: data.tasks.backfill.dailyResetAt ? new Date(data.tasks.backfill.dailyResetAt).toLocaleString(locale) : '',
+                  })}</p>}
                   <p className="muted">{data.tasks.backfill.nextVideoTitle
                     ? t('monitor.backfillNextCandidate', { title: data.tasks.backfill.nextVideoTitle })
                     : t('monitor.backfillNoCandidate')}</p>

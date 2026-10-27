@@ -6,12 +6,12 @@ type Config = {
   host: string; preferredPort: number; fallbackPorts: number[] | null;
   webDirectory: string; dataDirectory: string; autoScan: boolean;
   scanIntervalSeconds: number; scanIdleMaxSeconds: number; fileStableSeconds: number; rememberLastSuccessfulPort: boolean;
-  autoBackfill: boolean; backfillIntervalSeconds: number; hashLimitMiBps: number;
+  autoBackfill: boolean; backfillIntervalSeconds: number; backfillDailyLimit: number; backfillDailyGiB: number; hashLimitMiBps: number;
 };
 type Overrides = Partial<{
   host: string; preferredPort: number; fallbackPorts: number[];
   autoScan: boolean; scanIntervalSeconds: number; scanIdleMaxSeconds: number; fileStableSeconds: number; rememberLastSuccessfulPort: boolean;
-  autoBackfill: boolean; backfillIntervalSeconds: number; hashLimitMiBps: number;
+  autoBackfill: boolean; backfillIntervalSeconds: number; backfillDailyLimit: number; backfillDailyGiB: number; hashLimitMiBps: number;
 }>;
 type Network = {
   stateFile: string; rememberEnabled: boolean; previousPort: number; activePort: number; saved: boolean; warning?: string;
@@ -24,7 +24,7 @@ type FormState = {
   host: string; preferredPort: string; fallbackPorts: string;
   autoScan: boolean; scanIntervalSeconds: string; scanIdleMaxSeconds: string; fileStableSeconds: string;
   rememberLastSuccessfulPort: boolean;
-  autoBackfill: boolean; backfillIntervalSeconds: string; hashLimitMiBps: string;
+  autoBackfill: boolean; backfillIntervalSeconds: string; backfillDailyLimit: string; backfillDailyGiB: string; hashLimitMiBps: string;
 };
 
 function formFrom(config: Config): FormState {
@@ -39,6 +39,8 @@ function formFrom(config: Config): FormState {
     rememberLastSuccessfulPort: config.rememberLastSuccessfulPort,
     autoBackfill: config.autoBackfill,
     backfillIntervalSeconds: String(config.backfillIntervalSeconds),
+    backfillDailyLimit: String(config.backfillDailyLimit),
+    backfillDailyGiB: String(config.backfillDailyGiB),
     hashLimitMiBps: String(config.hashLimitMiBps),
   };
 }
@@ -103,13 +105,21 @@ export function Settings({ service }: { service?: string }) {
     if (!Number.isInteger(hashLimitMiBps) || hashLimitMiBps < 0 || hashLimitMiBps > 102400) {
       throw new Error(t('settings.errHashLimit'));
     }
+    const backfillDailyLimit = Number(form.backfillDailyLimit);
+    if (!Number.isInteger(backfillDailyLimit) || backfillDailyLimit < 0 || backfillDailyLimit > 100000) {
+      throw new Error(t('settings.errBackfillDailyLimit'));
+    }
+    const backfillDailyGiB = Number(form.backfillDailyGiB);
+    if (!Number.isInteger(backfillDailyGiB) || backfillDailyGiB < 0 || backfillDailyGiB > 102400) {
+      throw new Error(t('settings.errBackfillDailyGiB'));
+    }
     const host = form.host.trim();
     if (!host) throw new Error(t('settings.errHost'));
     return {
       host, preferredPort, fallbackPorts: unique,
       rememberLastSuccessfulPort: unique.length > 0 && form.rememberLastSuccessfulPort,
       autoScan: form.autoScan, scanIntervalSeconds, scanIdleMaxSeconds, fileStableSeconds,
-      autoBackfill: form.autoBackfill, backfillIntervalSeconds, hashLimitMiBps,
+      autoBackfill: form.autoBackfill, backfillIntervalSeconds, backfillDailyLimit, backfillDailyGiB, hashLimitMiBps,
     };
   }
 
@@ -208,6 +218,8 @@ export function Settings({ service }: { service?: string }) {
             <label className="checkbox-label"><input type="checkbox" checked={form.autoBackfill} onChange={event => patch({ autoBackfill: event.target.checked })} />{t('settings.autoBackfill')}</label>
             <p className="muted">{t('settings.autoBackfillHint')}</p>
             <label>{t('settings.backfillInterval')}<input type="number" min={10} max={86400} value={form.backfillIntervalSeconds} onChange={event => patch({ backfillIntervalSeconds: event.target.value })} /></label>
+            <label>{t('settings.backfillDailyLimit')}<input type="number" min={0} max={100000} value={form.backfillDailyLimit} onChange={event => patch({ backfillDailyLimit: event.target.value })} /></label>
+            <label>{t('settings.backfillDailyGiB')}<input type="number" min={0} max={102400} value={form.backfillDailyGiB} onChange={event => patch({ backfillDailyGiB: event.target.value })} /></label>
             <label>{t('settings.hashLimit')}<input type="number" min={0} max={102400} value={form.hashLimitMiBps} onChange={event => patch({ hashLimitMiBps: event.target.value })} /></label>
           </fieldset>
         </>}

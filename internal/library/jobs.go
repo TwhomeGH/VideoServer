@@ -52,13 +52,15 @@ func scanJob(row interface{ Scan(...any) error }) (ImportJob, error) {
 
 // ImportQueue 將手動匯入與自動發現串成單一持久背景佇列。
 type ImportQueue struct {
-	store           *Store
-	wake            chan struct{}
-	logger          *slog.Logger
-	probe           func(context.Context, string) (media.Info, error)
-	backfillSkipped map[string]struct{}
-	backfillMu      sync.Mutex
-	backfill        BackfillStatus
+	store              *Store
+	wake               chan struct{}
+	logger             *slog.Logger
+	probe              func(context.Context, string) (media.Info, error)
+	backfillSkipped    map[string]struct{}
+	backfillMu         sync.Mutex
+	backfill           BackfillStatus
+	backfillDailyLimit int
+	backfillDailyGiB   int
 }
 
 // NewImportQueue 建立 store 的背景匯入器，並將上次中斷的工作還原成等待。

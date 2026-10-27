@@ -110,8 +110,8 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("SELECT COALESCE(MAX(version),0) FROM schema_version").Scan(&version); err != nil {
 		return err
 	}
-	if version > 5 {
-		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 5", version)
+	if version > 6 {
+		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 6", version)
 	}
 	if _, err := tx.Exec(`
  CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
@@ -184,6 +184,14 @@ INSERT INTO schema_version VALUES(4);`); err != nil {
 			}
 		}
 		if _, err := tx.Exec("INSERT INTO schema_version VALUES(5)"); err != nil {
+			return err
+		}
+	}
+	if version < 6 {
+		if _, err := tx.Exec(`
+CREATE TABLE IF NOT EXISTS backfill_usage(
+ day TEXT PRIMARY KEY, videos INTEGER NOT NULL DEFAULT 0, bytes INTEGER NOT NULL DEFAULT 0);
+INSERT INTO schema_version VALUES(6);`); err != nil {
 			return err
 		}
 	}

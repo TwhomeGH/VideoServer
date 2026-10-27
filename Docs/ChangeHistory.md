@@ -2,6 +2,45 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.27 21:40 自動補齊每日部數與容量上限
+
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/reprobe.go`
+- `internal/library/store.go`
+- `internal/library/backfill_test.go`
+- `internal/runtime/config.go`
+- `internal/runtime/configapi.go`
+- `internal/runtime/server.go`
+- `web/admin/src/Settings.tsx`
+- `web/admin/src/Monitor.tsx`
+- `web/admin/src/lang/`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- 自動補齊每 60 秒可排一筆，但沒有每日總量上限
+- 影片大小差異大，只靠間隔與瞬間速率無法限制一天的總讀取量
+
+### 修改
+
+- 新增 `backfillDailyLimit`（預設 50 部）與 `backfillDailyGiB`（預設 20 GiB），取先到者，0 為不限。
+- 只限制自動補齊；手動重新讀取不受影響。
+- 新增 schema v6 `backfill_usage(day,videos,bytes)`，重啟後保留；以服務本地日重置。
+- 達到上限時停止自動排程，候選保留，監看頁顯示今日用量與重置時間。
+- 設定頁放入「自動補齊與 I/O 限速」群組；OpenAPI、i18n 與測試同步。
+- 文件明確說明「佇列閒置」是整個 import 佇列沒有 queued／running 工作，不是只看補齊。
+
+### 驗證
+
+- 單元測試驗證每日用量與上限判定。
+- 監看頁顯示今日部數／容量、候選目標與達到上限的重置時間。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
+---
+
 ## 2026.10.27 21:20 自動補齊顯示下一個候選
 
 **類型**: 功能

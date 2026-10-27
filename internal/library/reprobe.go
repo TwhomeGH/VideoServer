@@ -193,14 +193,67 @@ type BackfillStatus struct {
 	CandidateCount     int    `json:"candidateCount"`
 	NextVideoID        string `json:"nextVideoId,omitempty"`
 	NextVideoTitle     string `json:"nextVideoTitle,omitempty"`
+	DailyVideoLimit    int    `json:"dailyVideoLimit"`
+	DailyVideos        int    `json:"dailyVideos"`
+	DailyGiBLimit      int    `json:"dailyGiBLimit"`
+	DailyBytes         int64  `json:"dailyBytes"`
+	DailyResetAt       string `json:"dailyResetAt,omitempty"`
+	LimitReached       bool   `json:"limitReached"`
+	QueueIdle          bool   `json:"queueIdle"`
 	LastScheduledAt    string `json:"lastScheduledAt,omitempty"`
 	LastVideoID        string `json:"lastVideoId,omitempty"`
+}
+
+// SetBackfillLimits 設定自動補齊每日部數與容量上限；0 表示不限。
+func (q *ImportQueue) SetBackfillLimits(videoLimit, giBLimit int) {
+	if videoLimit < 0 {
+		videoLimit = 0
+	}
+	if giBLimit < 0 {
+		giBLimit = 0
+	}
+	q.backfillMu.Lock()
+	q.backfillDailyLimit = videoLimit
+	q.backfillDailyGiB = giBLimit
+	q.backfill.DailyVideoLimit = videoLimit
+	q.backfill.DailyGiBLimit = giBLimit
+	q.backfillMu.Unlock()
+}
+
+func (q *ImportQueue) backfillLimits() (int, int) {
+	q.backfillMu.Lock()
+	defer q.backfillMu.Unlock()
+	return q.backfillDailyLimit, q.backfillDailyGiB
+}
+
+// backfillUsage 回傳今日已排程的自動補齊用量與下一個本地日界。
+func (q *ImportQueue) backfillUsage(ctx context.Context) (time.Time, int, int64, error) {
+	now := time.Now()
+	day := now.Format("2006-01-02")
+	reset := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location()).AddDate(0, 0, 1)
+	var videos int
+	var bytes int64
+	err := q.store.db.QueryRowContext(ctx, "SELECT videos,bytes FROM backfill_usage WHERE day=?", day).Scan(&videos, &bytes)
+	if errors.Is(err, sql.ErrNoRows) {
+		return reset, 0, 0, nil
+	}
+	return reset, videos, bytes, err
+}
+
+func (q *ImportQueue) recordBackfillUsage(ctx context.Context, bytes int64) error {
+	day := time.Now().Format("2006-01-02")
+	_, err := q.store.db.ExecContext(ctx, `
+INSERT INTO backfill_usage(day,videos,bytes) VALUES(?,1,?)
+ON CONFLICT(day) DO UPDATE SET videos=videos+1, bytes=bytes+excluded.bytes`, day, bytes)
+	return err
 }
 
 // BackfillStatus 回傳目前設定、下次檢查時間與待檢查候選數。
 func (q *ImportQueue) BackfillStatus(ctx context.Context) (BackfillStatus, error) {
 	q.backfillMu.Lock()
 	status := q.backfill
+	status.DailyVideoLimit = q.backfillDailyLimit
+	status.DailyGiBLimit = q.backfillDailyGiB
 	q.backfillMu.Unlock()
 	if status.NextCheckAt != "" {
 		if next, err := time.Parse(time.RFC3339Nano, status.NextCheckAt); err == nil {
@@ -209,17 +262,29 @@ func (q *ImportQueue) BackfillStatus(ctx context.Context) (BackfillStatus, error
 			}
 		}
 	}
-	err := q.store.db.QueryRowContext(ctx, `
+	reset, videos, bytes, err := q.backfillUsage(ctx)
+	if err != nil {
+		return status, err
+	}
+	status.DailyVideos = videos
+	status.DailyBytes = bytes
+	status.DailyResetAt = reset.UTC().Format(time.RFC3339Nano)
+	status.LimitReached = backfillLimitReached(videos, bytes, status.DailyVideoLimit, status.DailyGiBLimit)
+	err = q.store.db.QueryRowContext(ctx, `
 SELECT COUNT(*)
 FROM videos v
 JOIN pools p ON p.id = v.pool_id AND p.enabled = 1
 LEFT JOIN video_media m ON m.video_id = v.id
 WHERE m.video_id IS NULL
-  AND NOT EXISTS (SELECT 1 FROM import_jobs j WHERE j.source = 'reprobe' AND j.video_id = v.id)
-  AND NOT EXISTS (SELECT 1 FROM import_jobs j WHERE j.status IN ('queued','running'))`).Scan(&status.CandidateCount)
+  AND NOT EXISTS (SELECT 1 FROM import_jobs j WHERE j.source = 'reprobe' AND j.video_id = v.id)`).Scan(&status.CandidateCount)
 	if err != nil {
 		return status, err
 	}
+	var busy int
+	if err := q.store.db.QueryRowContext(ctx, "SELECT EXISTS(SELECT 1 FROM import_jobs WHERE status IN ('queued','running'))").Scan(&busy); err != nil {
+		return status, err
+	}
+	status.QueueIdle = busy == 0
 	err = q.store.db.QueryRowContext(ctx, `
 SELECT v.id, v.title
 FROM videos v
@@ -227,7 +292,6 @@ JOIN pools p ON p.id = v.pool_id AND p.enabled = 1
 LEFT JOIN video_media m ON m.video_id = v.id
 WHERE m.video_id IS NULL
   AND NOT EXISTS (SELECT 1 FROM import_jobs j WHERE j.source = 'reprobe' AND j.video_id = v.id)
-  AND NOT EXISTS (SELECT 1 FROM import_jobs j WHERE j.status IN ('queued','running'))
 ORDER BY v.imported_at, v.id
 LIMIT 1`).Scan(&status.NextVideoID, &status.NextVideoTitle)
 	if err != nil && !errors.Is(err, sql.ErrNoRows) {
@@ -242,7 +306,10 @@ func (q *ImportQueue) RunBackfill(ctx context.Context, interval time.Duration, e
 		interval = 60 * time.Second
 	}
 	q.backfillMu.Lock()
-	q.backfill = BackfillStatus{Enabled: enabled, IntervalSeconds: int(interval / time.Second)}
+	q.backfill = BackfillStatus{
+		Enabled: enabled, IntervalSeconds: int(interval / time.Second),
+		DailyVideoLimit: q.backfillDailyLimit, DailyGiBLimit: q.backfillDailyGiB,
+	}
 	q.backfillMu.Unlock()
 	if !enabled {
 		return
@@ -255,6 +322,23 @@ func (q *ImportQueue) RunBackfill(ctx context.Context, interval time.Duration, e
 			return
 		case <-timer.C:
 		}
+		reset, videos, bytes, usageErr := q.backfillUsage(ctx)
+		if usageErr != nil && ctx.Err() == nil {
+			q.logger.Error("讀取自動補齊每日用量失敗", "error", usageErr)
+		}
+		videoLimit, giBLimit := q.backfillLimits()
+		if usageErr == nil && backfillLimitReached(videos, bytes, videoLimit, giBLimit) {
+			now := time.Now().UTC()
+			q.backfillMu.Lock()
+			q.backfill.NextCheckAt = now.Add(interval).Format(time.RFC3339Nano)
+			q.backfill.DailyVideos = videos
+			q.backfill.DailyBytes = bytes
+			q.backfill.DailyResetAt = reset.UTC().Format(time.RFC3339Nano)
+			q.backfill.LimitReached = true
+			q.backfillMu.Unlock()
+			timer.Reset(interval)
+			continue
+		}
 		job, added, err := q.BackfillMissingMedia(ctx)
 		now := time.Now().UTC()
 		q.backfillMu.Lock()
@@ -263,10 +347,29 @@ func (q *ImportQueue) RunBackfill(ctx context.Context, interval time.Duration, e
 			q.backfill.LastScheduledAt = now.Format(time.RFC3339Nano)
 			q.backfill.LastVideoID = job.VideoID
 		}
+		q.backfill.DailyVideos = videos
+		q.backfill.DailyBytes = bytes
+		q.backfill.DailyResetAt = reset.UTC().Format(time.RFC3339Nano)
+		q.backfill.LimitReached = false
 		q.backfillMu.Unlock()
+		if added {
+			if err := q.recordBackfillUsage(ctx, job.TotalBytes); err != nil && ctx.Err() == nil {
+				q.logger.Error("記錄自動補齊每日用量失敗", "error", err)
+			}
+		}
 		if err != nil && ctx.Err() == nil {
 			q.logger.Error("自動補齊影片技術資訊失敗", "error", err)
 		}
 		timer.Reset(interval)
 	}
+}
+
+func backfillLimitReached(videos int, bytes int64, videoLimit, giBLimit int) bool {
+	if videoLimit > 0 && videos >= videoLimit {
+		return true
+	}
+	if giBLimit > 0 && bytes >= int64(giBLimit)*1024*1024*1024 {
+		return true
+	}
+	return false
 }

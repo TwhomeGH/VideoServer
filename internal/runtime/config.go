@@ -27,6 +27,8 @@ type Config struct {
 	FileStableSeconds          int    `json:"fileStableSeconds"`
 	AutoBackfill               bool   `json:"autoBackfill"`
 	BackfillIntervalSeconds    int    `json:"backfillIntervalSeconds"`
+	BackfillDailyLimit         int    `json:"backfillDailyLimit"`
+	BackfillDailyGiB           int    `json:"backfillDailyGiB"`
 	HashLimitMiBps             int    `json:"hashLimitMiBps"`
 	RememberLastSuccessfulPort bool   `json:"rememberLastSuccessfulPort"`
 	FFprobePath                string `json:"ffprobePath"`
@@ -56,7 +58,7 @@ func LoadConfig(path string, port int, service ...string) (Config, error) {
 			}
 		}
 	}
-	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, ScanIdleMaxSeconds: 300, FileStableSeconds: 10, AutoBackfill: false, BackfillIntervalSeconds: 60, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", ProbeTimeoutSeconds: 60}
+	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, ScanIdleMaxSeconds: 300, FileStableSeconds: 10, AutoBackfill: false, BackfillIntervalSeconds: 60, BackfillDailyLimit: 50, BackfillDailyGiB: 20, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", ProbeTimeoutSeconds: 60}
 	if path != "" {
 		file, err := os.Open(path)
 		if err != nil {
@@ -90,6 +92,8 @@ type Override struct {
 	FileStableSeconds          *int    `json:"fileStableSeconds,omitempty"`
 	AutoBackfill               *bool   `json:"autoBackfill,omitempty"`
 	BackfillIntervalSeconds    *int    `json:"backfillIntervalSeconds,omitempty"`
+	BackfillDailyLimit         *int    `json:"backfillDailyLimit,omitempty"`
+	BackfillDailyGiB           *int    `json:"backfillDailyGiB,omitempty"`
 	HashLimitMiBps             *int    `json:"hashLimitMiBps,omitempty"`
 	RememberLastSuccessfulPort *bool   `json:"rememberLastSuccessfulPort,omitempty"`
 }
@@ -146,6 +150,12 @@ func (o Override) Apply(base Config) Config {
 	if o.BackfillIntervalSeconds != nil {
 		value.BackfillIntervalSeconds = *o.BackfillIntervalSeconds
 	}
+	if o.BackfillDailyLimit != nil {
+		value.BackfillDailyLimit = *o.BackfillDailyLimit
+	}
+	if o.BackfillDailyGiB != nil {
+		value.BackfillDailyGiB = *o.BackfillDailyGiB
+	}
 	if o.HashLimitMiBps != nil {
 		value.HashLimitMiBps = *o.HashLimitMiBps
 	}
@@ -159,7 +169,7 @@ func (o Override) Apply(base Config) Config {
 func (o Override) Empty() bool {
 	return o.Host == nil && o.PreferredPort == nil && o.FallbackPorts == nil && o.AutoScan == nil &&
 		o.ScanIntervalSeconds == nil && o.ScanIdleMaxSeconds == nil && o.FileStableSeconds == nil && o.AutoBackfill == nil &&
-		o.BackfillIntervalSeconds == nil && o.HashLimitMiBps == nil && o.RememberLastSuccessfulPort == nil
+		o.BackfillIntervalSeconds == nil && o.BackfillDailyLimit == nil && o.BackfillDailyGiB == nil && o.HashLimitMiBps == nil && o.RememberLastSuccessfulPort == nil
 }
 
 // BuildOverride 比較基準與新設定，只保存有差異的可編輯欄位。
@@ -193,6 +203,12 @@ func BuildOverride(base, next Config) Override {
 	}
 	if next.BackfillIntervalSeconds != base.BackfillIntervalSeconds {
 		value.BackfillIntervalSeconds = &next.BackfillIntervalSeconds
+	}
+	if next.BackfillDailyLimit != base.BackfillDailyLimit {
+		value.BackfillDailyLimit = &next.BackfillDailyLimit
+	}
+	if next.BackfillDailyGiB != base.BackfillDailyGiB {
+		value.BackfillDailyGiB = &next.BackfillDailyGiB
 	}
 	if next.HashLimitMiBps != base.HashLimitMiBps {
 		value.HashLimitMiBps = &next.HashLimitMiBps
@@ -233,6 +249,12 @@ func (c Config) Validate() error {
 	}
 	if c.BackfillIntervalSeconds < 10 || c.BackfillIntervalSeconds > 86400 {
 		return fmt.Errorf("自動補齊檢查間隔必須介於 10 到 86400")
+	}
+	if c.BackfillDailyLimit < 0 || c.BackfillDailyLimit > 100000 {
+		return fmt.Errorf("每日自動補齊部數必須介於 0 到 100000")
+	}
+	if c.BackfillDailyGiB < 0 || c.BackfillDailyGiB > 102400 {
+		return fmt.Errorf("每日自動補齊容量必須介於 0 到 102400 GiB")
 	}
 	if c.HashLimitMiBps < 0 || c.HashLimitMiBps > 102400 {
 		return fmt.Errorf("SHA-256 讀取上限必須介於 0 到 102400 MiB/s")

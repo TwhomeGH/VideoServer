@@ -30,6 +30,45 @@ func TestBackfillStatusShowsNextCandidate(t *testing.T) {
 	if status.CandidateCount != 1 || status.NextVideoID != video.ID || status.NextVideoTitle != "next-target.mp4" {
 		t.Fatalf("unexpected backfill target: %+v", status)
 	}
+	if !status.QueueIdle {
+		t.Fatalf("empty queue should be idle: %+v", status)
+	}
+}
+
+func TestBackfillStatusShowsCandidatesWhileQueueBusy(t *testing.T) {
+	store, _, pool := scannerFixture(t)
+	queue := testQueue(t, store)
+	if err := os.WriteFile(filepath.Join(pool.Path, "busy.mp4"), []byte("busy"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := queue.Enqueue(context.Background(), pool.ID, "busy.mp4", "", "manual", Metadata{}); err != nil {
+		t.Fatal(err)
+	}
+	missing := importWithoutMedia(t, store, pool, "missing.mp4")
+	status, err := queue.BackfillStatus(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.QueueIdle || status.CandidateCount != 1 || status.NextVideoID != missing.ID {
+		t.Fatalf("busy queue status: %+v", status)
+	}
+}
+
+func TestBackfillDailyLimits(t *testing.T) {
+	store, _, pool := scannerFixture(t)
+	queue := testQueue(t, store)
+	video := importWithoutMedia(t, store, pool, "daily-limit.mp4")
+	queue.SetBackfillLimits(1, 1)
+	if err := queue.recordBackfillUsage(context.Background(), video.Size); err != nil {
+		t.Fatal(err)
+	}
+	status, err := queue.BackfillStatus(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if status.DailyVideos != 1 || !status.LimitReached || status.DailyResetAt == "" {
+		t.Fatalf("daily limit not reflected: %+v", status)
+	}
 }
 
 func TestBackfillMissingMediaOneAtATime(t *testing.T) {

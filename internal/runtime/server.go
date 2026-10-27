@@ -162,6 +162,7 @@ func Main(service string, port int) int {
 			return 1
 		}
 		queue.SetHashLimit(config.HashLimitMiBps)
+		queue.SetBackfillLimits(config.BackfillDailyLimit, config.BackfillDailyGiB)
 		scanner = library.NewScanner(store, config.AutoScan, time.Duration(config.ScanIntervalSeconds)*time.Second, time.Duration(config.FileStableSeconds)*time.Second, logger)
 		scanner.SetIdleMax(time.Duration(config.ScanIdleMaxSeconds) * time.Second)
 		extensions = append(extensions, store.Register)
