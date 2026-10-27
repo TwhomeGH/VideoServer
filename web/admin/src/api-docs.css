@@ -1,0 +1,61 @@
+.api-reference { padding: 16px; min-width: 0; }
+.api-reference .swagger-ui { color: var(--text); }
+.api-reference .swagger-ui main { max-width: none; margin: 0; padding: 0; }
+.api-reference .swagger-ui section { background: transparent; border: 0; border-radius: 0; padding: 0; margin: 0; }
+.api-reference .swagger-ui .wrapper { padding: 0; }
+.api-reference .swagger-ui .auth-wrapper,
+.api-reference .swagger-ui .authorization__btn { display: none; }
+.api-reference .swagger-ui .info .title,
+.api-reference .swagger-ui .info p,
+.api-reference .swagger-ui .info li,
+.api-reference .swagger-ui .opblock-tag,
+.api-reference .swagger-ui .opblock .opblock-summary-description,
+.api-reference .swagger-ui .opblock .opblock-summary-path,
+.api-reference .swagger-ui .opblock-description-wrapper p,
+.api-reference .swagger-ui .opblock-section-header h4,
+.api-reference .swagger-ui .opblock-section-header label,
+.api-reference .swagger-ui .parameter__name,
+.api-reference .swagger-ui .parameter__type,
+.api-reference .swagger-ui .parameter__in,
+.api-reference .swagger-ui .response-col_status,
+.api-reference .swagger-ui .response-col_links,
+.api-reference .swagger-ui .response-col_description,
+.api-reference .swagger-ui .col_header,
+.api-reference .swagger-ui .responses-inner h4,
+.api-reference .swagger-ui .responses-inner h5,
+.api-reference .swagger-ui .renderedMarkdown p,
+.api-reference .swagger-ui .renderedMarkdown li,
+.api-reference .swagger-ui .tab li,
+.api-reference .swagger-ui table thead tr th,
+.api-reference .swagger-ui table thead tr td,
+.api-reference .swagger-ui table thead tr th.col_header,
+.api-reference .swagger-ui table thead tr td.col_header,
+.api-reference .swagger-ui label { color: var(--text); }
+.api-reference .swagger-ui .responses-table td,
+.api-reference .swagger-ui .responses-table th { border-color: var(--line); }
+/* Swagger UI 的範例區會把 #333 與白色寫成 inline style；必須用 !important 才能套用頁面深色變數。 */
+.api-reference .swagger-ui .highlight-code,
+.api-reference .swagger-ui .microlight { background: var(--bg); color: var(--text); }
+.api-reference .swagger-ui .highlight-code pre.example.microlight,
+.api-reference .swagger-ui pre.microlight {
+  background: var(--bg) !important;
+  color: var(--text) !important;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+.api-reference .swagger-ui .scheme-container,
+.api-reference .swagger-ui .opblock .opblock-section-header { background: var(--surface); box-shadow: none; }
+.api-reference .swagger-ui input,
+.api-reference .swagger-ui textarea,
+.api-reference .swagger-ui select { background: var(--surface); color: var(--text); border-color: var(--line); }
+.api-reference .swagger-ui .btn { color: var(--text); border-color: var(--muted); }
+.api-reference .swagger-ui .btn.execute { color: white; border-color: #4990e2; }
+.api-reference .swagger-ui .opblock-tag svg { fill: var(--text); }
+.api-reference .swagger-ui .opblock-tag svg * { fill: var(--text); }
+.api-reference .swagger-ui .opblock-summary-path { overflow-wrap: anywhere; }
+.api-reference .swagger-ui .responses-wrapper { overflow-x: auto; }
+@media (max-width: 600px) {
+  .api-reference { padding: 10px; }
+  .api-reference .swagger-ui .opblock .opblock-summary { flex-wrap: wrap; gap: 6px; }
+  .api-reference .swagger-ui .opblock .opblock-summary-method { min-width: 50px; }
+}

@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 
-/** pages 定義可直接連結的管理分頁；hash 路由支援既有靜態服務。 */
+/** pages 定義可直接連結的管理分頁；值是翻譯鍵，由畫面語言決定顯示文字。 */
 export const pages = {
-  overview: '總覽', monitor: '工作監看', videos: '影片庫', pools: '儲存池', import: '匯入影片', jobs: '影片工作', settings: '設定', diagnostics: '服務資訊',
+  overview: 'page.overview', monitor: 'page.monitor', videos: 'page.videos', pools: 'page.pools', import: 'page.import', jobs: 'page.jobs', settings: 'page.settings', api: 'page.api', diagnostics: 'page.diagnostics',
 } as const;
 
 /** Page 是管理介面支援的分頁識別。 */
