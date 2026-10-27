@@ -223,12 +223,16 @@ export function Settings({ service }: { service?: string }) {
             <label>{t('settings.hashLimit')}<input type="number" min={0} max={102400} value={form.hashLimitMiBps} onChange={event => patch({ hashLimitMiBps: event.target.value })} /></label>
           </fieldset>
         </>}
-        <div className="button-row"><button disabled={busy}>{busy ? t('settings.saving') : t('settings.save')}</button>
-          <button type="button" disabled={busy} onClick={() => setConfirmingReset(true)}>{t('settings.reset')}</button></div>
+        <div className="button-row"><button disabled={busy}>{busy ? t('settings.saving') : t('settings.save')}</button></div>
       </form>
-      {confirmingReset && <div className="confirm-panel"><p>{t('settings.resetConfirm')}</p>
-        <div className="button-row"><button type="button" disabled={busy} onClick={() => void reset()}>{t('settings.resetConfirmButton')}</button>
-          <button type="button" disabled={busy} onClick={() => setConfirmingReset(false)}>{t('common.cancel')}</button></div></div>}
+      <div className="settings-danger">
+        <h3>{t('settings.overrideResetTitle')}</h3>
+        <p className="muted">{t('settings.overrideResetHint', { base: view.source, override: view.overridePath })}</p>
+        {!confirmingReset && <button type="button" disabled={busy} onClick={() => setConfirmingReset(true)}>{t('settings.reset')}</button>}
+        {confirmingReset && <div className="confirm-panel"><p>{t('settings.resetConfirm', { base: view.source, override: view.overridePath })}</p>
+          <div className="button-row"><button type="button" disabled={busy} onClick={() => void reset()}>{t('settings.resetConfirmButton')}</button>
+            <button type="button" disabled={busy} onClick={() => setConfirmingReset(false)}>{t('common.cancel')}</button></div></div>}
+      </div>
     </section>
     <div className="settings-side">
       <section><h2>{t('settings.sourceTitle')}</h2>
