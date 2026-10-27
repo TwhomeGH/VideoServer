@@ -489,5 +489,9 @@
   "discovered.action": "操作",
   "library.indexOnly": "匯入模式",
   "library.indexOnlyLabel": "只索引，不自動匯入",
-  "library.indexOnlyHint": "掃描只記錄路徑與大小，不計算 SHA-256／FFprobe；可在「找到的影片」手動匯入。關閉後既有找到的影片仍需手動匯入，之後的新檔才會自動匯入。"
+  "library.indexOnlyHint": "掃描只記錄路徑與大小，不計算 SHA-256／FFprobe；可在「找到的影片」手動匯入。關閉後既有找到的影片仍需手動匯入，之後的新檔才會自動匯入。",
+  "library.safeScan": "排除系統目錄",
+  "library.fullScan": "全盤掃描",
+  "library.indexOnlyOn": "只索引",
+  "library.autoImportOn": "自動匯入"
 }

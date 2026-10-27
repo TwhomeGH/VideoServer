@@ -97,8 +97,15 @@ a:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,te
 button { padding:10px 16px; border:1px solid var(--line); border-radius:8px; background:var(--surface); color:var(--accent); font:inherit; cursor:pointer; }
 button:disabled { opacity:.5; cursor:not-allowed; }
 form button { background:var(--accent); color:var(--bg); }
-.pool-list { display:grid; gap:12px; padding:0; list-style:none; }
-.pool-card { padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:var(--bg); }
+.pool-list { display:grid; grid-template-columns:repeat(auto-fit,minmax(min(420px,100%),1fr)); gap:14px; padding:0; list-style:none; align-items:start; }
+.pool-card { padding:14px 16px; border:1px solid var(--line); border-radius:12px; background:var(--bg); min-width:0; }
+.pool-advanced { margin:10px 0; border-top:1px solid var(--line); padding-top:10px; }
+.pool-advanced summary { cursor:pointer; color:var(--muted); font-size:.82rem; }
+.pool-advanced summary:hover { color:var(--text); }
+.pool-policy { display:grid; gap:14px; margin-top:12px; }
+.pool-policy strong { display:block; margin-bottom:6px; font-size:.85rem; }
+.pool-policy p { margin:6px 0 0; }
+.modal.add-pool-modal { width:min(560px,calc(100vw - 32px)); }
 .pool-head { display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; }
 .pool-meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:10px 18px; margin:12px 0; }
 .pool-meta>div { display:grid; grid-template-columns:auto minmax(0,1fr); gap:8px; padding:0; border:0; }

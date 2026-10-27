@@ -81,6 +81,16 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## 儲存池頁雙欄與進階收合驗收
+
+2026-10-28 在 `dvn-testing`（image 來源 `6d22dc28823f`）驗證：
+
+- 1440px 為滿寬雙欄卡片，卡片高度 243px，頁面高度由 1808px 降至 1073px。
+- 掃描政策與 index-only 收進 details；summary 顯示目前政策。
+- 「新增儲存池」開啟 560px modal，不再固定佔用右欄。
+- 390px 單欄卡片 277px，無水平溢出。
+- 前端建置、`lang:check`、Go 測試與 `check:testing` 通過。
+
 ## Index-only 全盤查找驗收
 
 2026-10-28 在 `dvn-testing`（image 來源 `995071294fbf`）驗證：

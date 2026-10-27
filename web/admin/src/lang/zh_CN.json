@@ -489,5 +489,9 @@
   "discovered.action": "操作",
   "library.indexOnly": "导入模式",
   "library.indexOnlyLabel": "只索引，不自动导入",
-  "library.indexOnlyHint": "扫描只记录路径与大小，不计算 SHA-256／FFprobe；可在「找到的视频」手动导入。关闭后既有找到的视频仍需手动导入，之后的新档才会自动导入。"
+  "library.indexOnlyHint": "扫描只记录路径与大小，不计算 SHA-256／FFprobe；可在「找到的视频」手动导入。关闭后既有找到的视频仍需手动导入，之后的新档才会自动导入。",
+  "library.safeScan": "排除系统目录",
+  "library.fullScan": "全盘扫描",
+  "library.indexOnlyOn": "只索引",
+  "library.autoImportOn": "自动导入"
 }

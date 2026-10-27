@@ -489,5 +489,9 @@
   "discovered.action": "Action",
   "library.indexOnly": "Ingest mode",
   "library.indexOnlyLabel": "Index only; do not auto-import",
-  "library.indexOnlyHint": "Scans record path and size without SHA-256/FFprobe; import manually from Discovered. Turning it off keeps existing discovered files manual; only new files auto-import."
+  "library.indexOnlyHint": "Scans record path and size without SHA-256/FFprobe; import manually from Discovered. Turning it off keeps existing discovered files manual; only new files auto-import.",
+  "library.safeScan": "System folders excluded",
+  "library.fullScan": "Whole-disk scan",
+  "library.indexOnlyOn": "index only",
+  "library.autoImportOn": "auto import"
 }

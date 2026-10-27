@@ -76,6 +76,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
   const queryString = page === 'monitor' || page === 'api' || page === 'jobs' || page === 'discovered' ? '' : page === 'videos'
     ? new URLSearchParams({ ...filters, page: String(videoPage) }).toString() : 'pageSize=1';
   const playerDialog = useRef<HTMLDialogElement>(null);
+  const addDialog = useRef<HTMLDialogElement>(null);
   const editDialog = useRef<HTMLDialogElement>(null);
 
   async function refresh(signal?: AbortSignal) {
@@ -177,8 +178,8 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
         <button disabled={data.pagination.page * data.pagination.pageSize >= data.pagination.total} onClick={() => setVideoPage(data.pagination.page + 1)}>{t('library.next')}</button>
       </nav>}
     </section>}
-      {page === 'pools' && <div className="split-layout">
-        <section><h2>{t('library.poolsTitle')}</h2><p className="muted">{t('library.poolsIntro')}</p>
+      {page === 'pools' && <>
+        <section><div className="section-heading"><div><h2>{t('library.poolsTitle')}</h2><p className="muted">{t('library.poolsIntro')}</p></div><button type="button" onClick={() => addDialog.current?.showModal()}>{t('library.addPoolTitle')}</button></div>
           {data?.scan && <>
             <p>{data.scan.automatic ? t('library.scanAutoOn', { duration: formatDuration(data.scan.intervalSeconds, t) }) : t('library.scanAutoOff')}</p>
             <p className="muted">{t('library.scanStable', { duration: formatDuration(data.scan.stableSeconds, t) })}</p>
@@ -221,21 +222,26 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
                   : pool.volumeStatus === 'unsupported' ? t('library.volumeNotApplicable')
                     : pool.volumeStatus === 'unbound' ? t('library.volumeUnbound') : t('common.notProvided')}</dd></div>
                 <div><dt>{t('library.poolScanLabel')}</dt><dd>{scanInfo && <><ScanTierBadge tier={scanInfo.tier} lastActivityAt={scanInfo.lastActivityAt} /> </>}{scanLabel}</dd></div>
-                <div><dt>{t('library.scanPolicy')}</dt><dd>
-                  <label className="checkbox-label"><input type="checkbox" checked={pool.scanExcludeSystem} disabled={busy}
-                    onChange={() => {
-                      if (pool.scanExcludeSystem) setPolicyConfirm(pool);
-                      else void submit(async () => { await request<Pool>(`pools/${pool.id}`, { scanExcludeSystem: true }, 'PATCH'); });
-                    }} />{t('library.scanExcludeSystem')}</label>
-                  <p className="muted">{t('library.scanExcludeSystemHint')}</p>
-                  {pool.wholeDisk && <p className="muted">{t('library.wholeDiskWarning')}</p>}
-                </dd></div>
-                <div><dt>{t('library.indexOnly')}</dt><dd>
-                  <label className="checkbox-label"><input type="checkbox" checked={pool.indexOnly} disabled={busy}
-                    onChange={() => void submit(async () => { await request<Pool>(`pools/${pool.id}`, { indexOnly: !pool.indexOnly }, 'PATCH'); })} />{t('library.indexOnlyLabel')}</label>
-                  <p className="muted">{t('library.indexOnlyHint')}</p>
-                </dd></div>
               </dl>
+              <details className="pool-advanced">
+                <summary>{pool.scanExcludeSystem ? t('library.safeScan') : t('library.fullScan')}{t('common.dot')}{pool.indexOnly ? t('library.indexOnlyOn') : t('library.autoImportOn')}</summary>
+                <div className="pool-policy">
+                  <div><strong>{t('library.scanPolicy')}</strong>
+                    <label className="checkbox-label"><input type="checkbox" checked={pool.scanExcludeSystem} disabled={busy}
+                      onChange={() => {
+                        if (pool.scanExcludeSystem) setPolicyConfirm(pool);
+                        else void submit(async () => { await request<Pool>(`pools/${pool.id}`, { scanExcludeSystem: true }, 'PATCH'); });
+                      }} />{t('library.scanExcludeSystem')}</label>
+                    <p className="muted">{t('library.scanExcludeSystemHint')}</p>
+                    {pool.wholeDisk && <p className="muted">{t('library.wholeDiskWarning')}</p>}
+                  </div>
+                  <div><strong>{t('library.indexOnly')}</strong>
+                    <label className="checkbox-label"><input type="checkbox" checked={pool.indexOnly} disabled={busy}
+                      onChange={() => void submit(async () => { await request<Pool>(`pools/${pool.id}`, { indexOnly: !pool.indexOnly }, 'PATCH'); })} />{t('library.indexOnlyLabel')}</label>
+                    <p className="muted">{t('library.indexOnlyHint')}</p>
+                  </div>
+                </div>
+              </details>
               {policyConfirm?.id === pool.id && <div className="confirm-panel"><p>{t('library.scanExcludeSystemConfirm')}</p>
                 <div className="button-row"><button type="button" disabled={busy} onClick={() => { setPolicyConfirm(null); void submit(async () => { await request<Pool>(`pools/${pool.id}`, { scanExcludeSystem: false }, 'PATCH'); }); }}>{t('library.scanExcludeSystemConfirmButton')}</button>
                   <button type="button" disabled={busy} onClick={() => setPolicyConfirm(null)}>{t('common.cancel')}</button></div></div>}
@@ -251,17 +257,21 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
           })}</ul>
           <ScanTierLegend />
         </section>
-        <section><h2>{t('library.addPoolTitle')}</h2><p className="muted">{t('library.addPoolIntro')}</p>
-          <form onSubmit={event => { event.preventDefault(); void submit(async () => {
+        <dialog ref={addDialog} className="modal add-pool-modal" aria-label={t('library.addPoolTitle')}
+          onClick={event => { if (event.target === event.currentTarget) addDialog.current?.close(); }}>
+          <div className="modal-heading"><h2>{t('library.addPoolTitle')}</h2><button type="button" onClick={() => addDialog.current?.close()}>{t('common.cancel')}</button></div>
+          <p className="muted">{t('library.addPoolIntro')}</p>
+          <form className="form-stack" onSubmit={event => { event.preventDefault(); void submit(async () => {
             const pool = await request<Pool>('pools', { name, path: root });
             setPoolId(pool.id); setName(''); setRoot('');
+            addDialog.current?.close();
           }); }}>
             <label>{t('library.poolName')}<input required value={name} onChange={event => setName(event.target.value)} placeholder={t('library.poolNamePlaceholder')} /></label>
             <label>{t('library.poolPath')}<input required value={root} onChange={event => setRoot(event.target.value)} placeholder={t('library.poolPathPlaceholder')} /></label>
             <button disabled={busy}>{t('library.registerPool')}</button>
           </form>
-        </section>
-      </div>}
+        </dialog>
+      </>}
       {page === 'import' && <form className="import-layout" onSubmit={event => { event.preventDefault(); void submit(async () => {
         await request<ImportJob>('videos/import', { poolId, path, ...draft });
         setPath(''); setDraft(emptyMetadata());
