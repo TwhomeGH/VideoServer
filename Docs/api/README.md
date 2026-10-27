@@ -30,7 +30,7 @@ Swagger UI 隨 Vite 與 Docker 打包，只在開啟此分頁時載入。外部�
 
 `pkg/protocol.Current` 是後端協定版本的唯一來源，Build Identity 與 HTTP 公告均使用它。目前只支援 v1，不假設較新或較舊版本一定相容；`Compatible` 對缺少的版本 0 及未知版本回傳 false。
 
-`GET /api/v1/protocol` 不需要登入，回傳目前服務、支援版本、能力識別及規格路徑。例如 Video Node 公告 `library.query`、`video.probe` 等已實作能力，Central 與 Worker 不公告這些功能。回應另含 `minProtocolVersion`、`maxProtocolVersion`、`capabilityVersions`；舊的 `capabilities` 名稱清單保留以維持相容。`protocol.Negotiate` 會取雙方版本範圍的交集最高版，握手註冊尚未實作。
+`GET /api/v1/protocol` 不需要登入，回傳目前服務、`serviceType`、`contentTypes`、支援版本、能力識別及規格路徑。例如 Video Node 公告 `contentTypes: ["video"]` 與 `library.query`、`video.probe` 等已實作能力；Central 與 Worker 不公告影片內容能力。回應另含 `minProtocolVersion`、`maxProtocolVersion`、`capabilityVersions`；舊的 `capabilities` 名稱清單保留以維持相容。`protocol.Negotiate` 會取雙方版本範圍的交集最高版；register／heartbeat 與 peer registry 尚未實作，Central 目前沒有自動發現節點。
 
 能力公告只描述功能，不等於節點身分、授權或可被信任。未來 Central／Worker 連線需先取得公告、檢查版本與所需能力，再完成服務身分驗證；這批尚未建立跨服務連線或啟動時探測遠端的流程。
 

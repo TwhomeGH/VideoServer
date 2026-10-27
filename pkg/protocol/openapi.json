@@ -2054,6 +2054,15 @@
                 "type": "integer"
               }
             }
+          },
+          "serviceType": {
+            "type": "string"
+          },
+          "contentTypes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [
@@ -2064,7 +2073,9 @@
           "openapi",
           "minProtocolVersion",
           "maxProtocolVersion",
-          "capabilityVersions"
+          "capabilityVersions",
+          "serviceType",
+          "contentTypes"
         ]
       },
       "BuildIdentity": {

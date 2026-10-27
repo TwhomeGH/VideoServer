@@ -54,7 +54,7 @@ contentRef {
 
 ## Central 與聯邦
 
-- 節點註冊時公告 serviceType、能力版本、endpoint revision。
+- 節點註冊時公告 serviceType、capabilities、contentTypes、endpoint revision。
 - Central 的搜尋結果帶 contentType、nodeId、itemId；點開後由原節點提供內容。
 - 影格、縮圖、文章與播放流量不經過 Central。
 - 節點認證使用 peer token／未來的 mTLS，不重用管理員密碼。

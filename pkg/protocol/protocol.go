@@ -35,6 +35,26 @@ var videoCapabilities = []Capability{
 	{Name: "jobs.import", Versions: []int{1}},
 }
 
+// ServiceType 回傳對外協商使用的服務類型；目前仍是三服務，Image／Post 會再擴充。
+func ServiceType(service string) string {
+	switch service {
+	case "video-node", "central", "transcode-worker":
+		return service
+	default:
+		return ""
+	}
+}
+
+// ContentTypes 公告此節點可提供的內容類型；Central／Worker 目前沒有內容庫。
+func ContentTypes(service string) []string {
+	switch service {
+	case "video-node":
+		return []string{"video"}
+	default:
+		return []string{}
+	}
+}
+
 // SupportedVersions 回傳目前伺服器支援的完整版本清單，供公告與錯誤回應使用。
 func SupportedVersions() []int {
 	versions := make([]int, 0, MaxSupported-MinSupported+1)

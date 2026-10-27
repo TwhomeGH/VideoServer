@@ -2,6 +2,38 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 03:15 能力描述加入 serviceType 與 contentTypes
+
+**類型**: 改善
+
+**檔案**:
+
+- `pkg/protocol/protocol.go`
+- `pkg/protocol/http.go`
+- `pkg/protocol/protocol_test.go`
+- `pkg/protocol/openapi.json`
+- `Docs/api/README.md`
+- `Docs/peer-protocol.md`
+
+### 問題
+
+- `/api/v1/protocol` 只有服務名稱與能力，沒有明確的服務類型與內容類型
+- 未來 Image／Post 節點需要一個穩定的協商入口
+
+### 修改
+
+- 新增 `serviceType`，目前為 video-node／central／transcode-worker。
+- 新增 `contentTypes`，Video Node 公告 `["video"]`；Central／Worker 為空。
+- OpenAPI、協定文件與內容節點設計同步。
+- 尚未加入 peer register／heartbeat／registry；Central 目前不會自動發現節點，需先以靜態 endpoint 查詢 `/api/v1/protocol`。
+
+### 驗證
+
+- 協定測試驗證 Video Node 的 serviceType 與 contentTypes。
+- Go 測試、OpenAPI 契約、前端建置與 `check:testing` 通過。
+
+---
+
 ## 2026.10.28 03:00 儲存池安全掃描與影片格式能力
 
 **類型**: 功能

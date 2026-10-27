@@ -278,3 +278,16 @@ func TestOpenAPIResponseFieldsMatchGoTypes(t *testing.T) {
 		}
 	}
 }
+
+func TestServiceDescriptor(t *testing.T) {
+	if protocol.ServiceType("video-node") != "video-node" {
+		t.Fatal("video-node service type was not advertised")
+	}
+	types := protocol.ContentTypes("video-node")
+	if len(types) != 1 || types[0] != "video" {
+		t.Fatalf("video content types = %v", types)
+	}
+	if len(protocol.ContentTypes("central")) != 0 {
+		t.Fatal("central should not advertise content types")
+	}
+}

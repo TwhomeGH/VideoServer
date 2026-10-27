@@ -22,7 +22,7 @@
 
 ## 現況與目標差異
 
-現在 `/api/v1/protocol` 回傳 `service`、`protocolVersion`、`supportedVersions`、`capabilities`、OpenAPI 路徑，以及第一階段加入的 `minProtocolVersion`、`maxProtocolVersion` 與 `capabilityVersions`。目前 `MinSupported`／`MaxSupported` 都是 1，所以實際仍只接受 v1；`Negotiate` 已預留版本範圍。Central／Worker 與 Video Node 各自啟動，不會互相發現。
+現在 `/api/v1/protocol` 回傳 `service`、`serviceType`、`contentTypes`、`protocolVersion`、`supportedVersions`、`capabilities`、OpenAPI 路徑，以及第一階段加入的 `minProtocolVersion`、`maxProtocolVersion` 與 `capabilityVersions`。Video Node 公告 `contentTypes: ["video"]`；Image／Post 會各自公告自己的內容類型。目前 `MinSupported`／`MaxSupported` 都是 1，所以實際仍只接受 v1；`Negotiate` 已預留版本範圍。Central／Worker 與 Video Node 各自啟動，不會互相發現。
 
 目標是讓 Central 成為 **控制平面的 peer registry**：Node／Worker 註冊、回報能力與端點、定期 heartbeat；Central 只把 catalog／變更摘要納入索引，不代理所有影片流量。Video Node 在 Central 不在時仍可獨立運作。
 

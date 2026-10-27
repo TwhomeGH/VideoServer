@@ -13,7 +13,7 @@ func Register(mux *http.ServeMux, service string) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Header().Set("Cache-Control", "no-store")
 		json.NewEncoder(w).Encode(map[string]any{
-			"service": service, "protocolVersion": Current,
+			"service": service, "serviceType": ServiceType(service), "contentTypes": ContentTypes(service), "protocolVersion": Current,
 			"minProtocolVersion": MinSupported, "maxProtocolVersion": MaxSupported,
 			"supportedVersions": SupportedVersions(), "capabilities": Capabilities(service),
 			"capabilityVersions": CapabilityVersions(service), "openapi": "/api/v1/openapi.json",
