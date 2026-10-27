@@ -2,6 +2,43 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 07:30 DVN 管理介面 HTTPS ingress
+
+**類型**: 安全性
+
+**檔案**:
+
+- `internal/runtime/config.go`
+- `internal/runtime/server.go`
+- `internal/runtime/tls_test.go`
+- `Dockerfile`
+- `Docs/configuration.md`
+- `Docs/docker-volumes.md`
+- `Docs/onboarding.md`
+
+### 問題
+
+- 管理介面只能 HTTP；登入 cookie 與 API 流量明文
+- Docker healthcheck 只支援 HTTP，啟用 TLS 後會 unhealthy
+
+### 修改
+
+- 基準 config 新增成對的 `tlsCertFile`／`tlsKeyFile`；不進管理頁可編輯清單。
+- 啟動時載入憑證／私鑰，失敗直接結束；HTTPS 使用 TLS 1.2+ 與 `ServeTLS`。
+- TLS 回應加 HSTS；Secure cookie 依 `r.TLS` 自動生效。
+- Docker runtime 安裝 curl；healthcheck 先試 HTTPS（允許自簽）再退回 HTTP。
+- 文件補上憑證掛載、設定與重啟需求。
+
+### 驗證
+
+- 本地自簽憑證啟動 video-node，`https://127.0.0.1:19443/healthz` 回 200，HSTS 為 `max-age=31536000`。
+- 單元測試：TLS 憑證／私鑰必須成對、憑證可載入、HSTS 只在 TLS。
+- Docker testing stack 三個容器仍 healthy，healthcheck 走 curl。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：沒有 HTTP→HTTPS redirect；憑證更新需重啟；憑證路徑只能設定在基準 config。
+
+---
+
 ## 2026.10.28 07:15 WebDAV CA 輪換與 TLS 設定 dialog
 
 **類型**: 改善

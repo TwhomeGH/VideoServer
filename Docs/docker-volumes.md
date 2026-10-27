@@ -117,6 +117,23 @@ docker compose -f testing/compose.yaml -f testing/compose.local.yaml up -d --no-
 例如主機的 `H:\Video\旅行\第一天.mp4`，在 H 槽影片庫內的相對路徑是 `旅行/第一天.mp4`。註冊後會定期自動掃描新增影片；描述、Tag 與授權可再於影片庫編輯。
 避免把同一批檔案以重疊目錄反覆註冊為多個池；目前不同池會建立各自的索引。
 
+## 管理介面憑證
+
+若要直接啟用 DVN HTTPS，將憑證與私鑰唯讀掛進容器，並在基準 config 設定 `tlsCertFile`／`tlsKeyFile`：
+
+```yaml
+services:
+  video-node:
+    volumes:
+      - ./certs:/certs:ro
+```
+
+```json
+{ "tlsCertFile": "/certs/tls.crt", "tlsKeyFile": "/certs/tls.key" }
+```
+
+容器 healthcheck 會先試 HTTPS（允許自簽）再退回 HTTP；憑證更新需重啟容器。這和 WebDAV 出站的自訂 CA 是不同方向的設定。
+
 ## Compose 多檔疊加
 
 這是 Docker Compose 的功能，不是 Docker Engine 本身：`docker compose -f a.yaml -f b.yaml` 會依序合併，後面的檔案可以覆寫或追加前面設定。`testing:up` 的實作是：

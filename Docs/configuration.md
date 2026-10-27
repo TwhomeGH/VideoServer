@@ -69,6 +69,10 @@ Docker 預設可能使用 UTC；Compose 已預設 `TZ=Asia/Taipei`，也可用�
 
 影音工作頁與工作監看會顯示下次掃描／補齊檢查的倒數、候選數量與目前佇列；`GET /api/v1/schedule` 提供相同摘要。停止自動補齊不影響手動「重新讀取影片資訊」。
 
+## 管理介面 HTTPS
+
+`tlsCertFile` 與 `tlsKeyFile` 必須成對設定，且只能放在基準設定檔；兩個路徑存在時，服務以 TLS 1.2+ 啟動 HTTPS，並只在 TLS 回應加上 HSTS。憑證或私鑰載入失敗時程序會直接結束。這兩個欄位不在管理頁可編輯清單，憑證變更後需重啟。HTTP 與 HTTPS 不共用同一端口；啟用 TLS 後請用 `https://` 開啟管理頁，Docker healthcheck 會先試 HTTPS 再退回 HTTP。
+
 ## 管理授權與 session
 
 第一次啟動且沒有 `DVN_ADMIN_PASSWORD` 時，服務產生隨機管理員密碼，只在日誌顯示一次；之後可在「設定」頁用目前密碼變更。設定 `DVN_ADMIN_PASSWORD` 時，該值是啟動時的管理密碼；若與已保存的不同，會更新憑證並讓既有 session 失效。憑證保存在 `<dataDirectory>/auth.json`，使用 PBKDF2-HMAC-SHA256 雜湊與隨機 session secret，檔案權限為 0600。

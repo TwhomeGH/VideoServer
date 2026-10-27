@@ -3257,6 +3257,12 @@
             "items": {
               "type": "string"
             }
+          },
+          "tlsCertFile": {
+            "type": "string"
+          },
+          "tlsKeyFile": {
+            "type": "string"
           }
         },
         "required": [

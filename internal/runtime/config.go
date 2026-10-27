@@ -33,6 +33,8 @@ type Config struct {
 	RememberLastSuccessfulPort bool     `json:"rememberLastSuccessfulPort"`
 	FFprobePath                string   `json:"ffprobePath"`
 	ProbeTimeoutSeconds        int      `json:"probeTimeoutSeconds"`
+	TLSCertFile                string   `json:"tlsCertFile,omitempty"`
+	TLSKeyFile                 string   `json:"tlsKeyFile,omitempty"`
 	ExtraVideoExtensions       []string `json:"extraVideoExtensions,omitempty"`
 }
 
@@ -259,6 +261,9 @@ func (c Config) Validate() error {
 	}
 	if c.HashLimitMiBps < 0 || c.HashLimitMiBps > 102400 {
 		return fmt.Errorf("SHA-256 讀取上限必須介於 0 到 102400 MiB/s")
+	}
+	if (c.TLSCertFile == "") != (c.TLSKeyFile == "") {
+		return fmt.Errorf("tlsCertFile 與 tlsKeyFile 必須同時設定")
 	}
 	for _, p := range append([]int{c.PreferredPort}, c.FallbackPorts...) {
 		if p < 1 || p > 65535 {

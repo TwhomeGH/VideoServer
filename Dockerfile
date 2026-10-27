@@ -29,7 +29,7 @@ ARG VCS_REF=unknown
 ARG DIRTY=true
 ARG BUILD_TIME=unknown
 ARG SOURCE_DIGEST=unknown
-RUN apk add --no-cache ca-certificates && addgroup -g 10001 dvn && adduser -D -u 10001 -G dvn dvn \
+RUN apk add --no-cache ca-certificates curl && addgroup -g 10001 dvn && adduser -D -u 10001 -G dvn dvn \
     && mkdir -p /data /media /app/web && chown 10001:10001 /data
 WORKDIR /app
 COPY --from=web /src/web/admin/dist/ /app/web/
@@ -48,13 +48,13 @@ FROM runtime AS central
 COPY --from=backend /out/central /app/service
 COPY deployments/docker/central.json /app/config.json
 EXPOSE 18620
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD wget -q -O /dev/null http://127.0.0.1:18620/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD curl -fsSk --max-time 2 -o /dev/null https://127.0.0.1:18620/healthz || curl -fsS --max-time 2 -o /dev/null http://127.0.0.1:18620/healthz || exit 1
 
 FROM runtime AS transcode-worker
 COPY --from=backend /out/transcode-worker /app/service
 COPY deployments/docker/transcode-worker.json /app/config.json
 EXPOSE 18630
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD wget -q -O /dev/null http://127.0.0.1:18630/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD curl -fsSk --max-time 2 -o /dev/null https://127.0.0.1:18630/healthz || curl -fsS --max-time 2 -o /dev/null http://127.0.0.1:18630/healthz || exit 1
 
 FROM runtime AS video-node
 USER root
@@ -63,4 +63,4 @@ USER 10001:10001
 COPY --from=backend /out/video-node /app/service
 COPY deployments/docker/video-node.json /app/config.json
 EXPOSE 18610
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD wget -q -O /dev/null http://127.0.0.1:18610/healthz || exit 1
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s CMD curl -fsSk --max-time 2 -o /dev/null https://127.0.0.1:18610/healthz || curl -fsS --max-time 2 -o /dev/null http://127.0.0.1:18610/healthz || exit 1

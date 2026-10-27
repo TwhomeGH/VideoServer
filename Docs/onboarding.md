@@ -222,6 +222,10 @@ npm run testing:up         # 建置、啟動並檢查測試環境
 各環境的資料目錄也包含 `auth.json` 與 `config.override.json`。刪除資料卷或資料目錄會失去管理密碼與設定覆寫；管理密碼會重新產生，需到日誌查看新的一次性密碼。
 備份時先停止對應服務，再完整備份設定與資料卷；不要只複製 SQLite 主檔而漏掉 WAL 檔。
 
+## 管理介面 HTTPS
+
+需要直接 TLS 時，在基準 config 設定成對的 `tlsCertFile`／`tlsKeyFile`，把憑證唯讀掛進容器，重啟後改用 `https://`。詳細設定見 [configuration](configuration.md) 與 [docker-volumes](docker-volumes.md)。
+
 ## 文件地圖
 
 | 文件 | 什麼時候看 |

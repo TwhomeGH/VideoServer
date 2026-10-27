@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -46,6 +47,15 @@ func listenPorts(c Config, ports []int) (net.Listener, error) {
 
 // Handler 建立服務診斷與靜態資源路由，extensions 用於註冊服務專屬 API。
 // address 是實際監聽位址，非公開 Endpoint；webDirectory 指向已打包管理頁面。
+func hstsHandler(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.TLS != nil {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 func Handler(identity buildinfo.Identity, address, webDirectory string, extensions ...func(*http.ServeMux)) http.Handler {
 	mux := http.NewServeMux()
 	protocol.Register(mux, identity.Service)
@@ -213,7 +223,19 @@ func Main(service string, port int) int {
 	})
 	extensions = append(extensions, func(mux *http.ServeMux) { events.Register(mux, hub) })
 	extensions = append(extensions, monitor.Register)
-	server := &http.Server{Handler: monitor.Middleware(protocol.Middleware(authManager.Middleware(Handler(identity, listener.Addr().String(), config.WebDirectory, extensions...)))), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
+	handler := monitor.Middleware(protocol.Middleware(authManager.Middleware(Handler(identity, listener.Addr().String(), config.WebDirectory, extensions...))))
+	tlsEnabled := config.TLSCertFile != ""
+	if tlsEnabled {
+		if _, err := tls.LoadX509KeyPair(config.TLSCertFile, config.TLSKeyFile); err != nil {
+			logger.Error("TLS 憑證或私鑰無法載入", "error", err)
+			return 1
+		}
+		handler = hstsHandler(handler)
+	}
+	server := &http.Server{Handler: handler, ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
+	if tlsEnabled {
+		server.TLSConfig = &tls.Config{MinVersion: tls.VersionTLS12}
+	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	monitorDone := make(chan struct{})
@@ -260,8 +282,14 @@ func Main(service string, port int) int {
 			server.Close()
 		}
 	}()
-	logger.Info("服務啟動", "listenAddress", listener.Addr().String(), "configSource", source, "dataDirectory", config.DataDirectory)
-	if err := server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	logger.Info("服務啟動", "listenAddress", listener.Addr().String(), "tls", tlsEnabled, "configSource", source, "dataDirectory", config.DataDirectory)
+	var serveErr error
+	if tlsEnabled {
+		serveErr = server.ServeTLS(listener, config.TLSCertFile, config.TLSKeyFile)
+	} else {
+		serveErr = server.Serve(listener)
+	}
+	if err := serveErr; err != nil && !errors.Is(err, http.ErrServerClosed) {
 		logger.Error("服務失敗", "error", err)
 		return 1
 	}

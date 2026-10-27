@@ -62,7 +62,8 @@
 - [x] per-pool 自訂 CA PEM（系統 CA + 自訂 CA，與 skipVerify 互斥）。
 - [x] WebDAV ETag+size 唯一配對的 rename 偵測，同步 discovered 與 library 路徑。
 - [x] CA 輪換／PATCH 與 TLS 設定 dialog。
-- [ ] 本機 file ID rename 與 DVN 管理介面 HTTPS ingress。
+- [x] DVN 管理介面直接 HTTPS ingress（憑證檔、HSTS、TLS 1.2+）。
+- [ ] 本機 file ID rename、HTTP→HTTPS redirect。
 - [ ] 儲存池自訂 include／exclude globs。
 - [ ] 儲存池 SMART 健康診斷（選配；需平台權限與裝置支援，不影響可用性）。
 - [x] 影片庫分頁、標題／簡介搜尋、Tag／分類／儲存池／18+ 篩選與排序。
