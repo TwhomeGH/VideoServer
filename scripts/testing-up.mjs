@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildInputDigest } from './build-inputs.mjs';
 import { ensureWorkspace } from './workspaces.mjs';
@@ -34,6 +35,49 @@ const env = {
   DVN_BUILD_TIME: new Date().toISOString(),
   DVN_SOURCE_DIGEST: buildInputDigest(),
 };
+/** checkTestingTLS 在 Compose 之前確認 config 的 TLS 憑證與 /certs 掛載都存在。 */
+function checkTestingTLS() {
+  const directory = 'testing/local/config';
+  if (!existsSync(directory)) return;
+  const entries = [];
+  for (const name of readdirSync(directory).filter(value => value.endsWith('.json'))) {
+    let config;
+    try {
+      config = JSON.parse(readFileSync(join(directory, name), 'utf8'));
+    } catch {
+      continue;
+    }
+    if (config.tlsCertFile || config.tlsKeyFile) {
+      entries.push({ name, cert: config.tlsCertFile || '', key: config.tlsKeyFile || '' });
+    }
+  }
+  if (entries.length === 0) return;
+  const overlay = 'testing/compose.local.yaml';
+  const overlayText = existsSync(overlay) ? readFileSync(overlay, 'utf8') : '';
+  const hasCertMount = /target:\s*["']?\/certs(?:\/|\b)/m.test(overlayText);
+  const missing = [];
+  for (const entry of entries) {
+    for (const [kind, containerPath] of [['cert', entry.cert], ['key', entry.key]]) {
+      if (!containerPath.startsWith('/certs/')) continue;
+      const hostPath = join('testing/certs', containerPath.slice('/certs/'.length));
+      if (!existsSync(hostPath)) missing.push(`${hostPath}（${entry.name} ${kind}）`);
+    }
+  }
+  if (!hasCertMount) {
+    console.error('[testing] 偵測到 TLS 設定，但 testing/compose.local.yaml 沒有掛載 /certs。');
+    console.error('[testing] 請加上 cert/key 的 bind mount，或移除 config 的 tlsCertFile／tlsKeyFile。');
+    process.exit(1);
+  }
+  if (missing.length > 0) {
+    console.error('[testing] 偵測到 TLS 設定，但找不到憑證：');
+    for (const item of missing) console.error(`  - ${item}`);
+    console.error('[testing] 請建立 cert/key，或移除 config 的 tlsCertFile／tlsKeyFile。');
+    console.error('[testing] 測試環境不會自動退回 HTTP。');
+    process.exit(1);
+  }
+}
+
+checkTestingTLS();
 if (env.DVN_ADMIN_PASSWORD && [...env.DVN_ADMIN_PASSWORD].length < 12) {
   console.error('[testing] DVN_ADMIN_PASSWORD 少於 12 個字元；請修改 testing/.env 或移除該行。');
   process.exit(1);

@@ -91,7 +91,7 @@ video-node  dvn/video-node:local
 
 `testing/local/config/`、`testing/compose.local.yaml` 與 `testing/certs/` 都是本機檔案，不會提交；預設 clone 後仍是 HTTP。若某台機器已把 Video Node 設成 HTTPS，需把 CA／憑證放在 `testing/certs/`，並在 compose.local 掛載 `tls.crt`／`tls.key`。
 
-**不會自動退回 HTTP**：TLS 設定存在但憑證缺少時，Compose 的 `create_host_path: false` 或服務載入憑證會直接失敗，不會靜默降級。這是刻意的安全預設；要恢復 HTTP 請移除 config 的 `tlsCertFile`／`tlsKeyFile` 與 cert 掛載。
+**不會自動退回 HTTP**：TLS 設定存在但憑證缺少時，`npm run testing:up` 會先檢查 config 與 `/certs` 掛載，直接列出缺少的檔案並終止；Compose 不會靜默降級。這是刻意的安全預設；要恢復 HTTP 請移除 config 的 `tlsCertFile`／`tlsKeyFile` 與 cert 掛載。
 
 ## 測試檔案放哪裡？
 
