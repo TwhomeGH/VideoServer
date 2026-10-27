@@ -32,6 +32,17 @@ type ConfigState struct {
 	network      *NetworkRuntime
 	restart      func()
 	restartOnce  sync.Once
+	publisher    interface{ Publish(string) }
+}
+
+func (c *ConfigState) SetPublisher(publisher interface{ Publish(string) }) {
+	c.publisher = publisher
+}
+
+func (c *ConfigState) publishChanged() {
+	if c.publisher != nil {
+		c.publisher.Publish("config")
+	}
 }
 
 // NewConfigState 建立設定 API 狀態；running 是目前程序使用的完整設定。
@@ -118,6 +129,7 @@ func (c *ConfigState) handleUpdate(w http.ResponseWriter, r *http.Request) {
 	c.overrides = override
 	c.effective = override.Apply(c.base)
 	c.mu.Unlock()
+	c.publishChanged()
 	writeConfigJSON(w, http.StatusOK, c.view())
 }
 
@@ -162,6 +174,7 @@ func (c *ConfigState) handleReset(w http.ResponseWriter, r *http.Request) {
 	c.overrides = Override{}
 	c.effective = c.base
 	c.mu.Unlock()
+	c.publishChanged()
 	writeConfigJSON(w, http.StatusOK, c.view())
 }
 
@@ -180,6 +193,7 @@ func (c *ConfigState) handleRestart(w http.ResponseWriter, r *http.Request) {
 		writeConfigJSON(w, http.StatusServiceUnavailable, map[string]string{"error": "此執行環境不支援重新啟動"})
 		return
 	}
+	c.publishChanged()
 	writeConfigJSON(w, http.StatusAccepted, map[string]string{"status": "restarting"})
 	if flusher, ok := w.(http.Flusher); ok {
 		flusher.Flush()

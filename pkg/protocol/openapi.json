@@ -1910,6 +1910,47 @@
           "影片庫與儲存池"
         ]
       }
+    },
+    "/api/v1/events": {
+      "get": {
+        "operationId": "streamEvents",
+        "summary": "即時事件串流",
+        "description": "以 SSE 推送 jobs／scan／config 變更通知。事件本身不含完整快照；連線或 reset 後請以既有 API 取得快照。",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          },
+          {
+            "name": "Last-Event-ID",
+            "in": "header",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "SSE 串流",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "tags": [
+          "系統"
+        ]
+      }
     }
   },
   "components": {

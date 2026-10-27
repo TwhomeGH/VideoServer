@@ -20,6 +20,7 @@ import (
 
 	"github.com/TwhomeGH/VideoServer/internal/auth"
 	"github.com/TwhomeGH/VideoServer/internal/diagnostics"
+	"github.com/TwhomeGH/VideoServer/internal/events"
 	"github.com/TwhomeGH/VideoServer/internal/library"
 	"github.com/TwhomeGH/VideoServer/pkg/buildinfo"
 	"github.com/TwhomeGH/VideoServer/pkg/protocol"
@@ -144,7 +145,9 @@ func Main(service string, port int) int {
 		default:
 		}
 	}
+	hub := events.NewHub(512)
 	configState := NewConfigState(baseConfig, config, overrides, source, overridePath, &network, requestRestart)
+	configState.SetPublisher(hub)
 	var extensions []func(*http.ServeMux)
 	var scanner *library.Scanner
 	var queue *library.ImportQueue
@@ -166,6 +169,7 @@ func Main(service string, port int) int {
 		queue.SetBackfillLimits(config.BackfillDailyLimit, config.BackfillDailyGiB)
 		scanner = library.NewScanner(store, config.AutoScan, time.Duration(config.ScanIntervalSeconds)*time.Second, time.Duration(config.FileStableSeconds)*time.Second, logger)
 		scanner.SetIdleMax(time.Duration(config.ScanIdleMaxSeconds) * time.Second)
+		store.SetPublisher(hub)
 		extensions = append(extensions, store.Register)
 	}
 	if stateErr == nil {
@@ -195,6 +199,7 @@ func Main(service string, port int) int {
 		}
 		return map[string]any{"jobs": work, "scan": scanner.Status(), "backfill": backfill}, nil
 	})
+	extensions = append(extensions, func(mux *http.ServeMux) { events.Register(mux, hub) })
 	extensions = append(extensions, monitor.Register)
 	server := &http.Server{Handler: monitor.Middleware(protocol.Middleware(authManager.Middleware(Handler(identity, listener.Addr().String(), config.WebDirectory, extensions...)))), ReadHeaderTimeout: 5 * time.Second, IdleTimeout: 60 * time.Second}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

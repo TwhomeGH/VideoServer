@@ -460,5 +460,7 @@
   "scanTier.legendHotRest": "<1h",
   "scanTier.legendWarmRest": "1–6h 5m, 6–24h 15m",
   "scanTier.legendColdRest": "1–7d 30m",
-  "scanTier.legendDormantRest": ">7d"
+  "scanTier.legendDormantRest": ">7d",
+  "settings.liveChanged": "Settings changed in another tab; this form has unsaved edits.",
+  "settings.liveReload": "Reload settings"
 }

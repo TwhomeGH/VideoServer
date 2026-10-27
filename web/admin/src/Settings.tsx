@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api, ApiError, jsonRequest } from './api';
 import { DurationField } from './DurationField';
 import { useI18n } from './i18n';
+import { useLiveVersion } from './live';
 
 type Config = {
   host: string; preferredPort: number; fallbackPorts: number[] | null;
@@ -49,6 +50,7 @@ function formFrom(config: Config): FormState {
 /** Settings 提供可編輯設定、來源診斷、密碼變更與重新啟動流程。 */
 export function Settings({ service }: { service?: string }) {
   const { t } = useI18n();
+  const liveConfig = useLiveVersion('config');
   const [view, setView] = useState<ConfigView | null>(null);
   const [form, setForm] = useState<FormState | null>(null);
   const [busy, setBusy] = useState(false);
@@ -60,17 +62,38 @@ export function Settings({ service }: { service?: string }) {
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [dirty, setDirty] = useState(false);
+  const [liveChanged, setLiveChanged] = useState(false);
+  const loadVersion = useRef(0);
 
+  async function loadConfig() {
+    const version = ++loadVersion.current;
+    try {
+      const result = await api<ConfigView>('config');
+      if (version !== loadVersion.current) return;
+      setView(result);
+      setForm(formFrom(result.effective));
+      setDirty(false);
+      setLiveChanged(false);
+      setError('');
+    } catch (reason) {
+      if (version === loadVersion.current) setError(reason instanceof Error ? reason.message : String(reason));
+    }
+  }
+
+  useEffect(() => { void loadConfig(); }, []);
+
+  const lastLiveConfig = useRef(liveConfig);
   useEffect(() => {
-    let active = true;
-    api<ConfigView>('config')
-      .then(result => { if (active) { setView(result); setForm(formFrom(result.effective)); } })
-      .catch(reason => { if (active) setError(reason instanceof Error ? reason.message : String(reason)); });
-    return () => { active = false; };
-  }, []);
+    if (lastLiveConfig.current === liveConfig) return;
+    lastLiveConfig.current = liveConfig;
+    if (dirty) setLiveChanged(true);
+    else void loadConfig();
+  }, [liveConfig, dirty]);
 
   function patch(change: Partial<FormState>) {
     setForm(current => current ? { ...current, ...change } : current);
+    setDirty(true);
     setNotice('');
   }
 
@@ -130,6 +153,8 @@ export function Settings({ service }: { service?: string }) {
       const next = await api<ConfigView>('config', jsonRequest('PUT', payload()));
       setView(next);
       setForm(formFrom(next.effective));
+      setDirty(false);
+      setLiveChanged(false);
       setNotice(next.restartRequired ? t('settings.noticeSavedRestart') : t('settings.noticeSavedSame'));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -144,6 +169,8 @@ export function Settings({ service }: { service?: string }) {
       const next = await api<ConfigView>('config/overrides', { method: 'DELETE' });
       setView(next);
       setForm(formFrom(next.effective));
+      setDirty(false);
+      setLiveChanged(false);
       setNotice(next.restartRequired ? t('settings.noticeResetRestart') : t('settings.noticeReset'));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : String(reason));
@@ -198,7 +225,9 @@ export function Settings({ service }: { service?: string }) {
   const overridden = Object.values(view.overrides).filter(value => value !== undefined && value !== null).length;
   const fallbackEmpty = form.fallbackPorts.trim() === '';
 
-  return <div className="split-layout settings-layout">
+  return <>
+    {liveChanged && <section><p role="status">{t('settings.liveChanged')}</p><button type="button" disabled={busy} onClick={() => { setLiveChanged(false); void loadConfig(); }}>{t('settings.liveReload')}</button></section>}
+  <div className="split-layout settings-layout">
     <section><div className="section-heading"><h2>{t('settings.editableTitle')}</h2>{view.restartRequired && <span className="state-badge">{t('settings.waitingRestart')}</span>}</div>
       <form className="form-stack" onSubmit={event => { event.preventDefault(); void save(); }}>
         <label>{t('settings.host')}<input value={form.host} onChange={event => patch({ host: event.target.value })} placeholder={t('settings.hostPlaceholder')} /></label>
@@ -270,5 +299,6 @@ export function Settings({ service }: { service?: string }) {
       </section>
       {(error || notice) && <section>{error ? <p role="alert">{error}</p> : <p className="notice">{notice}</p>}</section>}
     </div>
-  </div>;
+  </div>
+  </>;
 }

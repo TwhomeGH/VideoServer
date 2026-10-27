@@ -30,6 +30,22 @@ type Store struct {
 	scanner                 *Scanner
 	queue                   *ImportQueue
 	hashLimitBytesPerSecond int64
+	publisher               Publisher
+}
+
+// Publisher 接收資料變更通知；實作可以是非阻塞的事件 hub。
+type Publisher interface {
+	Publish(eventType string)
+}
+
+func (s *Store) SetPublisher(publisher Publisher) {
+	s.publisher = publisher
+}
+
+func (s *Store) publish(eventType string) {
+	if s.publisher != nil {
+		s.publisher.Publish(eventType)
+	}
 }
 
 // Pool 表示已註冊的儲存根目錄；Online 每次查詢時重新檢查，Enabled 是管理者的開關。

@@ -6,7 +6,7 @@
 - React + Vite + TypeScript：共用管理介面，支援 Light / Dark / System。
 - SQLite + database/sql + migrations：Video Node MVP 索引；PostgreSQL 後續擴充。
 - FFmpeg / FFprobe：本機與遠端共用的轉碼執行能力。
-- HTTP JSON + OpenAPI：管理 API、協定版本與能力公告；SSE 事件規劃中，HTTPS 由部署層處理。
+- HTTP JSON + OpenAPI：管理 API、協定版本與能力公告；SSE 事件串流已接入工作、掃描與設定變更，HTTPS 由部署層處理。
 - Windows / Linux / Docker；Valkey 為選配。
 
 Central 負責搜尋、索引與聯邦協調，不承擔所有影片流量。

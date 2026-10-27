@@ -33,6 +33,7 @@ WHERE import_jobs.source='reprobe' AND import_jobs.status IN ('completed','faile
 	job, err := scanJob(q.store.db.QueryRowContext(ctx, "SELECT "+jobColumns+" FROM import_jobs WHERE pool_id=? AND path_key=?", video.PoolID, key))
 	if err == nil {
 		q.notify()
+		q.store.publish("jobs")
 	}
 	return job, err
 }
@@ -66,6 +67,7 @@ func (q *ImportQueue) processProbe(ctx context.Context, job ImportJob) error {
 	if _, err := q.store.db.ExecContext(ctx, "UPDATE import_jobs SET phase='hashing',updated_at=? WHERE id=? AND status='running'", timestamp(), job.ID); err != nil {
 		return err
 	}
+	q.store.publish("jobs")
 	digest, err := q.store.hashSource(ctx, file, video.Size, job.ID)
 	if err != nil {
 		return err
@@ -102,7 +104,11 @@ func (q *ImportQueue) processProbe(ctx context.Context, job ImportJob) error {
 	if count != 1 {
 		return fmt.Errorf("影片資訊工作狀態已改變")
 	}
-	return tx.Commit()
+	if err := tx.Commit(); err != nil {
+		return err
+	}
+	q.store.publish("jobs")
+	return nil
 }
 
 type missingMediaCandidate struct {
@@ -255,6 +261,7 @@ func (q *ImportQueue) ResetBackfillUsage(ctx context.Context) (BackfillStatus, e
 		return BackfillStatus{}, err
 	}
 	q.logger.Warn("自動補齊今日用量已手動重設", "day", day)
+	q.store.publish("jobs")
 	return q.BackfillStatus(ctx)
 }
 

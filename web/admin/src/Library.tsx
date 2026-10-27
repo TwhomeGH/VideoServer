@@ -3,6 +3,7 @@ import { api } from './api';
 import { useI18n } from './i18n';
 import { formatDuration } from './format';
 import { ScanTierBadge, ScanTierLegend } from './ScanTierBadge';
+import { useLiveVersion } from './live';
 import { Attribution, emptyMetadata, MetadataFields, type VideoMetadata } from './VideoMetadata';
 import type { Page } from './navigation';
 import { ImportJobs, type ImportJob } from './ImportJobs';
@@ -53,6 +54,8 @@ async function request<T>(path: string, body?: object, method = 'POST'): Promise
 /** Library 依 page 顯示管理分頁，切換時保留尚未送出的表單資料。 */
 export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: string) => void }) {
   const { t, locale } = useI18n();
+  const liveScan = useLiveVersion('scan');
+  const liveJobs = useLiveVersion('jobs');
   const [data, setData] = useState<LibraryData | null>(null);
   const [error, setError] = useState('');
   const [loadError, setLoadError] = useState('');
@@ -101,6 +104,12 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
     void poll();
     return () => { active = false; controller.abort(); ++refreshVersion.current; clearTimeout(timer); };
   }, [queryString]);
+
+  const firstLive = useRef(true);
+  useEffect(() => {
+    if (firstLive.current) { firstLive.current = false; return; }
+    if (queryString) void refresh();
+  }, [liveScan, liveJobs]);
 
   useEffect(() => {
     if (page !== 'videos') { setSelected(null); setEditing(null); }

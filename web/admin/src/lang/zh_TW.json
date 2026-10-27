@@ -460,5 +460,7 @@
   "scanTier.legendHotRest": "<1 小時",
   "scanTier.legendWarmRest": "1–6 小時 5 分、6–24 小時 15 分",
   "scanTier.legendColdRest": "1–7 天 30 分",
-  "scanTier.legendDormantRest": ">7 天"
+  "scanTier.legendDormantRest": ">7 天",
+  "settings.liveChanged": "設定已在其他分頁更新；目前表單有未儲存變更。",
+  "settings.liveReload": "重新載入設定"
 }

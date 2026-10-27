@@ -16,6 +16,7 @@ func (s *Store) hashSource(ctx context.Context, file *os.File, size int64, jobID
 	buffer := make([]byte, 1024*1024)
 	var processed int64
 	lastProgress := time.Time{}
+	lastEvent := time.Time{}
 	started := time.Now()
 	limit := s.hashLimitBytesPerSecond
 	for {
@@ -31,6 +32,10 @@ func (s *Store) hashSource(ctx context.Context, file *os.File, size int64, jobID
 					return "", err
 				}
 				lastProgress = time.Now()
+				if time.Since(lastEvent) >= time.Second || processed == size {
+					s.publish("jobs")
+					lastEvent = time.Now()
+				}
 			}
 			if limit > 0 {
 				expected := time.Duration(float64(processed) / float64(limit) * float64(time.Second))

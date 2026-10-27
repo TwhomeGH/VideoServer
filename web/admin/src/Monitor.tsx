@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api, jsonRequest } from './api';
 import { useI18n } from './i18n';
+import { useLiveVersion } from './live';
 import { formatDuration } from './format';
 import { ScanTierBadge, ScanTierLegend, scanTierActivity } from './ScanTierBadge';
 import type { ImportJob } from './ImportJobs';
@@ -45,6 +46,8 @@ function Trend({ values, label }: { values: number[]; label: string }) {
 /** Monitor 依工作活動每半秒或兩秒更新，背景分頁降頻；離開頁面時取消請求與輪詢。 */
 export function Monitor() {
   const { t, locale } = useI18n();
+  const liveJobs = useLiveVersion('jobs');
+  const liveScan = useLiveVersion('scan');
   const [data, setData] = useState<MonitorData | null>(null);
   const [history, setHistory] = useState<MonitorData[]>([]);
   const [error, setError] = useState('');
@@ -73,7 +76,7 @@ export function Monitor() {
     };
     void poll();
     return () => { controller.abort(); clearTimeout(timer); };
-  }, []);
+  }, [liveJobs, liveScan]);
   const phaseLabel = (phase: string) => {
     const key = `jobPhase.${phase}`;
     const translated = t(key);

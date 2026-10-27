@@ -162,6 +162,7 @@ VALUES(?,?,?,?,?,?,?,'queued','queued',0,?,'','',0,?,?) ON CONFLICT(pool_id,path
 		return existing, false, err
 	}
 	q.notify()
+	q.store.publish("jobs")
 	return job, true, nil
 }
 
@@ -202,6 +203,7 @@ func (q *ImportQueue) Retry(ctx context.Context, id string) (ImportJob, error) {
 		return ImportJob{}, fmt.Errorf("只有失敗工作可以重試")
 	}
 	q.notify()
+	q.store.publish("jobs")
 	return q.Job(id)
 }
 
@@ -244,6 +246,7 @@ func (q *ImportQueue) Run(ctx context.Context) {
 		if err != nil || count != 1 {
 			continue
 		}
+		q.store.publish("jobs")
 		err = q.process(ctx, job)
 		if err == nil {
 			continue
@@ -255,11 +258,13 @@ func (q *ImportQueue) Run(ctx context.Context) {
 			if recoveryErr != nil {
 				q.logger.Error("保存中斷匯入工作失敗", "jobId", job.ID, "error", recoveryErr)
 			}
+			q.store.publish("jobs")
 			return
 		}
 		if _, saveErr := q.store.db.ExecContext(ctx, `UPDATE import_jobs SET status='failed',phase='failed',error=?,updated_at=? WHERE id=? AND status='running'`, err.Error(), timestamp(), job.ID); saveErr != nil {
 			q.logger.Error("保存失敗工作狀態失敗", "jobId", job.ID, "error", saveErr)
 		}
+		q.store.publish("jobs")
 		q.logger.Warn("影片背景工作失敗", "jobId", job.ID, "source", job.Source, "error", err)
 	}
 }
@@ -294,6 +299,10 @@ func (q *ImportQueue) process(ctx context.Context, job ImportJob) error {
 	if _, err := q.store.db.ExecContext(ctx, `UPDATE import_jobs SET phase='hashing',total_bytes=?,updated_at=? WHERE id=?`, before.Size(), timestamp(), job.ID); err != nil {
 		return err
 	}
+	q.store.publish("jobs")
 	_, err = q.store.importVideo(ctx, job.PoolID, job.Path, job.Title, job.metadata, &importOptions{media: &info, jobID: job.ID, expected: before})
+	if err == nil {
+		q.store.publish("jobs")
+	}
 	return err
 }

@@ -274,6 +274,7 @@ func (s *Scanner) runDue(ctx context.Context) {
 	s.status.Queued = false
 	s.status.Running = true
 	s.mu.Unlock()
+	s.store.publish("scan")
 
 	result, active := s.scanPools(ctx, now, pools, due)
 	result.CompletedAt = time.Now()
@@ -311,6 +312,7 @@ func (s *Scanner) runDue(ctx context.Context) {
 	s.status.Running = false
 	s.updateNextLocked(pools)
 	s.mu.Unlock()
+	s.store.publish("scan")
 	s.logger.Info("儲存池掃描完成", "enqueued", result.Enqueued, "imported", result.Imported, "pending", result.Pending, "changed", result.Changed, "deleted", result.Deleted, "failed", result.Failed, "offlinePools", result.OfflinePools)
 }
 

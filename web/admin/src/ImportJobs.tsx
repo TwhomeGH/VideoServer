@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { api } from './api';
 import { useI18n } from './i18n';
+import { useLiveConnected, useLiveVersion } from './live';
 import { formatDuration } from './format';
 import { JobProgress } from './JobProgress';
 
@@ -23,6 +24,8 @@ const PAGE_SIZE = 20;
 /** ImportJobs 顯示影片工作；緊湊列、篩選與分頁避免 100 筆時過度捲動。 */
 export function ImportJobs() {
   const { t, locale } = useI18n();
+  const liveJobs = useLiveVersion('jobs');
+  const liveConnected = useLiveConnected();
   const [jobs, setJobs] = useState<ImportJob[] | null>(null);
   const [schedule, setSchedule] = useState<ScheduleData | null>(null);
   const [error, setError] = useState('');
@@ -36,14 +39,15 @@ export function ImportJobs() {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     const poll = async () => {
-      let delay = 2000;
+      let delay = liveConnected ? 5000 : 2000;
       try {
         const result = await api<ImportJob[]>('import-jobs', { signal: controller.signal });
         if (controller.signal.aborted) return;
         setJobs(result); setError('');
         const nextSchedule = await api<ScheduleData>('schedule', { signal: controller.signal });
         if (!controller.signal.aborted) setSchedule(nextSchedule);
-        if (result.some(job => job.status === 'queued' || job.status === 'running')) delay = 500;
+        const active = result.some(job => job.status === 'queued' || job.status === 'running');
+        delay = active ? (liveConnected ? 2000 : 500) : (liveConnected ? 5000 : 2000);
       } catch (reason) {
         if (!controller.signal.aborted) setError(reason instanceof Error ? reason.message : String(reason));
       }
@@ -51,7 +55,7 @@ export function ImportJobs() {
     };
     void poll();
     return () => { controller.abort(); clearTimeout(timer); };
-  }, [revision]);
+  }, [revision, liveJobs, liveConnected]);
 
   async function retry(id: string) {
     setBusy(true); setError('');

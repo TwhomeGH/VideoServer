@@ -2,6 +2,57 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 01:30 SSE 工作／掃描／設定事件與快照同步
+
+**類型**: 功能
+
+**檔案**:
+
+- `internal/events/hub.go`
+- `internal/events/http.go`
+- `internal/events/hub_test.go`
+- `internal/library/store.go`
+- `internal/library/jobs.go`
+- `internal/library/hash.go`
+- `internal/library/reprobe.go`
+- `internal/library/scanner.go`
+- `internal/runtime/configapi.go`
+- `internal/runtime/server.go`
+- `web/admin/src/live.tsx`
+- `web/admin/src/main.tsx`
+- `web/admin/src/ImportJobs.tsx`
+- `web/admin/src/Monitor.tsx`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/Settings.tsx`
+- `web/admin/src/lang/`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- 工作、掃描與設定變更只能靠各頁輪詢，延遲與請求量固定
+- 多分頁設定變更沒有提示，可能覆蓋未儲存的編輯
+
+### 修改
+
+- 新增受 session 保護的 `GET /api/v1/events`；事件類型為 jobs／scan／config，另有 ready／reset。
+- 事件只帶變更通知，不傳完整快照；首次連線、reset 或重播後由前端呼叫既有 API 取得快照。
+- 有界 512 事件環、`Last-Event-ID` 重播、重播落差 reset、15 秒 heartbeat、最長 30 分鐘後重連。
+- 慢速訂閱者溢出時送出 reset 並結束，由 EventSource 重連。
+- 工作進度事件最多每秒一次；掃描開始／完成、設定儲存／重設／重啟都會發布。
+- 前端新增 `LiveProvider`，工作、掃描、影片庫與設定頁用版本號觸發快照；SSE 不可用時保留輪詢降級。
+- 設定頁在未儲存編輯時收到其他分頁變更，顯示提示與重新載入按鈕；未編輯時自動同步。
+- OpenAPI、API 文件、監看與匯入文件同步。
+
+### 驗證
+
+- 實際收到 ready、scan、config、jobs 事件與 `Last-Event-ID` 重播。
+- 單一掃描產生開始／完成兩個事件；工作探測產生多個進度事件。
+- 設定頁在 dirty 狀態收到 config 事件會顯示提示，重新載入後清除。
+- 事件串流經 diagnostics wrapper 正常 flush；401 未登入不會建立串流。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
+---
+
 ## 2026.10.27 23:59 掃描資訊加入顏色層級
 
 **類型**: 改善

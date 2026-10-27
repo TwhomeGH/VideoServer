@@ -7,6 +7,7 @@ import { Login } from './Login';
 import { Settings } from './Settings';
 import { Monitor } from './Monitor';
 import { I18nProvider, useI18n } from './i18n';
+import { LiveProvider } from './live';
 import { pages, usePage, type Page } from './navigation';
 
 const ApiDocs = lazy(() => import('./ApiDocs'));
@@ -133,7 +134,7 @@ function App() {
     {authenticated === null && <section><p role="status">{t('app.checkingAuth')}</p></section>}
     {authenticated === false && <Login service={status?.build.service} version={status?.build.version}
       onAuthenticated={() => setAuthenticated(true)} />}
-    {authenticated === true && <>
+    {authenticated === true && <LiveProvider><>
       <nav className="main-nav" aria-label={t('app.navAria')}>
         {(Object.entries(pages) as [Page, string][]).filter(([key]) => !status || status.build.service === 'video-node'
           || key === 'overview' || key === 'monitor' || key === 'api' || key === 'settings' || key === 'diagnostics').map(([key, label]) =>
@@ -195,7 +196,7 @@ function App() {
           }).map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}</dl>}
         </section>
       </div>}
-    </>}
+    </></LiveProvider>}
   </main>;
 }
 
