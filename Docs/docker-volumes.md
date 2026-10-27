@@ -111,7 +111,9 @@ docker compose -f testing/compose.yaml -f testing/compose.local.yaml up -d --no-
 | I 槽電影庫 | /storage/i-movies | I:\Movies |
 
 **掛載只是讓容器看得到目錄，每個來源仍須註冊一次儲存池。** 網頁不要填 H:/Video 或 I:/Movies。
-容器看不到主機磁碟的 volume GUID；儲存池的身分是容器內 target。主機盤符改變時，更新 Compose 的 source 並維持相同 target；若 target 改名，池會離線。網頁顯示的檔案系統是容器視角（例如 9p、overlay 或 fuse），不一定是主機的 NTFS。
+容器看不到主機磁碟的 volume GUID；儲存池的身分是容器內 target。主機盤符改變時，更新 Compose 的 source 並維持相同 target；若 target 改名，池會離線。網頁顯示的檔案系統是容器視角（例如 9p、virtiofs、overlay 或 fuse），不一定是主機的 NTFS。9p 是 Docker Desktop 分享主機目錄給 Linux VM 的檔案協定，不是磁碟本身；因此 Docker 內的 `volumeStatus` 會是「不支援」，`volumeId` 留空。
+
+儲存池頁的「重新檢查儲存池資訊」會重查在線池的檔案系統／volume 身分；註冊與啟動時也會嘗試補一次，但不會定期自動重查。
 例如主機的 `H:\Video\旅行\第一天.mp4`，在 H 槽影片庫內的相對路徑是 `旅行/第一天.mp4`。註冊後會定期自動掃描新增影片；描述、Tag 與授權可再於影片庫編輯。
 避免把同一批檔案以重疊目錄反覆註冊為多個池；目前不同池會建立各自的索引。
 

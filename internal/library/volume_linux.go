@@ -48,3 +48,5 @@ func filesystemName(kind int64) string {
 func resolveVolumePath(volumeID, relative string) (string, error) {
 	return "", fmt.Errorf("此平台不支援磁碟區 GUID")
 }
+
+func volumeTrackingSupported() bool { return false }

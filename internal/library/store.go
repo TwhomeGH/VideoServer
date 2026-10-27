@@ -40,6 +40,7 @@ type Pool struct {
 	Enabled        bool   `json:"enabled"`
 	Filesystem     string `json:"filesystem,omitempty"`
 	VolumeID       string `json:"volumeId,omitempty"`
+	VolumeStatus   string `json:"volumeStatus,omitempty"`
 	volumeRelative string
 }
 
@@ -234,6 +235,7 @@ func (s *Store) Pools() ([]Pool, error) {
 			return nil, err
 		}
 		pool.Enabled = enabled != 0
+		applyVolumeStatus(&pool)
 		if effective, err := effectivePoolPath(pool.Path, pool.VolumeID, pool.volumeRelative); err == nil {
 			if info, statErr := os.Stat(effective); statErr == nil && info.IsDir() {
 				pool.Online = true
@@ -267,6 +269,7 @@ func (s *Store) AddPool(name, path string) (Pool, error) {
 		ID: identifier(), Name: strings.TrimSpace(name), Path: path, Online: true, Enabled: true,
 		Filesystem: filesystem, VolumeID: volumeID, volumeRelative: volumeRelative,
 	}
+	applyVolumeStatus(&pool)
 	_, err = s.db.Exec("INSERT INTO pools(id,name,path,volume_id,volume_relative,filesystem,enabled) VALUES(?,?,?,?,?,?,1)", pool.ID, pool.Name, pool.Path, pool.VolumeID, pool.volumeRelative, pool.Filesystem)
 	return pool, err
 }
@@ -296,12 +299,56 @@ func (s *Store) poolByID(id string) (Pool, error) {
 		return Pool{}, err
 	}
 	pool.Enabled = enabled != 0
+	applyVolumeStatus(&pool)
 	if effective, err := effectivePoolPath(pool.Path, pool.VolumeID, pool.volumeRelative); err == nil {
 		if info, statErr := os.Stat(effective); statErr == nil && info.IsDir() {
 			pool.Online = true
 		}
 	}
 	return pool, nil
+}
+
+// RefreshPoolMetadata 重新查詢在線池的檔案系統與 volume 身分；離線池保留舊值。
+func (s *Store) RefreshPoolMetadata() ([]Pool, error) {
+	pools, err := s.Pools()
+	if err != nil {
+		return nil, err
+	}
+	for _, pool := range pools {
+		root, err := effectivePoolPath(pool.Path, pool.VolumeID, pool.volumeRelative)
+		if err != nil {
+			continue
+		}
+		info, err := os.Stat(root)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+		volumeID, volumeRelative, filesystem := volumeDetailsFor(root)
+		if volumeID == "" {
+			volumeID, volumeRelative = pool.VolumeID, pool.volumeRelative
+		}
+		if filesystem == "" {
+			filesystem = pool.Filesystem
+		}
+		if volumeID == pool.VolumeID && volumeRelative == pool.volumeRelative && filesystem == pool.Filesystem {
+			continue
+		}
+		if _, err := s.db.Exec("UPDATE pools SET volume_id=?,volume_relative=?,filesystem=? WHERE id=?", volumeID, volumeRelative, filesystem, pool.ID); err != nil {
+			return nil, err
+		}
+	}
+	return s.Pools()
+}
+
+func applyVolumeStatus(pool *Pool) {
+	switch {
+	case pool.VolumeID != "":
+		pool.VolumeStatus = "tracked"
+	case !volumeTrackingSupported():
+		pool.VolumeStatus = "unsupported"
+	default:
+		pool.VolumeStatus = "unbound"
+	}
 }
 
 // effectivePoolPath 優先使用 volume GUID；一旦記錄了 volume ID 就不回退到可能被其他磁碟佔用的盤符。

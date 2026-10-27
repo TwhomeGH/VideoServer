@@ -1,5 +1,22 @@
 # ChangeHistory
 
+## 2026.10.27 20:10 儲存池卡片化、Volume GUID 顯示與手動資訊重查
+
+**類型**: 功能 · **檔案**: `internal/library/store.go`、`internal/library/http.go`、`internal/library/volume_*.go`、`web/admin/src/Library.tsx`、`web/admin/src/style.css`、`web/admin/src/lang/`、`pkg/protocol/openapi.json`
+
+### 問題 - Docker 池的 volume GUID 空白被誤認為漏抓；池資訊只在啟動時補一次；在線狀態與中繼資料擠在單行，難以閱讀
+
+### 修改 - 儲存池卡片、狀態 pill、Volume GUID/不適用顯示與手動 refresh API
+
+- `Pool` 新增 `volumeStatus`（tracked／unsupported／unbound）；Docker／Linux 明確顯示不適用，不再靜默隱藏。
+- 儲存池改為卡片：狀態 pill、路徑、檔案系統、Volume GUID 分區顯示；GUID 長字串可換行。
+- 新增 `POST /api/v1/pools/refresh` 與「重新檢查儲存池資訊」按鈕；重查在線池的 filesystem／volumeId，離線池保留舊值。沒有定期自動重查。
+- 文件補上 9p／virtiofs 是容器掛載視角，不是主機磁碟類型。
+
+### 驗證 - Go 測試（含 metadata refresh）、前端建置與 `lang:check`；測試站重建後確認 Docker 顯示 9p、Volume GUID 不適用、refresh 正常。
+
+---
+
 ## 2026.10.27 13:00 週期掃描加入 changed／deleted reconciliation
 
 **類型**: 功能 · **檔案**: `internal/library/scanner.go`、`internal/library/scanner_test.go`、`pkg/protocol/openapi.json`、`web/admin/src/Library.tsx`、`web/admin/src/Monitor.tsx`、`web/admin/src/lang/`

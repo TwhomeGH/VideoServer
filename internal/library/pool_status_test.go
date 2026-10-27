@@ -85,3 +85,20 @@ func TestPoolEnabledAPI(t *testing.T) {
 		t.Fatalf("unexpected pool response: %+v %v", updated, err)
 	}
 }
+
+func TestRefreshPoolMetadata(t *testing.T) {
+	store, _, pool := scannerFixture(t)
+	if _, err := store.db.Exec("UPDATE pools SET volume_id='',volume_relative='',filesystem='' WHERE id=?", pool.ID); err != nil {
+		t.Fatal(err)
+	}
+	pools, err := store.RefreshPoolMetadata()
+	if err != nil || len(pools) != 1 || pools[0].Filesystem == "" {
+		t.Fatalf("metadata was not refreshed: %+v %v", pools, err)
+	}
+	if runtime.GOOS == "windows" && pools[0].VolumeID == "" {
+		t.Fatalf("Windows volume GUID was not refreshed: %+v", pools[0])
+	}
+	if pools[0].VolumeStatus == "" {
+		t.Fatalf("volume status missing: %+v", pools[0])
+	}
+}

@@ -1732,6 +1732,60 @@
           "資源與工作監看"
         ]
       }
+    },
+    "/api/v1/pools/refresh": {
+      "x-dvn-service": "video-node",
+      "post": {
+        "operationId": "refreshPoolMetadata",
+        "summary": "重新檢查儲存池資訊",
+        "description": "重新查詢在線儲存池的檔案系統與 volume 身分；離線池保留舊值。",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "更新後的儲存池清單",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Pool"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
     }
   },
   "components": {
@@ -2127,6 +2181,14 @@
           },
           "volumeId": {
             "type": "string"
+          },
+          "volumeStatus": {
+            "type": "string",
+            "enum": [
+              "tracked",
+              "unsupported",
+              "unbound"
+            ]
           }
         },
         "required": [

@@ -114,3 +114,5 @@ func resolveVolumePath(volumeID, relative string) (string, error) {
 	}
 	return filepath.Join(volumeID, relative), nil
 }
+
+func volumeTrackingSupported() bool { return true }

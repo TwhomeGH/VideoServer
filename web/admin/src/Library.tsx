@@ -6,7 +6,7 @@ import type { Page } from './navigation';
 import { ImportJobs, type ImportJob } from './ImportJobs';
 import { VideoFilters, defaultVideoFilters } from './VideoFilters';
 
-type Pool = { id: string; name: string; path: string; online: boolean; enabled: boolean; filesystem?: string; volumeId?: string };
+type Pool = { id: string; name: string; path: string; online: boolean; enabled: boolean; filesystem?: string; volumeId?: string; volumeStatus?: string };
 type Video = VideoMetadata & {
   id: string; title: string; poolId: string; size: number; fileHash: string;
   available: boolean; unavailableReason?: string; importedAt: string;
@@ -169,7 +169,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
           </>}
           <div className="button-row">
             {data?.scan && <button disabled={busy || data.scan.running || data.scan.queued} onClick={() => void submit(async () => { await request('library/scan', {}); })}>{data.scan.running ? t('library.scanRunning') : data.scan.queued ? t('library.scanQueued') : t('library.scanNow')}</button>}
-            <button disabled={busy} onClick={() => void submit(async () => {})}>{t('library.recheck')}</button>
+            <button disabled={busy} onClick={() => void submit(async () => { await request('pools/refresh', {}); })}>{t('library.recheck')}</button>
           </div>
           {data?.scan?.last && <p className="muted">{t('library.scanLast', {
             time: new Date(data.scan.last.completedAt).toLocaleString(locale),
@@ -184,15 +184,26 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
           {data?.pools.length === 0 && <p>{t('library.noPools')}</p>}
           <ul className="pool-list">{data?.pools.map(pool => {
             const status = !pool.enabled ? t('library.disabled') : pool.online ? t('library.online') : t('library.offline');
-            return <li key={pool.id}>
-              <strong>{pool.name}</strong>
-              <span className={!pool.enabled ? 'muted' : pool.online ? 'badge' : ''}>{status}</span>
-              {pool.volumeId && <span className="badge" title={pool.volumeId}>{t('library.volumeTracked')}</span>}
-              <span className="muted">{t('library.filesystem')}: {pool.filesystem || t('common.notProvided')}</span>
-              <button type="button" disabled={busy} onClick={() => void submit(async () => {
-                await request<Pool>(`pools/${pool.id}`, { enabled: !pool.enabled }, 'PATCH');
-              })}>{pool.enabled ? t('library.disablePool') : t('library.enablePool')}</button>
-              <code>{pool.path}</code>
+            const statusClass = !pool.enabled ? 'disabled' : pool.online ? 'online' : 'offline';
+            return <li key={pool.id} className="pool-card">
+              <div className="pool-head">
+                <strong>{pool.name}</strong>
+                <span className={`state-badge ${statusClass}`}>{status}</span>
+              </div>
+              <dl className="pool-meta">
+                <div><dt>{t('library.poolPathLabel')}</dt><dd><code>{pool.path}</code></dd></div>
+                <div><dt>{t('library.filesystem')}</dt><dd>{pool.filesystem || t('common.notProvided')}</dd></div>
+                <div><dt>{t('library.volumeGuid')}</dt><dd>{pool.volumeId
+                  ? <code className="volume-id" title={pool.volumeId}>{pool.volumeId}</code>
+                  : pool.volumeStatus === 'unsupported' ? t('library.volumeNotApplicable')
+                    : pool.volumeStatus === 'unbound' ? t('library.volumeUnbound') : t('common.notProvided')}</dd></div>
+              </dl>
+              <div className="pool-actions">
+                {pool.volumeId && <span className="muted">{t('library.volumeTracked')}</span>}
+                <button type="button" disabled={busy} onClick={() => void submit(async () => {
+                  await request<Pool>(`pools/${pool.id}`, { enabled: !pool.enabled }, 'PATCH');
+                })}>{pool.enabled ? t('library.disablePool') : t('library.enablePool')}</button>
+              </div>
             </li>;
           })}</ul>
         </section>

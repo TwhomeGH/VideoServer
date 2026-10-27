@@ -81,6 +81,16 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## 儲存池卡片、Volume 狀態與手動重查驗收
+
+2026-10-27 在 `dvn-testing`（image 來源 `148c756147de`）驗證：
+
+- Docker 池顯示 `filesystem: 9p`、`volumeStatus: unsupported`；前端卡片顯示「Volume GUID：不適用（此環境）」，不再靜默隱藏。
+- 在線狀態為小型 pill；1280 與 390 寬度都沒有水平溢出，卡片欄位可換行。
+- 按下「重新檢查儲存池資訊」會呼叫 `POST /api/v1/pools/refresh` 並正常回傳兩個池；Docker 的 volume 仍為不適用。
+- 掃描說明已拆成「自動檢查／檔案穩定／下次掃描」三行，不再擠在同一段。
+- `go test ./...`、`npm --prefix web/admin run build`、`lang:check` 與 `check:testing` 通過。
+
 ## Reconciliation diff 驗收
 
 2026-10-27 在 `dvn-testing`（image 來源 `316d1362e1da`）驗證：

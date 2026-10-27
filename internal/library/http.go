@@ -116,6 +116,18 @@ func (s *Store) Register(mux *http.ServeMux) {
 			s.scanner.Request()
 		}
 	})
+	mux.HandleFunc("POST /api/v1/pools/refresh", func(w http.ResponseWriter, r *http.Request) {
+		var request struct{}
+		if !decode(w, r, &request) {
+			return
+		}
+		pools, err := s.RefreshPoolMetadata()
+		if err != nil {
+			failure(w, 500, "無法重新檢查儲存池資訊")
+			return
+		}
+		respond(w, 200, pools)
+	})
 	mux.HandleFunc("PATCH /api/v1/pools/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
 			Enabled *bool `json:"enabled"`

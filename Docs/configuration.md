@@ -27,9 +27,11 @@ NodeID、儲存池與影片資料存在 SQLite，不寫回主機設定檔。管�
 
 ## 儲存池狀態
 
-儲存池保存 `enabled`、實際 `online`、`filesystem` 與 Windows `volumeId`。`enabled` 是管理者的開關；`online` 只表示目前能不能解析並讀取路徑。兩者分開，所以「已停用」和「離線」不會混在一起。
+儲存池保存 `enabled`、實際 `online`、`filesystem`、Windows `volumeId` 與 `volumeStatus`。`enabled` 是管理者的開關；`online` 只表示目前能不能解析並讀取路徑。兩者分開，所以「已停用」和「離線」不會混在一起。
 
-Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的路徑；之後盤符改變時，服務會優先使用 GUID 路徑，不依賴舊盤符。Docker／Linux 沒有同等的 volume GUID，仍以容器內路徑為準；顯示的檔案系統是容器看到的類型（可能是 9p、overlay 或 fuse），不一定是主機磁碟的 NTFS。
+Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的路徑；之後盤符改變時，服務會優先使用 GUID 路徑，不依賴舊盤符。Docker／Linux 沒有同等的 volume GUID，仍以容器內路徑為準；顯示的檔案系統是容器看到的類型（可能是 9p、virtiofs、overlay 或 fuse），不一定是主機磁碟的 NTFS。Docker 的 `volumeStatus` 會是 `unsupported`，前端顯示「不適用（容器或此平台）」，不是漏抓。
+
+儲存池頁的「重新檢查儲存池資訊」會重新查詢在線池的 `filesystem`／`volumeId` 並更新顯示；啟動時只會補一次，沒有定期自動重查。離線池保留舊值，避免把暫時讀不到誤判成沒有資訊。
 
 停用儲存池會停止掃描、匯入、重新探測與自動補齊；既有影片索引、描述與原始檔案保留。影片會標示所屬儲存池已停用，播放與重新讀取停用，描述仍可編輯；重新啟用後會重新檢查來源。
 
