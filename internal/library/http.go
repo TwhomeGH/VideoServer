@@ -215,6 +215,34 @@ func (s *Store) Register(mux *http.ServeMux) {
 			s.scanner.Request()
 			respond(w, 202, s.scanner.Status())
 		})
+		mux.HandleFunc("POST /api/v1/pools/{id}/scan", func(w http.ResponseWriter, r *http.Request) {
+			var request struct{}
+			if !decode(w, r, &request) {
+				return
+			}
+			pool, err := s.poolByID(r.PathValue("id"))
+			if errors.Is(err, sql.ErrNoRows) {
+				failure(w, 404, "找不到儲存池")
+				return
+			}
+			if err != nil {
+				failure(w, 500, "無法讀取儲存池")
+				return
+			}
+			if !pool.Enabled {
+				failure(w, 409, "儲存池已停用")
+				return
+			}
+			if !pool.Online {
+				failure(w, 409, "儲存池目前離線")
+				return
+			}
+			if !s.scanner.RequestPool(pool.ID) {
+				failure(w, 409, "掃描已在排程或執行中")
+				return
+			}
+			respond(w, 202, s.scanner.Status())
+		})
 	}
 	if s.queue != nil {
 		mux.HandleFunc("GET /api/v1/import-jobs", func(w http.ResponseWriter, r *http.Request) {

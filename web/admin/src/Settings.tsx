@@ -5,12 +5,12 @@ import { useI18n } from './i18n';
 type Config = {
   host: string; preferredPort: number; fallbackPorts: number[] | null;
   webDirectory: string; dataDirectory: string; autoScan: boolean;
-  scanIntervalSeconds: number; fileStableSeconds: number; rememberLastSuccessfulPort: boolean;
+  scanIntervalSeconds: number; scanIdleMaxSeconds: number; fileStableSeconds: number; rememberLastSuccessfulPort: boolean;
   autoBackfill: boolean; backfillIntervalSeconds: number; hashLimitMiBps: number;
 };
 type Overrides = Partial<{
   host: string; preferredPort: number; fallbackPorts: number[];
-  autoScan: boolean; scanIntervalSeconds: number; fileStableSeconds: number; rememberLastSuccessfulPort: boolean;
+  autoScan: boolean; scanIntervalSeconds: number; scanIdleMaxSeconds: number; fileStableSeconds: number; rememberLastSuccessfulPort: boolean;
   autoBackfill: boolean; backfillIntervalSeconds: number; hashLimitMiBps: number;
 }>;
 type Network = {
@@ -22,7 +22,7 @@ type ConfigView = {
 };
 type FormState = {
   host: string; preferredPort: string; fallbackPorts: string;
-  autoScan: boolean; scanIntervalSeconds: string; fileStableSeconds: string;
+  autoScan: boolean; scanIntervalSeconds: string; scanIdleMaxSeconds: string; fileStableSeconds: string;
   rememberLastSuccessfulPort: boolean;
   autoBackfill: boolean; backfillIntervalSeconds: string; hashLimitMiBps: string;
 };
@@ -35,6 +35,7 @@ function formFrom(config: Config): FormState {
     autoScan: config.autoScan,
     scanIntervalSeconds: String(config.scanIntervalSeconds),
     fileStableSeconds: String(config.fileStableSeconds),
+    scanIdleMaxSeconds: String(config.scanIdleMaxSeconds),
     rememberLastSuccessfulPort: config.rememberLastSuccessfulPort,
     autoBackfill: config.autoBackfill,
     backfillIntervalSeconds: String(config.backfillIntervalSeconds),
@@ -90,6 +91,10 @@ export function Settings({ service }: { service?: string }) {
     if (!Number.isInteger(fileStableSeconds) || fileStableSeconds < 1 || fileStableSeconds > 86400) {
       throw new Error(t('settings.errFileStable'));
     }
+    const scanIdleMaxSeconds = Number(form.scanIdleMaxSeconds);
+    if (!Number.isInteger(scanIdleMaxSeconds) || scanIdleMaxSeconds < 10 || scanIdleMaxSeconds > 86400) {
+      throw new Error(t('settings.errScanIdleMax'));
+    }
     const backfillIntervalSeconds = Number(form.backfillIntervalSeconds);
     if (!Number.isInteger(backfillIntervalSeconds) || backfillIntervalSeconds < 10 || backfillIntervalSeconds > 86400) {
       throw new Error(t('settings.errBackfillInterval'));
@@ -103,7 +108,7 @@ export function Settings({ service }: { service?: string }) {
     return {
       host, preferredPort, fallbackPorts: unique,
       rememberLastSuccessfulPort: unique.length > 0 && form.rememberLastSuccessfulPort,
-      autoScan: form.autoScan, scanIntervalSeconds, fileStableSeconds,
+      autoScan: form.autoScan, scanIntervalSeconds, scanIdleMaxSeconds, fileStableSeconds,
       autoBackfill: form.autoBackfill, backfillIntervalSeconds, hashLimitMiBps,
     };
   }
@@ -192,13 +197,19 @@ export function Settings({ service }: { service?: string }) {
           onChange={event => patch({ rememberLastSuccessfulPort: event.target.checked })} />{t('settings.rememberPort')}</label>
         {fallbackEmpty && <p className="muted">{t('settings.rememberHint')}</p>}
         {service === 'video-node' && <>
-          <label className="checkbox-label"><input type="checkbox" checked={form.autoScan} onChange={event => patch({ autoScan: event.target.checked })} />{t('settings.autoScan')}</label>
-          <label>{t('settings.scanInterval')}<input type="number" min={1} max={86400} value={form.scanIntervalSeconds} onChange={event => patch({ scanIntervalSeconds: event.target.value })} /></label>
-          <label>{t('settings.fileStable')}<input type="number" min={1} max={86400} value={form.fileStableSeconds} onChange={event => patch({ fileStableSeconds: event.target.value })} /></label>
-          <label className="checkbox-label"><input type="checkbox" checked={form.autoBackfill} onChange={event => patch({ autoBackfill: event.target.checked })} />{t('settings.autoBackfill')}</label>
-          <p className="muted">{t('settings.autoBackfillHint')}</p>
-          <label>{t('settings.backfillInterval')}<input type="number" min={10} max={86400} value={form.backfillIntervalSeconds} onChange={event => patch({ backfillIntervalSeconds: event.target.value })} /></label>
-          <label>{t('settings.hashLimit')}<input type="number" min={0} max={102400} value={form.hashLimitMiBps} onChange={event => patch({ hashLimitMiBps: event.target.value })} /></label>
+          <fieldset className="settings-group"><legend>{t('settings.scanGroup')}</legend>
+            <label className="checkbox-label"><input type="checkbox" checked={form.autoScan} onChange={event => patch({ autoScan: event.target.checked })} />{t('settings.autoScan')}</label>
+            <label>{t('settings.scanInterval')}<input type="number" min={1} max={86400} value={form.scanIntervalSeconds} onChange={event => patch({ scanIntervalSeconds: event.target.value })} /></label>
+            <label>{t('settings.scanIdleMax')}<input type="number" min={10} max={86400} value={form.scanIdleMaxSeconds} onChange={event => patch({ scanIdleMaxSeconds: event.target.value })} /></label>
+            <p className="muted">{t('settings.scanIdleMaxHint')}</p>
+            <label>{t('settings.fileStable')}<input type="number" min={1} max={86400} value={form.fileStableSeconds} onChange={event => patch({ fileStableSeconds: event.target.value })} /></label>
+          </fieldset>
+          <fieldset className="settings-group"><legend>{t('settings.backfillGroup')}</legend>
+            <label className="checkbox-label"><input type="checkbox" checked={form.autoBackfill} onChange={event => patch({ autoBackfill: event.target.checked })} />{t('settings.autoBackfill')}</label>
+            <p className="muted">{t('settings.autoBackfillHint')}</p>
+            <label>{t('settings.backfillInterval')}<input type="number" min={10} max={86400} value={form.backfillIntervalSeconds} onChange={event => patch({ backfillIntervalSeconds: event.target.value })} /></label>
+            <label>{t('settings.hashLimit')}<input type="number" min={0} max={102400} value={form.hashLimitMiBps} onChange={event => patch({ hashLimitMiBps: event.target.value })} /></label>
+          </fieldset>
         </>}
         <div className="button-row"><button disabled={busy}>{busy ? t('settings.saving') : t('settings.save')}</button>
           <button type="button" disabled={busy} onClick={() => setConfirmingReset(true)}>{t('settings.reset')}</button></div>

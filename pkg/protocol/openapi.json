@@ -1786,6 +1786,71 @@
           "影片庫與儲存池"
         ]
       }
+    },
+    "/api/v1/pools/{id}/scan": {
+      "x-dvn-service": "video-node",
+      "post": {
+        "operationId": "scanPool",
+        "summary": "掃描單一儲存池",
+        "description": "只掃描指定池；完成後重置該池的閒置退避。",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "掃描已排程",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "description": "找不到儲存池"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
     }
   },
   "components": {
@@ -2381,6 +2446,15 @@
           },
           "nextRunInSeconds": {
             "type": "integer"
+          },
+          "idleMaxSeconds": {
+            "type": "integer"
+          },
+          "pools": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PoolScanStatus"
+            }
           }
         },
         "required": [
@@ -2390,7 +2464,8 @@
           "running",
           "queued",
           "last",
-          "nextRunInSeconds"
+          "nextRunInSeconds",
+          "idleMaxSeconds"
         ]
       },
       "Pagination": {
@@ -2528,6 +2603,9 @@
           },
           "hashLimitMiBps": {
             "type": "integer"
+          },
+          "scanIdleMaxSeconds": {
+            "type": "integer"
           }
         },
         "required": [
@@ -2544,7 +2622,8 @@
           "probeTimeoutSeconds",
           "autoBackfill",
           "backfillIntervalSeconds",
-          "hashLimitMiBps"
+          "hashLimitMiBps",
+          "scanIdleMaxSeconds"
         ]
       },
       "ConfigInput": {
@@ -2586,6 +2665,9 @@
           },
           "hashLimitMiBps": {
             "type": "integer"
+          },
+          "scanIdleMaxSeconds": {
+            "type": "integer"
           }
         },
         "required": [
@@ -2598,7 +2680,8 @@
           "fileStableSeconds",
           "autoBackfill",
           "backfillIntervalSeconds",
-          "hashLimitMiBps"
+          "hashLimitMiBps",
+          "scanIdleMaxSeconds"
         ],
         "additionalProperties": false
       },
@@ -3031,6 +3114,33 @@
           "intervalSeconds",
           "nextCheckInSeconds",
           "candidateCount"
+        ]
+      },
+      "PoolScanStatus": {
+        "type": "object",
+        "properties": {
+          "poolId": {
+            "type": "string"
+          },
+          "backoffSeconds": {
+            "type": "integer"
+          },
+          "quiet": {
+            "type": "integer"
+          },
+          "nextRunAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextRunInSeconds": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "poolId",
+          "backoffSeconds",
+          "quiet",
+          "nextRunInSeconds"
         ]
       }
     },

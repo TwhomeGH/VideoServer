@@ -260,7 +260,7 @@ func jsonFields(value reflect.Type) map[string]bool {
 
 func TestOpenAPIResponseFieldsMatchGoTypes(t *testing.T) {
 	schemas := specification(t, "video-node")["components"].(map[string]any)["schemas"].(map[string]any)
-	for name, value := range map[string]any{"BuildIdentity": buildinfo.Identity{}, "Config": dvnRuntime.Config{}, "Network": dvnRuntime.NetworkRuntime{}, "Video": library.Video{}, "Pool": library.Pool{}, "Media": media.Info{}, "ImportJob": library.ImportJob{}, "ScanStatus": library.ScanStatus{}, "ScanResult": library.ScanResult{}, "BackfillStatus": library.BackfillStatus{}, "Monitor": diagnostics.Snapshot{}, "WorkStatus": library.WorkStatus{}} {
+	for name, value := range map[string]any{"BuildIdentity": buildinfo.Identity{}, "Config": dvnRuntime.Config{}, "Network": dvnRuntime.NetworkRuntime{}, "Video": library.Video{}, "Pool": library.Pool{}, "Media": media.Info{}, "ImportJob": library.ImportJob{}, "ScanStatus": library.ScanStatus{}, "ScanResult": library.ScanResult{}, "PoolScanStatus": library.PoolScanStatus{}, "BackfillStatus": library.BackfillStatus{}, "Monitor": diagnostics.Snapshot{}, "WorkStatus": library.WorkStatus{}} {
 		schema := schemas[name].(map[string]any)
 		properties := schema["properties"].(map[string]any)
 		required := map[string]bool{}

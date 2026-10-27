@@ -34,6 +34,8 @@ dd { margin:0; overflow-wrap:anywhere; }
 .login-meta { margin:16px 0 0; text-align:center; }
 .settings-side { display:grid; gap:24px; align-content:start; }
 .settings-side>section { margin-bottom:0; }
+.settings-group { display:grid; gap:12px; margin:0; padding:14px 16px; border:1px solid var(--line); border-radius:12px; }
+.settings-group legend { padding:0 6px; color:var(--muted); font-size:.82rem; }
 .state-badge { border:1px solid var(--accent); color:var(--accent); border-radius:999px; padding:4px 10px; font-size:.78rem; white-space:nowrap; }
 .state-badge.online { border-color:var(--accent); color:var(--accent); }
 .state-badge.offline { border-color:var(--warn); color:var(--warn); }

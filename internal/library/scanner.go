@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -27,16 +28,26 @@ type ScanResult struct {
 	Errors       []string  `json:"errors"`
 }
 
-// ScanStatus 提供排程設定、執行狀態與最近掃描結果。
+type PoolScanStatus struct {
+	PoolID           string `json:"poolId"`
+	BackoffSeconds   int    `json:"backoffSeconds"`
+	Quiet            int    `json:"quiet"`
+	NextRunAt        string `json:"nextRunAt,omitempty"`
+	NextRunInSeconds int    `json:"nextRunInSeconds"`
+}
+
+// ScanStatus 提供排程設定、執行狀態、每池退避與最近掃描結果。
 type ScanStatus struct {
-	Automatic        bool        `json:"automatic"`
-	IntervalSeconds  int         `json:"intervalSeconds"`
-	StableSeconds    int         `json:"stableSeconds"`
-	Running          bool        `json:"running"`
-	Queued           bool        `json:"queued"`
-	NextRunAt        string      `json:"nextRunAt,omitempty"`
-	NextRunInSeconds int         `json:"nextRunInSeconds"`
-	Last             *ScanResult `json:"last"`
+	Automatic        bool             `json:"automatic"`
+	IntervalSeconds  int              `json:"intervalSeconds"`
+	IdleMaxSeconds   int              `json:"idleMaxSeconds"`
+	StableSeconds    int              `json:"stableSeconds"`
+	Running          bool             `json:"running"`
+	Queued           bool             `json:"queued"`
+	NextRunAt        string           `json:"nextRunAt,omitempty"`
+	NextRunInSeconds int              `json:"nextRunInSeconds"`
+	Pools            []PoolScanStatus `json:"pools,omitempty"`
+	Last             *ScanResult      `json:"last"`
 }
 
 type observation struct {
@@ -45,98 +56,287 @@ type observation struct {
 	since    time.Time
 }
 
-// Scanner 以單一背景工作掃描儲存池；穩定性快照僅保存在記憶體。
-type Scanner struct {
-	store    *Store
-	logger   *slog.Logger
-	interval time.Duration
-	stable   time.Duration
-	requests chan struct{}
-	observed map[string]observation
-	mu       sync.Mutex
-	status   ScanStatus
+type poolScanState struct {
+	next    time.Time
+	backoff time.Duration
+	quiet   int
 }
 
-// NewScanner 建立 store 的掃描器，interval 與 stable 須為正數。
+// Scanner 以單一背景工作掃描儲存池；每個池有自己的下次執行時間與退避。
+type Scanner struct {
+	store     *Store
+	logger    *slog.Logger
+	interval  time.Duration
+	idleMax   time.Duration
+	stable    time.Duration
+	requests  chan struct{}
+	observed  map[string]observation
+	states    map[string]poolScanState
+	forceAll  bool
+	forcePool map[string]bool
+	mu        sync.Mutex
+	status    ScanStatus
+}
+
+// NewScanner 建立 store 的掃描器；interval 是活躍池基礎間隔，idleMax 是閒置上限。
 // automatic 決定是否啟用週期掃描；停用時仍可手動排程。須在提供 HTTP 服務前建立。
 func NewScanner(store *Store, automatic bool, interval, stable time.Duration, logger *slog.Logger) *Scanner {
-	scanner := &Scanner{store: store, logger: logger, interval: interval, stable: stable, requests: make(chan struct{}, 1), observed: map[string]observation{}, status: ScanStatus{Automatic: automatic, IntervalSeconds: int(interval / time.Second), StableSeconds: int(stable / time.Second)}}
+	if interval <= 0 {
+		interval = 30 * time.Second
+	}
+	if stable < 0 {
+		stable = 0
+	}
+	scanner := &Scanner{
+		store: store, logger: logger, interval: interval, idleMax: 5 * time.Minute,
+		stable: stable, requests: make(chan struct{}, 1), observed: map[string]observation{},
+		states: map[string]poolScanState{}, forcePool: map[string]bool{},
+		status: ScanStatus{Automatic: automatic, IntervalSeconds: int(interval / time.Second), IdleMaxSeconds: 300, StableSeconds: int(stable / time.Second)},
+	}
 	store.scanner = scanner
 	return scanner
 }
 
-// Status 回傳狀態快照；結果完成後不再修改，供診斷 API 讀取。
+// SetIdleMax 設定閒置池的掃描退避上限。
+func (s *Scanner) SetIdleMax(max time.Duration) {
+	if max <= 0 {
+		return
+	}
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if max < s.interval {
+		max = s.interval
+	}
+	s.idleMax = max
+	s.status.IdleMaxSeconds = int(max / time.Second)
+}
+
+// Status 回傳掃描與每池退避快照。
 func (s *Scanner) Status() ScanStatus {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	if s.status.NextRunAt != "" {
-		if next, err := time.Parse(time.RFC3339Nano, s.status.NextRunAt); err == nil {
+	status := s.status
+	status.Pools = make([]PoolScanStatus, 0, len(s.states))
+	for id, state := range s.states {
+		remaining := int(time.Until(state.next).Seconds())
+		if remaining < 0 {
+			remaining = 0
+		}
+		status.Pools = append(status.Pools, PoolScanStatus{
+			PoolID: id, BackoffSeconds: int(state.backoff / time.Second), Quiet: state.quiet,
+			NextRunAt: state.next.UTC().Format(time.RFC3339Nano), NextRunInSeconds: remaining,
+		})
+	}
+	sort.Slice(status.Pools, func(i, j int) bool { return status.Pools[i].PoolID < status.Pools[j].PoolID })
+	if status.NextRunAt != "" {
+		if next, err := time.Parse(time.RFC3339Nano, status.NextRunAt); err == nil {
 			if remaining := int(time.Until(next).Seconds()); remaining > 0 {
-				s.status.NextRunInSeconds = remaining
+				status.NextRunInSeconds = remaining
 			}
 		}
 	}
-	return s.status
+	return status
 }
 
-// Request 合併重複的掃描請求，回傳是否成功加入佇列。
+// Request 要求掃描所有池；已有排程或執行中的掃描時回傳 false。
 func (s *Scanner) Request() bool {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	if s.status.Queued || s.status.Running {
+		s.mu.Unlock()
 		return false
 	}
+	s.status.Queued = true
+	s.forceAll = true
+	s.mu.Unlock()
 	select {
 	case s.requests <- struct{}{}:
-		s.status.Queued = true
-		return true
 	default:
-		return false
 	}
+	return true
 }
 
-// Run 執行週期與手動掃描直到 ctx 取消；不可同時呼叫兩次。
+// RequestPool 只要求掃描一個池，完成後重置該池退避。
+func (s *Scanner) RequestPool(id string) bool {
+	if id == "" {
+		return false
+	}
+	s.mu.Lock()
+	if s.status.Queued || s.status.Running {
+		s.mu.Unlock()
+		return false
+	}
+	s.status.Queued = true
+	s.forcePool[id] = true
+	s.mu.Unlock()
+	select {
+	case s.requests <- struct{}{}:
+	default:
+	}
+	return true
+}
+
+// Run 依每池 due time 掃描；短 tick 只做排程檢查，不讀取影片。
 func (s *Scanner) Run(ctx context.Context) {
-	ticker := time.NewTicker(s.interval)
+	tick := s.interval
+	if tick > time.Second {
+		tick = time.Second
+	}
+	if tick <= 0 {
+		tick = time.Second
+	}
+	ticker := time.NewTicker(tick)
 	defer ticker.Stop()
-	if s.status.Automatic {
-		s.Request()
+	s.mu.Lock()
+	automatic := s.status.Automatic
+	s.mu.Unlock()
+	if automatic {
+		s.runDue(ctx)
 	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if !s.status.Automatic {
-				continue
-			}
 		case <-s.requests:
 		}
 		if ctx.Err() != nil {
 			return
 		}
-		s.mu.Lock()
-		select {
-		case <-s.requests:
-		default:
-		}
+		s.runDue(ctx)
+	}
+}
+
+func (s *Scanner) runDue(ctx context.Context) {
+	s.mu.Lock()
+	forceAll := s.forceAll
+	forcePool := s.forcePool
+	s.forceAll = false
+	s.forcePool = map[string]bool{}
+	automatic := s.status.Automatic
+	if !automatic && !forceAll && len(forcePool) == 0 {
 		s.status.Queued = false
-		s.status.Running = true
 		s.mu.Unlock()
-		result := s.scan(ctx, time.Now())
-		result.CompletedAt = time.Now()
+		return
+	}
+	s.mu.Unlock()
+
+	pools, err := s.store.Pools()
+	if err != nil {
 		s.mu.Lock()
+		result := ScanResult{StartedAt: time.Now(), Errors: []string{}}
+		result.failure(err)
+		result.CompletedAt = time.Now()
 		s.status.Last = &result
+		s.status.Queued = false
 		s.status.Running = false
-		if s.status.Automatic {
-			s.status.NextRunAt = time.Now().Add(s.interval).UTC().Format(time.RFC3339Nano)
+		s.mu.Unlock()
+		return
+	}
+	now := time.Now()
+	due := map[string]bool{}
+	for _, pool := range pools {
+		if !pool.Enabled || !pool.Online {
+			continue
+		}
+		if forceAll || forcePool[pool.ID] {
+			due[pool.ID] = true
+			continue
+		}
+		if !automatic {
+			continue
+		}
+		state, exists := s.states[pool.ID]
+		if !exists || !now.Before(state.next) {
+			due[pool.ID] = true
+		}
+	}
+	if len(due) == 0 {
+		s.mu.Lock()
+		s.status.Queued = false
+		s.status.Running = false
+		s.updateNextLocked(pools)
+		s.mu.Unlock()
+		return
+	}
+
+	s.mu.Lock()
+	s.status.Queued = false
+	s.status.Running = true
+	s.mu.Unlock()
+
+	result, active := s.scanPools(ctx, now, pools, due)
+	result.CompletedAt = time.Now()
+	for _, pool := range pools {
+		if pool.Enabled && !pool.Online {
+			result.OfflinePools++
+		}
+	}
+
+	s.mu.Lock()
+	for id := range due {
+		state := s.states[id]
+		if forceAll || forcePool[id] || active[id] {
+			state.quiet = 0
+			state.backoff = s.interval
+			state.next = now.Add(s.interval)
 		} else {
+			state.quiet++
+			state.backoff = nextBackoff(state.backoff, s.interval, s.idleMax)
+			state.next = now.Add(state.backoff)
+		}
+		s.states[id] = state
+	}
+	s.status.Last = &result
+	s.status.Running = false
+	s.updateNextLocked(pools)
+	s.mu.Unlock()
+	s.logger.Info("儲存池掃描完成", "enqueued", result.Enqueued, "imported", result.Imported, "pending", result.Pending, "changed", result.Changed, "deleted", result.Deleted, "failed", result.Failed, "offlinePools", result.OfflinePools)
+}
+
+func (s *Scanner) updateNextLocked(pools []Pool) {
+	if !s.status.Automatic {
+		s.status.NextRunAt = ""
+		s.status.NextRunInSeconds = 0
+		return
+	}
+	var next time.Time
+	for _, pool := range pools {
+		if !pool.Enabled || !pool.Online {
+			continue
+		}
+		state, exists := s.states[pool.ID]
+		if !exists {
 			s.status.NextRunAt = ""
 			s.status.NextRunInSeconds = 0
+			return
 		}
-		s.mu.Unlock()
-		s.logger.Info("儲存池掃描完成", "enqueued", result.Enqueued, "imported", result.Imported, "pending", result.Pending, "changed", result.Changed, "deleted", result.Deleted, "failed", result.Failed, "offlinePools", result.OfflinePools)
+		if next.IsZero() || state.next.Before(next) {
+			next = state.next
+		}
 	}
+	if next.IsZero() {
+		s.status.NextRunAt = ""
+		s.status.NextRunInSeconds = 0
+		return
+	}
+	s.status.NextRunAt = next.UTC().Format(time.RFC3339Nano)
+}
+
+func nextBackoff(current, base, max time.Duration) time.Duration {
+	if base <= 0 {
+		base = 30 * time.Second
+	}
+	if max < base {
+		max = base
+	}
+	if current < base {
+		current = base
+	}
+	next := current * 2
+	if next > max {
+		next = max
+	}
+	return next
 }
 
 func (r *ScanResult) failure(err error) {
@@ -215,19 +415,30 @@ func (s *Scanner) catalog(ctx context.Context) (map[string]catalogVideo, map[str
 }
 
 func (s *Scanner) scan(ctx context.Context, now time.Time) ScanResult {
-	result := ScanResult{StartedAt: now, Errors: []string{}}
 	pools, err := s.store.Pools()
 	if err != nil {
+		result := ScanResult{StartedAt: now, Errors: []string{}}
 		result.failure(err)
 		return result
 	}
+	result, _ := s.scanPools(ctx, now, pools, nil)
+	return result
+}
+
+func (s *Scanner) scanPools(ctx context.Context, now time.Time, pools []Pool, only map[string]bool) (ScanResult, map[string]bool) {
+	result := ScanResult{StartedAt: now, Errors: []string{}}
+	active := map[string]bool{}
 	catalog, importJobs, err := s.catalog(ctx)
 	if err != nil {
 		result.failure(err)
-		return result
+		return result, active
 	}
 	next := map[string]observation{}
 	for _, pool := range pools {
+		if only != nil && !only[pool.ID] {
+			continue
+		}
+		before := result
 		if ctx.Err() != nil {
 			break
 		}
@@ -331,7 +542,12 @@ func (s *Scanner) scan(ctx context.Context, now time.Time) ScanResult {
 				}
 			}
 		}
+		if result.Imported > before.Imported || result.Enqueued > before.Enqueued || result.Pending > before.Pending ||
+			result.Changed > before.Changed || result.Deleted > before.Deleted || result.Failed > before.Failed ||
+			len(result.Errors) > len(before.Errors) {
+			active[pool.ID] = true
+		}
 	}
 	s.observed = next
-	return result
+	return result, active
 }

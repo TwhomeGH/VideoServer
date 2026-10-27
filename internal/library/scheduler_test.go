@@ -60,6 +60,51 @@ func TestBackfillEnabledExposesNextRun(t *testing.T) {
 	}
 }
 
+func TestScannerAdaptiveBackoffAndPoolScan(t *testing.T) {
+	_, scanner, pool := scannerFixture(t)
+	scanner.interval = 20 * time.Millisecond
+	scanner.SetIdleMax(80 * time.Millisecond)
+	ctx := context.Background()
+	scanner.runDue(ctx)
+	scanner.mu.Lock()
+	state := scanner.states[pool.ID]
+	scanner.mu.Unlock()
+	if state.quiet != 1 || state.backoff != 40*time.Millisecond {
+		t.Fatalf("first idle backoff: %+v", state)
+	}
+
+	for _, expected := range []time.Duration{80 * time.Millisecond, 80 * time.Millisecond} {
+		scanner.mu.Lock()
+		state = scanner.states[pool.ID]
+		state.next = time.Now().Add(-time.Second)
+		scanner.states[pool.ID] = state
+		scanner.mu.Unlock()
+		scanner.runDue(ctx)
+		scanner.mu.Lock()
+		state = scanner.states[pool.ID]
+		scanner.mu.Unlock()
+		if state.backoff != expected {
+			t.Fatalf("backoff = %v, want %v", state.backoff, expected)
+		}
+	}
+
+	scanner.mu.Lock()
+	state = scanner.states[pool.ID]
+	state.next = time.Now().Add(-time.Second)
+	scanner.states[pool.ID] = state
+	scanner.mu.Unlock()
+	if !scanner.RequestPool(pool.ID) {
+		t.Fatal("pool scan request was not queued")
+	}
+	scanner.runDue(ctx)
+	scanner.mu.Lock()
+	state = scanner.states[pool.ID]
+	scanner.mu.Unlock()
+	if state.quiet != 0 || state.backoff != 20*time.Millisecond {
+		t.Fatalf("manual pool scan did not reset backoff: %+v", state)
+	}
+}
+
 func TestHashSourceRateLimit(t *testing.T) {
 	store, _, _ := scannerFixture(t)
 	path := filepath.Join(t.TempDir(), "rate.mp4")

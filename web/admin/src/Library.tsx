@@ -13,9 +13,12 @@ type Video = VideoMetadata & {
   description: string; category: string; adult: boolean; license: string;
   media?: { durationSeconds: number; width: number; height: number; videoCodec: string; audioCodec: string; frameRate: number };
 };
+type PoolScanStatus = {
+  poolId: string; backoffSeconds: number; quiet: number; nextRunAt?: string; nextRunInSeconds: number;
+};
 type ScanStatus = {
-  automatic: boolean; intervalSeconds: number; stableSeconds: number; running: boolean; queued: boolean;
-  nextRunAt?: string; nextRunInSeconds?: number;
+  automatic: boolean; intervalSeconds: number; idleMaxSeconds: number; stableSeconds: number; running: boolean; queued: boolean;
+  nextRunAt?: string; nextRunInSeconds?: number; pools?: PoolScanStatus[];
   last: { completedAt: string; imported: number; enqueued: number; pending: number; changed: number; deleted: number; failed: number; offlinePools: number; errors: string[] } | null;
 };
 type LibraryData = { nodeId: string; pools: Pool[]; videos: Video[]; scan: ScanStatus | null; jobs: ImportJob[];
@@ -165,6 +168,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
           {data?.scan && <>
             <p>{data.scan.automatic ? t('library.scanAutoOn', { seconds: data.scan.intervalSeconds }) : t('library.scanAutoOff')}</p>
             <p className="muted">{t('library.scanStable', { seconds: data.scan.stableSeconds })}</p>
+            <p className="muted">{t('library.scanBackoff', { seconds: data.scan.idleMaxSeconds || 0 })}</p>
             {data.scan.automatic && !data.scan.running && <p className="muted">{t('library.scanNext', { seconds: data.scan.nextRunInSeconds || 0 })}</p>}
           </>}
           <div className="button-row">
@@ -185,6 +189,11 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
           <ul className="pool-list">{data?.pools.map(pool => {
             const status = !pool.enabled ? t('library.disabled') : pool.online ? t('library.online') : t('library.offline');
             const statusClass = !pool.enabled ? 'disabled' : pool.online ? 'online' : 'offline';
+            const scanInfo = data.scan?.pools?.find(item => item.poolId === pool.id);
+            const scanLabel = !pool.enabled ? t('library.poolScanDisabled')
+              : !pool.online ? t('library.poolScanOffline')
+                : scanInfo ? t('library.poolScanNext', { seconds: scanInfo.nextRunInSeconds, backoff: scanInfo.backoffSeconds })
+                  : t('library.poolScanWaiting');
             return <li key={pool.id} className="pool-card">
               <div className="pool-head">
                 <strong>{pool.name}</strong>
@@ -197,9 +206,12 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
                   ? <code className="volume-id" title={pool.volumeId}>{pool.volumeId}</code>
                   : pool.volumeStatus === 'unsupported' ? t('library.volumeNotApplicable')
                     : pool.volumeStatus === 'unbound' ? t('library.volumeUnbound') : t('common.notProvided')}</dd></div>
+                <div><dt>{t('library.poolScanLabel')}</dt><dd>{scanLabel}</dd></div>
               </dl>
               <div className="pool-actions">
                 {pool.volumeId && <span className="muted">{t('library.volumeTracked')}</span>}
+                <button type="button" disabled={busy || data.scan?.running || data.scan?.queued || !pool.enabled || !pool.online}
+                  onClick={() => void submit(async () => { await request(`pools/${pool.id}/scan`, {}); })}>{t('library.scanPool')}</button>
                 <button type="button" disabled={busy} onClick={() => void submit(async () => {
                   await request<Pool>(`pools/${pool.id}`, { enabled: !pool.enabled }, 'PATCH');
                 })}>{pool.enabled ? t('library.disablePool') : t('library.enablePool')}</button>

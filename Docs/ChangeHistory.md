@@ -1,5 +1,23 @@
 # ChangeHistory
 
+## 2026.10.27 20:40 每池掃描退避、單池掃描與設定分組
+
+**類型**: 功能 · **檔案**: `internal/library/scanner.go`、`internal/library/http.go`、`internal/runtime/config.go`、`internal/runtime/configapi.go`、`internal/runtime/server.go`、`web/admin/src/Library.tsx`、`web/admin/src/Settings.tsx`、`web/admin/src/style.css`、`web/admin/src/lang/`、`pkg/protocol/openapi.json`
+
+### 問題 - 固定 30 秒掃描所有池，長期沒有變化的目錄仍持續 traversal；缺少只掃單一池的入口；設定頁欄位沒有分組
+
+### 修改 - 每池 adaptive backoff、單池掃描 API/按鈕與自動掃描／自動補齊分組
+
+- 每個池維護 `nextScanAt` 與 backoff；連續沒有變化時 ×2，最高 `scanIdleMaxSeconds`（預設 300 秒），有變化或手動掃描重置。
+- 掃描器只處理到期池；新增 `RequestPool`、`POST /api/v1/pools/{id}/scan` 與卡片「掃描此池」按鈕。
+- `ScanStatus` 增加 `idleMaxSeconds`、每池 `pools`（下次掃描、退避、quiet）；OpenAPI 與前端同步。
+- 設定頁用 fieldset 分成「自動掃描與檔案穩定」與「自動補齊與 I/O 限速」，新增閒置退避上限欄位。
+- 掃描仍只讀 metadata；檔案內容的 FFprobe／SHA-256 仍受既有佇列與限速控制。
+
+### 驗證 - 新增 adaptive backoff／單池重置測試；完整 Go 測試、前端建置與 `lang:check`；測試站重建後確認每池倒數、單池掃描與設定分組。
+
+---
+
 ## 2026.10.27 20:10 儲存池卡片化、Volume GUID 顯示與手動資訊重查
 
 **類型**: 功能 · **檔案**: `internal/library/store.go`、`internal/library/http.go`、`internal/library/volume_*.go`、`web/admin/src/Library.tsx`、`web/admin/src/style.css`、`web/admin/src/lang/`、`pkg/protocol/openapi.json`

@@ -45,7 +45,9 @@ Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的
 
 ## 自動排程與背景負載
 
-`autoScan` 控制目錄 metadata 掃描（`WalkDir`／`Stat`），不讀影片內容；`scanIntervalSeconds` 預設 30 秒。真正大量讀取的是匯入與重新探測的 FFprobe＋SHA-256。
+`autoScan` 控制目錄 metadata 掃描（`WalkDir`／`Stat`），不讀影片內容；`scanIntervalSeconds` 是活躍池的基礎間隔。每個儲存池有自己的下次掃描時間：連續沒有新檔／變更／待穩定檔案時，間隔會逐步加倍，最高到 `scanIdleMaxSeconds`（預設 300 秒）；有變化或手動掃描時重置回基礎間隔。只掃描到期的池，不會因為一個池活躍就讓全部池一直付出完整 traversal。退避狀態存在記憶體，服務重啟後從基礎間隔重新開始。
+
+儲存池頁可對單一池按「掃描此池」，對應 `POST /api/v1/pools/{id}/scan`；完成後重置該池退避。全域「立即掃描新增影片」仍會掃描所有池。真正大量讀取的是匯入／重新探測的 FFprobe＋SHA-256。
 
 `autoBackfill` 預設關閉。開啟後每 `backfillIntervalSeconds`（預設 60 秒）檢查一次，只在整個佇列閒置時排一筆缺少技術資訊的影片，不會與手動匯入或掃描競爭。`hashLimitMiBps` 限制 SHA-256 讀取速度（預設 64 MiB/s，0 表示不限），套用到匯入與重新探測；佇列仍一次只處理一個工作。
 
