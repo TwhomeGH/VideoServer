@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import net from 'node:net';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,6 +16,7 @@ const envFile = path.join(directory, 'test.env');
 const sample = path.join(media, '範例影片.mp4');
 const steps = [];
 let started = false;
+let completed = false;
 let cookie = '';
 const adminPassword = 'deployment-test-password';
 
@@ -45,8 +47,8 @@ const base = `http://127.0.0.1:${port}`;
 async function api(route, body, method = 'POST') {
   const response = await fetch(`${base}/api/v1/${route}`, {
     signal: AbortSignal.timeout(15000),
-    ...(body ? { method, headers: { 'Content-Type': 'application/json', Origin: base, ...(cookie ? { Cookie: cookie } : {}) }, body: JSON.stringify(body) } : {
-      headers: { Origin: base, ...(cookie ? { Cookie: cookie } : {}) },
+    ...(body ? { method, headers: { 'Content-Type': 'application/json', 'X-DVN-Protocol-Version': '1', Origin: base, ...(cookie ? { Cookie: cookie } : {}) }, body: JSON.stringify(body) } : {
+      headers: { Origin: base, 'X-DVN-Protocol-Version': '1', ...(cookie ? { Cookie: cookie } : {}) },
     }),
   });
   const result = await response.json();
@@ -87,6 +89,8 @@ async function waitJob(id) {
 mkdirSync(media, { recursive: true });
 writeFileSync(config, JSON.stringify({ host: '0.0.0.0', preferredPort: 18610, fallbackPorts: [], webDirectory: '/app/web', dataDirectory: '/data/acceptance' }, null, 2));
 writeFileSync(envFile, `DVN_BIND_ADDRESS=127.0.0.1\nDVN_NODE_PORT=${port}\nDVN_MEDIA_PATH=${media.replaceAll('\\', '/')}\nDVN_NODE_CONFIG=${config.replaceAll('\\', '/')}\nDVN_ADMIN_PASSWORD=${adminPassword}\n`);
+const run = { kind: 'dvn-deployment-test', schemaVersion: 1, project, workspace: process.cwd(), pid: process.pid, host: os.hostname(), status: 'running', createdAt: new Date().toISOString() };
+writeFileSync(path.join(directory, 'run.json'), JSON.stringify(run, null, 2));
 
 try {
   if (!process.argv.includes('--skip-build')) {
@@ -103,6 +107,10 @@ try {
   pass('Compose 以外掛 config、資料卷及唯讀影片目錄啟動');
   assert.equal((await fetch(`${base}/api/v1/import-jobs/nonexistent`)).status, 401);
   assert.equal((await fetch(`${base}/api/v1/monitor`)).status, 401);
+  assert.equal((await fetch(`${base}/api/v1/openapi.json`)).status, 401);
+  const protocol = await (await fetch(`${base}/api/v1/protocol`)).json();
+  assert.equal(protocol.protocolVersion, 1);
+  assert.ok(protocol.capabilities.includes('library.query'));
   assert.equal((await fetch(`${base}/api/v1/videos/nonexistent/probe`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 401);
   assert.equal((await fetch(`${base}/api/v1/videos/import`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })).status, 401);
   pass('匯入工作與建立工作 API 均要求登入');
@@ -116,6 +124,17 @@ try {
   assert.equal((await fetch(base + asset)).status, 200);
   pass('打包管理頁面與 API 可透過主機映射端口存取');
   const before = await api('library');
+  const spec = await api('openapi.json');
+  assert.equal(spec.openapi, '3.1.1');
+  assert.ok(spec.paths['/api/v1/videos/{id}/probe']);
+  const rejectedPool = await authorizedFetch(`${base}/api/v1/pools`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-DVN-Protocol-Version': '2', Origin: base },
+    body: JSON.stringify({ name: '不應建立', path: '/media' }),
+  });
+  assert.equal(rejectedPool.status, 409);
+  assert.equal((await rejectedPool.json()).code, 'protocol_incompatible');
+  assert.equal((await api('library')).pools.length, 0);
+  pass('公開版本能力、已授權 OpenAPI 與協定不相容時阻止寫入');
   const pool = await api('pools', { name: '測試影片庫', path: '/media' });
   assert.equal(pool.online, true);
   const details = { title: '部署測試影片', description: '測試專用，自行產生的色塊與聲音。', category: '測試', tags: ['Docker', 'docker', '部署測試'],
@@ -199,10 +218,12 @@ try {
   pass('來源離線保留索引並拒絕播放，恢復檔案後重新可用');
   writeFileSync(path.join(directory, 'result.json'), JSON.stringify({ project, completedAt: new Date().toISOString(), steps, nodeId: before.nodeId, videoId: video.id }, null, 2));
   console.log(`測試紀錄與範例資料：${directory}`);
+  completed = true;
 } catch (error) {
   if (started) console.error(compose('logs', '--tail', '50'));
   throw error;
 } finally {
   // 保留測試資料卷與檔案供檢查，只停止這次建立的專案。
   if (started) compose('stop');
+  writeFileSync(path.join(directory, 'run.json'), JSON.stringify({ ...run, status: completed ? 'completed' : 'failed', finishedAt: new Date().toISOString() }, null, 2));
 }

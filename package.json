@@ -9,8 +9,14 @@
     "check:testing": "node scripts/check-testing.mjs",
     "test:unit": "node --test test/unit/*.test.mjs",
     "test:images": "node test/integration/images.mjs",
-    "test:deployment": "node test/integration/deployment.mjs",
+    "test:deployment": "node scripts/run-deployment-test.mjs",
+    "test:cleanup": "node scripts/cleanup-deployment-tests.mjs",
+    "lang:build": "npm --prefix web/admin run lang:build",
+    "lang:check": "npm --prefix web/admin run lang:check",
     "setup:dev": "node scripts/setup.mjs development",
     "setup:test": "node scripts/setup.mjs testing"
+  },
+  "devDependencies": {
+    "trash": "10.1.1"
   }
 }

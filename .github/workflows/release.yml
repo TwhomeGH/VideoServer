@@ -28,6 +28,7 @@ jobs:
       - run: npm run test:unit
       - run: go vet ./...
       - run: npm --prefix web/admin ci
+      - run: npm --prefix web/admin run lang:check
       - run: npm --prefix web/admin run build
 
   images:

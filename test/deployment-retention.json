@@ -1,0 +1,5 @@
+{
+  "keep": 5,
+  "allowDockerRemoval": false,
+  "hostDataMode": "recycle"
+}
