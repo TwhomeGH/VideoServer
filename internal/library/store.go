@@ -157,8 +157,8 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("SELECT COALESCE(MAX(version),0) FROM schema_version").Scan(&version); err != nil {
 		return err
 	}
-	if version > 13 {
-		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 13", version)
+	if version > 14 {
+		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 14", version)
 	}
 	if _, err := tx.Exec(`
  CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
@@ -371,6 +371,20 @@ INSERT INTO schema_version VALUES(9);`); err != nil {
 			}
 		}
 		if _, err := tx.Exec("INSERT INTO schema_version VALUES(13)"); err != nil {
+			return err
+		}
+	}
+	if version < 14 {
+		exists, err := columnExists(tx, "discovered_media", "etag")
+		if err != nil {
+			return err
+		}
+		if !exists {
+			if _, err := tx.Exec("ALTER TABLE discovered_media ADD COLUMN etag TEXT NOT NULL DEFAULT ''"); err != nil {
+				return err
+			}
+		}
+		if _, err := tx.Exec("INSERT INTO schema_version VALUES(14)"); err != nil {
 			return err
 		}
 	}

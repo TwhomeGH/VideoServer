@@ -155,7 +155,7 @@
   "monitor.backfillResetFailed": "重设失败：{error}。",
   "monitor.unlimited": "不限",
   "monitor.backfillDisabled": "自动补齐已禁用",
-  "monitor.scanLast": "上次完成 {time} · 加入工作 {enqueued} · 待稳定 {pending} · 变更 {changed} · 遗失 {deleted} · 失败 {failed} · 脱机池 {offline}",
+  "monitor.scanLast": "上次完成 {time} · 加入工作 {enqueued} · 待稳定 {pending} · 变更 {changed} · 遗失 {deleted} · 重命名 {renamed} · 失败 {failed} · 脱机池 {offline}",
   "monitor.managePools": "管理存储池与扫描",
   "monitor.backgroundTitle": "背景工作",
   "monitor.backgroundUnavailable": "目前服务尚未实作派工或联邦同步，暂无可显示的背景工作。",

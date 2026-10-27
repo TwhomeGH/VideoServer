@@ -15,7 +15,7 @@ type MonitorData = {  service: string; startedAt: string; sampledAt: string; upt
     automatic: boolean; running: boolean; queued: boolean; intervalSeconds: number; idleMaxSeconds: number;
     nextRunAt?: string; nextRunInSeconds?: number;
     pools?: { poolId: string; name?: string; tier?: string; backoffSeconds: number; quiet: number; lastActivityAt?: string; nextRunAt?: string; nextRunInSeconds: number }[];
-    last: { completedAt: string; enqueued: number; failed: number; pending: number; changed: number; deleted: number; offlinePools: number } | null;
+    last: { completedAt: string; enqueued: number; failed: number; pending: number; changed: number; deleted: number; renamed: number; offlinePools: number } | null;
   }; watch?: { enabled: boolean; mode: string; activePools: number; events: number; lastEventAt?: string; fallbackReasons?: string[] }; backfill: {
     enabled: boolean; intervalSeconds: number; nextCheckAt?: string; nextCheckInSeconds: number;
     candidateCount: number; nextVideoId?: string; nextVideoTitle?: string;
@@ -147,6 +147,7 @@ export function Monitor() {
                 pending: data.tasks.scan.last.pending,
                 changed: data.tasks.scan.last.changed || 0,
                 deleted: data.tasks.scan.last.deleted || 0,
+                renamed: data.tasks.scan.last.renamed || 0,
                 failed: data.tasks.scan.last.failed,
                 offline: data.tasks.scan.last.offlinePools,
               })}</p>}

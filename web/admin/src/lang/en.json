@@ -155,7 +155,7 @@
   "monitor.backfillResetFailed": "Reset failed: {error}.",
   "monitor.unlimited": "unlimited",
   "monitor.backfillDisabled": "Automatic backfill is disabled",
-  "monitor.scanLast": "Last completed {time} · jobs added {enqueued} · waiting for stability {pending} · changed {changed} · missing {deleted} · failed {failed} · offline pools {offline}",
+  "monitor.scanLast": "Last completed {time} · jobs added {enqueued} · waiting for stability {pending} · changed {changed} · missing {deleted} · renamed {renamed} · failed {failed} · offline pools {offline}",
   "monitor.managePools": "Manage storage pools and scans",
   "monitor.backgroundTitle": "Background jobs",
   "monitor.backgroundUnavailable": "This service does not implement dispatch or federation sync yet, so there are no background jobs to show.",

@@ -19,11 +19,11 @@ func TestDiscoveredMediaLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	at := time.Now().UTC()
-	changed, err := store.upsertDiscovered(context.Background(), pool.ID, "found.mp4", info.Size(), info.ModTime(), at)
+	changed, err := store.upsertDiscovered(context.Background(), pool.ID, "found.mp4", info.Size(), info.ModTime(), "", at)
 	if err != nil || !changed {
 		t.Fatalf("upsert discovered: changed=%v err=%v", changed, err)
 	}
-	changed, err = store.upsertDiscovered(context.Background(), pool.ID, "found.mp4", info.Size(), info.ModTime(), at)
+	changed, err = store.upsertDiscovered(context.Background(), pool.ID, "found.mp4", info.Size(), info.ModTime(), "", at)
 	if err != nil || changed {
 		t.Fatalf("unchanged discovery should not count again: changed=%v err=%v", changed, err)
 	}

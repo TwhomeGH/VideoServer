@@ -20,6 +20,7 @@ type webDAVEntry struct {
 	Relative string
 	Size     int64
 	Modified time.Time
+	ETag     string
 }
 
 type webDAVMultistatus struct {
@@ -32,6 +33,7 @@ type webDAVMultistatus struct {
 				} `xml:"resourcetype"`
 				ContentLength string `xml:"getcontentlength"`
 				LastModified  string `xml:"getlastmodified"`
+				ETag          string `xml:"getetag"`
 			} `xml:"prop"`
 			Status string `xml:"status"`
 		} `xml:"propstat"`
@@ -156,7 +158,7 @@ func (s *Store) walkWebDAV(ctx context.Context, client *http.Client, base *url.U
 			size, _ = strconv.ParseInt(prop.ContentLength, 10, 64)
 		}
 		modified, _ := http.ParseTime(prop.LastModified)
-		*entries = append(*entries, webDAVEntry{Relative: itemRelative, Size: size, Modified: modified})
+		*entries = append(*entries, webDAVEntry{Relative: itemRelative, Size: size, Modified: modified, ETag: strings.TrimSpace(prop.ETag)})
 	}
 	return nil
 }

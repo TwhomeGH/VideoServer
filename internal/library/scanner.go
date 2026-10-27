@@ -23,6 +23,7 @@ type ScanResult struct {
 	Skipped      int       `json:"skipped"`
 	Changed      int       `json:"changed"`
 	Deleted      int       `json:"deleted"`
+	Renamed      int       `json:"renamed"`
 	Failed       int       `json:"failed"`
 	Discovered   int       `json:"discovered"`
 	OfflinePools int       `json:"offlinePools"`
@@ -498,7 +499,7 @@ func (s *Scanner) scan(ctx context.Context, now time.Time) ScanResult {
 	return result
 }
 
-// scanWebDAVPool 只為遠端 WebDAV 池建立 discovery；目前不支援遠端匯入或播放。
+// scanWebDAVPool 只為遠端 WebDAV 池建立 discovery；ETag 可辨識唯一 rename。
 func (s *Scanner) scanWebDAVPool(ctx context.Context, pool Pool, now time.Time, result *ScanResult, active map[string]bool) {
 	before := *result
 	entries, err := s.store.listWebDAV(ctx, pool)
@@ -507,11 +508,24 @@ func (s *Scanner) scanWebDAVPool(ctx context.Context, pool Pool, now time.Time, 
 		active[pool.ID] = true
 		return
 	}
+	existing, err := s.store.discoveredIdentities(ctx, pool.ID)
+	if err != nil {
+		result.failure(err)
+		active[pool.ID] = true
+		return
+	}
+	for oldPath, newPath := range remoteRenameMap(existing, entries) {
+		if err := s.store.renameRemotePath(ctx, pool.ID, oldPath, newPath); err != nil {
+			result.failure(err)
+			continue
+		}
+		result.Renamed++
+	}
 	seen := map[string]bool{}
 	for _, entry := range entries {
 		key := fileKey(pool.ID, entry.Relative)
 		seen[key] = true
-		changed, err := s.store.upsertDiscovered(ctx, pool.ID, entry.Relative, entry.Size, entry.Modified, now)
+		changed, err := s.store.upsertDiscovered(ctx, pool.ID, entry.Relative, entry.Size, entry.Modified, entry.ETag, now)
 		if err != nil {
 			result.failure(err)
 			continue
@@ -523,7 +537,7 @@ func (s *Scanner) scanWebDAVPool(ctx context.Context, pool Pool, now time.Time, 
 	if err := s.store.markDiscoveredMissing(ctx, pool.ID, seen); err != nil {
 		result.failure(err)
 	}
-	if result.Discovered > before.Discovered || result.Failed > before.Failed || len(result.Errors) > len(before.Errors) {
+	if result.Discovered > before.Discovered || result.Renamed > before.Renamed || result.Failed > before.Failed || len(result.Errors) > len(before.Errors) {
 		active[pool.ID] = true
 	}
 }
@@ -633,7 +647,7 @@ func (s *Scanner) scanPools(ctx context.Context, now time.Time, pools []Pool, on
 				return nil
 			}
 			if pool.IndexOnly {
-				changed, err := s.store.upsertDiscovered(ctx, pool.ID, relative, info.Size(), info.ModTime(), now)
+				changed, err := s.store.upsertDiscovered(ctx, pool.ID, relative, info.Size(), info.ModTime(), "", now)
 				if err != nil {
 					result.failure(err)
 				} else if changed {

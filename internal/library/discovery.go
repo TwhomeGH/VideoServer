@@ -3,6 +3,7 @@ package library
 import (
 	"context"
 	"database/sql"
+	"strconv"
 	"time"
 )
 
@@ -13,6 +14,7 @@ type DiscoveredMedia struct {
 	Provider     string `json:"provider"`
 	RelativePath string `json:"relativePath"`
 	Size         int64  `json:"size"`
+	ETag         string `json:"etag,omitempty"`
 	ModifiedAt   int64  `json:"modifiedAt"`
 	FirstSeen    string `json:"firstSeen"`
 	LastSeen     string `json:"lastSeen"`
@@ -25,12 +27,12 @@ type DiscoveredPage struct {
 	PageSize int               `json:"pageSize"`
 }
 
-func (s *Store) upsertDiscovered(ctx context.Context, poolID, relative string, size int64, modified time.Time, at time.Time) (bool, error) {
+func (s *Store) upsertDiscovered(ctx context.Context, poolID, relative string, size int64, modified time.Time, etag string, at time.Time) (bool, error) {
 	key := fileKey(poolID, relative)
 	var existingSize, existingModified int64
-	var status string
-	err := s.db.QueryRowContext(ctx, "SELECT size,modified_at,status FROM discovered_media WHERE pool_id=? AND path_key=?", poolID, key).Scan(&existingSize, &existingModified, &status)
-	if err == nil && status == "found" && existingSize == size && existingModified == modified.UnixMilli() {
+	var existingETag, status string
+	err := s.db.QueryRowContext(ctx, "SELECT size,modified_at,status,etag FROM discovered_media WHERE pool_id=? AND path_key=?", poolID, key).Scan(&existingSize, &existingModified, &status, &existingETag)
+	if err == nil && status == "found" && existingSize == size && existingModified == modified.UnixMilli() && existingETag == etag {
 		return false, nil
 	}
 	if err != nil && err != sql.ErrNoRows {
@@ -41,12 +43,12 @@ func (s *Store) upsertDiscovered(ctx context.Context, poolID, relative string, s
 		now = timestamp()
 	}
 	_, err = s.db.ExecContext(ctx, `
-INSERT INTO discovered_media(pool_id,path_key,relative_path,size,modified_at,first_seen,last_seen,status)
-VALUES(?,?,?,?,?,?,?,'found')
+INSERT INTO discovered_media(pool_id,path_key,relative_path,size,modified_at,etag,first_seen,last_seen,status)
+VALUES(?,?,?,?,?,?,?,?,'found')
 ON CONFLICT(pool_id,path_key) DO UPDATE SET
- relative_path=excluded.relative_path,size=excluded.size,modified_at=excluded.modified_at,
+ relative_path=excluded.relative_path,size=excluded.size,modified_at=excluded.modified_at,etag=excluded.etag,
  last_seen=excluded.last_seen,status='found'`,
-		poolID, key, relative, size, modified.UnixMilli(), now, now)
+		poolID, key, relative, size, modified.UnixMilli(), etag, now, now)
 	return true, err
 }
 
@@ -107,8 +109,87 @@ func (s *Store) markDiscoveredMissing(ctx context.Context, poolID string, seen m
 
 func (s *Store) discoveredItem(ctx context.Context, poolID, relative string) (DiscoveredMedia, error) {
 	var item DiscoveredMedia
-	err := s.db.QueryRowContext(ctx, "SELECT d.pool_id,COALESCE(p.name,''),p.provider,d.relative_path,d.size,d.modified_at,d.first_seen,d.last_seen FROM discovered_media d JOIN pools p ON p.id=d.pool_id WHERE d.pool_id=? AND d.path_key=? AND d.status='found'", poolID, fileKey(poolID, relative)).Scan(&item.PoolID, &item.PoolName, &item.Provider, &item.RelativePath, &item.Size, &item.ModifiedAt, &item.FirstSeen, &item.LastSeen)
+	err := s.db.QueryRowContext(ctx, "SELECT d.pool_id,COALESCE(p.name,''),p.provider,d.relative_path,d.size,d.etag,d.modified_at,d.first_seen,d.last_seen FROM discovered_media d JOIN pools p ON p.id=d.pool_id WHERE d.pool_id=? AND d.path_key=? AND d.status='found'", poolID, fileKey(poolID, relative)).Scan(&item.PoolID, &item.PoolName, &item.Provider, &item.RelativePath, &item.Size, &item.ETag, &item.ModifiedAt, &item.FirstSeen, &item.LastSeen)
 	return item, err
+}
+
+type discoveredIdentity struct {
+	Relative string
+	ETag     string
+	Size     int64
+	Modified int64
+}
+
+func (s *Store) discoveredIdentities(ctx context.Context, poolID string) ([]discoveredIdentity, error) {
+	rows, err := s.db.QueryContext(ctx, "SELECT relative_path,etag,size,modified_at FROM discovered_media WHERE pool_id=? AND status='found'", poolID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	result := []discoveredIdentity{}
+	for rows.Next() {
+		var item discoveredIdentity
+		if err := rows.Scan(&item.Relative, &item.ETag, &item.Size, &item.Modified); err != nil {
+			return nil, err
+		}
+		result = append(result, item)
+	}
+	return result, rows.Err()
+}
+
+func (s *Store) renameRemotePath(ctx context.Context, poolID, oldPath, newPath string) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	oldKey := fileKey(poolID, oldPath)
+	newKey := fileKey(poolID, newPath)
+	if _, err := tx.ExecContext(ctx, "UPDATE discovered_media SET path_key=?,relative_path=?,status='found',last_seen=? WHERE pool_id=? AND path_key=?", newKey, newPath, timestamp(), poolID, oldKey); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, "UPDATE videos SET relative_path=? WHERE pool_id=? AND relative_path=? AND provider='webdav'", newPath, poolID, oldPath); err != nil {
+		return err
+	}
+	if _, err := tx.ExecContext(ctx, "UPDATE import_jobs SET relative_path=? WHERE pool_id=? AND relative_path=? AND source='verify'", newPath, poolID, oldPath); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+func remoteRenameMap(existing []discoveredIdentity, entries []webDAVEntry) map[string]string {
+	existingPaths := map[string]bool{}
+	for _, item := range existing {
+		existingPaths[item.Relative] = true
+	}
+	entryPaths := map[string]bool{}
+	for _, item := range entries {
+		entryPaths[item.Relative] = true
+	}
+	oldByIdentity := map[string][]string{}
+	for _, item := range existing {
+		if item.ETag == "" || entryPaths[item.Relative] {
+			continue
+		}
+		key := item.ETag + "\x00" + strconv.FormatInt(item.Size, 10)
+		oldByIdentity[key] = append(oldByIdentity[key], item.Relative)
+	}
+	newByIdentity := map[string][]string{}
+	for _, item := range entries {
+		if item.ETag == "" || existingPaths[item.Relative] {
+			continue
+		}
+		key := item.ETag + "\x00" + strconv.FormatInt(item.Size, 10)
+		newByIdentity[key] = append(newByIdentity[key], item.Relative)
+	}
+	result := map[string]string{}
+	for key, oldPaths := range oldByIdentity {
+		newPaths := newByIdentity[key]
+		if len(oldPaths) == 1 && len(newPaths) == 1 {
+			result[oldPaths[0]] = newPaths[0]
+		}
+	}
+	return result
 }
 
 func (s *Store) ListDiscovered(ctx context.Context, poolID, query string, page, pageSize int) (DiscoveredPage, error) {
@@ -137,7 +218,7 @@ func (s *Store) ListDiscovered(ctx context.Context, poolID, query string, page, 
 	}
 	offset := (page - 1) * pageSize
 	rows, err := s.db.QueryContext(ctx, `
-SELECT d.pool_id,COALESCE(p.name,''),p.provider,d.relative_path,d.size,d.modified_at,d.first_seen,d.last_seen
+SELECT d.pool_id,COALESCE(p.name,''),p.provider,d.relative_path,d.size,d.etag,d.modified_at,d.first_seen,d.last_seen
 FROM discovered_media d
 JOIN pools p ON p.id=d.pool_id
 LEFT JOIN videos v ON v.pool_id=d.pool_id AND v.relative_path=d.relative_path
@@ -151,7 +232,7 @@ LIMIT ? OFFSET ?`, append(args, pageSize, offset)...)
 	result := DiscoveredPage{Items: []DiscoveredMedia{}, Total: total, Page: page, PageSize: pageSize}
 	for rows.Next() {
 		item := DiscoveredMedia{}
-		if err := rows.Scan(&item.PoolID, &item.PoolName, &item.Provider, &item.RelativePath, &item.Size, &item.ModifiedAt, &item.FirstSeen, &item.LastSeen); err != nil {
+		if err := rows.Scan(&item.PoolID, &item.PoolName, &item.Provider, &item.RelativePath, &item.Size, &item.ETag, &item.ModifiedAt, &item.FirstSeen, &item.LastSeen); err != nil {
 			return DiscoveredPage{}, err
 		}
 		result.Items = append(result.Items, item)

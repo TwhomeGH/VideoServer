@@ -81,6 +81,17 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## WebDAV ETag rename 偵測
+
+2026-10-28 在 `dvn-testing`（image 來源 `821615c5ff3a`）驗證：
+
+- discovery 已保存 OpenList ETag，例如 `"68f0ec30-808c7214"`。
+- 單元測試驗證唯一 ETag+size 會對應 rename，重複 ETag 不合併。
+- store 測試驗證 rename 後 discovered 舊路徑消失、新路徑保留 ETag/size。
+- Monitor 顯示重新命名數；schema v14。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：測試帳號唯讀，沒有 live rename；本機 file ID rename 未做。
+
 ## WebDAV per-pool 自訂 CA
 
 2026-10-28 在 `dvn-testing`（image 來源 `1dc8772d48c5`）驗證：

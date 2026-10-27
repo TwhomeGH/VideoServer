@@ -46,6 +46,12 @@ curl -D - -o NUL -u USER:PASS -H "Range: bytes=0-1023" \
 - 只支援 WebDAV；OpenList 的 SMB 後端仍由 OpenList 自己掛載，DVN 不直接連 SMB。
 - 播放是即時代理，不落地快取；流量經過 Video Node。
 
+## 重新命名
+
+掃描會保存 WebDAV ETag。若舊路徑消失、新路徑出現，而且 ETag 與 size 唯一配對，DVN 會把 discovery 路徑改成新路徑；若該影片已加入 library，也會同步更新 `videos.relative_path`，保留 videoId、描述、hash 與標籤。
+
+配對必須唯一；重複 ETag、空 ETag 或同時多個候選時不會自動合併，會維持 missing／新檔。ETag 只用於身分提示，不是內容 SHA-256。
+
 ## TLS
 
 HTTPS 預設會驗證系統 CA。自簽憑證可在新增 WebDAV 池時勾選「略過 TLS 憑證驗證」，這是明確的不安全 opt-in；UI 會標示，取消後恢復驗證。HTTP 仍可用於區網測試，但卡片會顯示「HTTP · 未加密」。

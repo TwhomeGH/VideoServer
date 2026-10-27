@@ -2,6 +2,44 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 07:05 WebDAV ETag rename 偵測
+
+**類型**: 改善
+
+**檔案**:
+
+- `internal/library/discovery.go`
+- `internal/library/webdav_client.go`
+- `internal/library/scanner.go`
+- `internal/library/store.go`
+- `internal/library/rename_test.go`
+- `web/admin/src/Monitor.tsx`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- WebDAV 檔案 rename 會被當成舊檔 missing + 新檔 found
+- 已加入 library 的遠端影片 rename 後路徑失效
+
+### 修改
+
+- discovered_media schema v14 新增 ETag。
+- WebDAV PROPFIND 解析 `getetag`，掃描保存 ETag。
+- 舊路徑消失／新路徑出現時，若 ETag+size 唯一配對，更新 discovered 路徑。
+- 同步更新 `videos.relative_path`（provider=webdav），保留 videoId、metadata、hash；verify job 路徑也更新。
+- ScanResult 新增 `renamed`，Monitor 顯示重新命名數。
+- 重複 ETag、空 ETag 或多個候選不做自動合併。
+
+### 驗證
+
+- ETag/rename 單元測試：唯一配對會 match，重複 ETag 不會 match。
+- store 測試：update discovered ETag、rename 後舊路徑消失、新路徑保留 ETag/size。
+- 實際 OpenList discovery 已保存 ETag，例如 `"68f0ec30-808c7214"`。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：沒有可寫入的 OpenList 測試帳號可做 live rename；本機 file ID rename 尚未做。
+
+---
+
 ## 2026.10.28 06:30 WebDAV per-pool 自訂 CA
 
 **類型**: 安全性

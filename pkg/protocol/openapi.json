@@ -3023,6 +3023,9 @@
           },
           "discovered": {
             "type": "integer"
+          },
+          "renamed": {
+            "type": "integer"
           }
         },
         "required": [
@@ -3037,7 +3040,8 @@
           "errors",
           "changed",
           "deleted",
-          "discovered"
+          "discovered",
+          "renamed"
         ]
       },
       "ScanStatus": {
@@ -3870,6 +3874,9 @@
             "type": "string"
           },
           "provider": {
+            "type": "string"
+          },
+          "etag": {
             "type": "string"
           }
         },
