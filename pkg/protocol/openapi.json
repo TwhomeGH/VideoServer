@@ -1621,9 +1621,9 @@
     "/api/v1/pools/{id}": {
       "x-dvn-service": "video-node",
       "patch": {
-        "operationId": "setPoolEnabled",
-        "summary": "啟用或停用儲存池",
-        "description": "停用後不掃描、不匯入、不播放；影片索引保留。",
+        "operationId": "updatePool",
+        "summary": "更新儲存池設定",
+        "description": "可更新啟用狀態或掃描政策；掃描政策關閉系統資料夾排除時，使用者需明確接受全盤掃描。",
         "parameters": [
           {
             "name": "id",
@@ -1646,12 +1646,24 @@
                 "properties": {
                   "enabled": {
                     "type": "boolean"
+                  },
+                  "scanExcludeSystem": {
+                    "type": "boolean"
                   }
                 },
-                "required": [
-                  "enabled"
-                ],
-                "additionalProperties": false
+                "additionalProperties": false,
+                "anyOf": [
+                  {
+                    "required": [
+                      "enabled"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "scanExcludeSystem"
+                    ]
+                  }
+                ]
               }
             }
           }
@@ -2358,6 +2370,12 @@
           "lastActivityAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "scanExcludeSystem": {
+            "type": "boolean"
+          },
+          "wholeDisk": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -2365,7 +2383,9 @@
           "name",
           "path",
           "online",
-          "enabled"
+          "enabled",
+          "scanExcludeSystem",
+          "wholeDisk"
         ]
       },
       "ImportJob": {
@@ -2716,6 +2736,12 @@
           },
           "backfillDailyGiB": {
             "type": "integer"
+          },
+          "extraVideoExtensions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         },
         "required": [

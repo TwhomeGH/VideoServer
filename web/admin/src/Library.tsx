@@ -9,7 +9,7 @@ import type { Page } from './navigation';
 import { ImportJobs, type ImportJob } from './ImportJobs';
 import { VideoFilters, defaultVideoFilters } from './VideoFilters';
 
-type Pool = { id: string; name: string; path: string; online: boolean; enabled: boolean; filesystem?: string; volumeId?: string; volumeStatus?: string };
+type Pool = { id: string; name: string; path: string; online: boolean; enabled: boolean; scanExcludeSystem: boolean; wholeDisk: boolean; filesystem?: string; volumeId?: string; volumeStatus?: string };
 type Video = VideoMetadata & {
   id: string; title: string; poolId: string; size: number; fileHash: string;
   available: boolean; unavailableReason?: string; importedAt: string;
@@ -69,6 +69,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
   const [editDraft, setEditDraft] = useState<VideoMetadata>(emptyMetadata);
   const [selected, setSelected] = useState<Video | null>(null);
   const [filters, setFilters] = useState(defaultVideoFilters);
+  const [policyConfirm, setPolicyConfirm] = useState<Pool | null>(null);
   const [videoPage, setVideoPage] = useState(1);
   const refreshVersion = useRef(0);
   const queryString = page === 'monitor' || page === 'api' || page === 'jobs' ? '' : page === 'videos'
@@ -219,7 +220,19 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
                   : pool.volumeStatus === 'unsupported' ? t('library.volumeNotApplicable')
                     : pool.volumeStatus === 'unbound' ? t('library.volumeUnbound') : t('common.notProvided')}</dd></div>
                 <div><dt>{t('library.poolScanLabel')}</dt><dd>{scanInfo && <><ScanTierBadge tier={scanInfo.tier} lastActivityAt={scanInfo.lastActivityAt} /> </>}{scanLabel}</dd></div>
+                <div><dt>{t('library.scanPolicy')}</dt><dd>
+                  <label className="checkbox-label"><input type="checkbox" checked={pool.scanExcludeSystem} disabled={busy}
+                    onChange={() => {
+                      if (pool.scanExcludeSystem) setPolicyConfirm(pool);
+                      else void submit(async () => { await request<Pool>(`pools/${pool.id}`, { scanExcludeSystem: true }, 'PATCH'); });
+                    }} />{t('library.scanExcludeSystem')}</label>
+                  <p className="muted">{t('library.scanExcludeSystemHint')}</p>
+                  {pool.wholeDisk && <p className="muted">{t('library.wholeDiskWarning')}</p>}
+                </dd></div>
               </dl>
+              {policyConfirm?.id === pool.id && <div className="confirm-panel"><p>{t('library.scanExcludeSystemConfirm')}</p>
+                <div className="button-row"><button type="button" disabled={busy} onClick={() => { setPolicyConfirm(null); void submit(async () => { await request<Pool>(`pools/${pool.id}`, { scanExcludeSystem: false }, 'PATCH'); }); }}>{t('library.scanExcludeSystemConfirmButton')}</button>
+                  <button type="button" disabled={busy} onClick={() => setPolicyConfirm(null)}>{t('common.cancel')}</button></div></div>}
               <div className="pool-actions">
                 {pool.volumeId && <span className="muted">{t('library.volumeTracked')}</span>}
                 <button type="button" disabled={busy || data.scan?.running || data.scan?.queued || !pool.enabled || !pool.online}

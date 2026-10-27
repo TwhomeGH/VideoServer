@@ -78,7 +78,7 @@ func (s *Store) importVideo(ctx context.Context, poolID, relative, title string,
 	if err != nil {
 		return v, err
 	}
-	if !supportedVideo(path) {
+	if !s.supportedVideo(path) {
 		return v, fmt.Errorf("不支援的影片副檔名")
 	}
 	file, err := os.Open(path)

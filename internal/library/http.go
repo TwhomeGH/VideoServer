@@ -150,24 +150,42 @@ func (s *Store) Register(mux *http.ServeMux) {
 	}
 	mux.HandleFunc("PATCH /api/v1/pools/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
-			Enabled *bool `json:"enabled"`
+			Enabled           *bool `json:"enabled"`
+			ScanExcludeSystem *bool `json:"scanExcludeSystem"`
 		}
 		if !decode(w, r, &request) {
 			return
 		}
-		if request.Enabled == nil {
-			failure(w, 400, "請提供 enabled")
+		if request.Enabled == nil && request.ScanExcludeSystem == nil {
+			failure(w, 400, "請提供 enabled 或 scanExcludeSystem")
 			return
 		}
-		pool, err := s.SetPoolEnabled(r.PathValue("id"), *request.Enabled)
-		if errors.Is(err, sql.ErrNoRows) {
-			failure(w, 404, "找不到儲存池")
-			return
+		id := r.PathValue("id")
+		var pool Pool
+		var err error
+		if request.Enabled != nil {
+			pool, err = s.SetPoolEnabled(id, *request.Enabled)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					failure(w, 404, "找不到儲存池")
+				} else {
+					failure(w, 500, "無法更新儲存池狀態")
+				}
+				return
+			}
 		}
-		if err != nil {
-			failure(w, 500, "無法更新儲存池狀態")
-			return
+		if request.ScanExcludeSystem != nil {
+			pool, err = s.SetPoolScanExcludeSystem(id, *request.ScanExcludeSystem)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					failure(w, 404, "找不到儲存池")
+				} else {
+					failure(w, 500, "無法更新掃描政策")
+				}
+				return
+			}
 		}
+		s.publish("scan")
 		respond(w, 200, pool)
 	})
 	mux.HandleFunc("POST /api/v1/videos/import", func(w http.ResponseWriter, r *http.Request) {

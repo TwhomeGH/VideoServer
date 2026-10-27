@@ -2,7 +2,7 @@
 
 可自行部署的分散式影片網路。Go 後端，React + Vite + TypeScript 管理介面。
 
-目前提供三服務基礎與 Video Node 的儲存池、影片匯入索引及原始檔播放；管理頁已有單一管理員登入、設定編輯與重新啟動流程。管理介面提供繁體中文、简体中文與 English，首次開啟會依瀏覽器語言選擇，也可在頁首切換；翻譯流程見 [本地化](Docs/localization.md)。轉碼、Central 索引及遠端 Worker 尚未實作。
+目前提供三服務基礎與 Video Node 的儲存池、影片匯入索引及原始檔播放；管理頁已有單一管理員登入、設定編輯與重新啟動流程。管理介面提供繁體中文、简体中文與 English，首次開啟會依瀏覽器語言選擇，也可在頁首切換；翻譯流程見 [本地化](Docs/localization.md)。轉碼、Central 索引及遠端 Worker 尚未實作。未來的 [Image／Post 內容節點](Docs/content-nodes.md) 會維持獨立服務與資料模型。
 
 [API 與協定文件](Docs/api/README.md)說明 OpenAPI、版本選擇與能力公告。登入後開啟「API 文件與測試」，可使用 Swagger UI 查閱參數、範例並直接測試目前服務；工作、掃描與設定變更已透過 SSE 即時通知，輪詢保留為降級機制。
 
@@ -67,7 +67,7 @@ Vite 開發介面同樣監聽所有 IPv4 介面，其 API 代理仍透過本機�
 
 預設索引與持久 NodeID 保存在 `data/library.sqlite`，可由 `dataDirectory` 調整；備份時請先停止服務再完整備份資料目錄。不要讓不同 Video Node 共用同一資料目錄。
 儲存池離線會保留影片紀錄。原始檔案大小或修改時間改變後，該副本會標示不可用，以免提供失準的雜湊與內容。
-目前支援 mp4、webm、mkv、mov、avi、m4v 副檔名，透過背景工作執行 FFprobe 中繼資料檢查與 SHA-256 計算。
+目前支援 mp4、webm、mkv、mov、avi、m4v 等常見影片容器；實際可用格式會依 FFprobe demuxer 驗證，其他影片格式可用 `extraVideoExtensions` 擴充。`.ts`／`.mts` 預設關閉，開啟時會先做 MPEG-TS 封包檢查，避免把 TypeScript 原始碼當成影片。
 在「影片工作」查看進度、錯誤及重試；重啟後會恢復未完成工作。既有影片若缺少技術資訊，可在設定開啟 `autoBackfill`（預設關閉）由背景補齊；只處理沒有 reprobe 記錄的影片，佇列閒置時一次一筆，並受 SHA-256 讀取上限限制。也可按「重新讀取影片資訊」手動補齊。工作頁與監看頁會顯示下次掃描／補齊倒數與候選數。詳見[背景匯入說明](Docs/import-processing.md)。[工作監看](Docs/monitoring.md)整合工作、掃描、程序 CPU、Go 記憶體與 HTTP 流量。影片庫已支援[分頁與搜尋篩選](Docs/video-library.md)；刪除、重新索引與轉碼仍待實作。
 已註冊儲存池預設每 30 秒自動檢查新增影片，等待至少 10 秒穩定觀察後背景匯入；儲存池頁面可手動排程與查看結果。已有影片不重複匯入，不會覆蓋你填寫的描述。詳見 [掃描設定](Docs/configuration.md)。
 

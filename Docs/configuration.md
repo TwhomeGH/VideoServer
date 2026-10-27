@@ -38,7 +38,9 @@ Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的
 ## 管理頁設定編輯
 
 主機 JSON 是唯讀基準；管理頁只寫入資料目錄的 `<dataDirectory>/config.override.json`，因此 Docker 的單檔唯讀掛載不需要改成可寫。測試環境的基準檔是 `testing/local/config/video-node.json`，掛載到容器 `/app/config.json`；Docker 內的覆寫檔則是資料卷中的 `/data/config.override.json`。網頁「設定覆寫（進階）」顯示實際的基準檔與覆寫檔路徑。
-可編輯欄位是 host、preferredPort、fallbackPorts、rememberLastSuccessfulPort、autoScan、scanIntervalSeconds、scanIdleMaxSeconds、fileStableSeconds、autoBackfill、backfillIntervalSeconds、backfillDailyLimit、backfillDailyGiB、hashLimitMiBps。dataDirectory、webDirectory 與基準檔路徑只顯示，不能從網頁變更。時間欄位在網頁以「數值＋秒／分／小時／天」編輯，底層與 API 仍使用整數秒。
+可編輯欄位是 host、preferredPort、fallbackPorts、rememberLastSuccessfulPort、autoScan、scanIntervalSeconds、scanIdleMaxSeconds、fileStableSeconds、autoBackfill、backfillIntervalSeconds、backfillDailyLimit、backfillDailyGiB、hashLimitMiBps。dataDirectory、webDirectory、`extraVideoExtensions` 與基準檔路徑只顯示或由基準 JSON 設定，不能從網頁變更。時間欄位在網頁以「數值＋秒／分／小時／天」編輯，底層與 API 仍使用整數秒。
+
+`extraVideoExtensions` 是選填的基底設定陣列，例如 `[".ts", ".mts"]`；啟動時會查詢 `ffprobe -formats` 確認 demuxer，`.ts`／`.mts` 還會再檢查 MPEG-TS 封包，避免 TypeScript 誤判。FFmpeg 能解析不代表瀏覽器可直接播放；轉碼仍是後續功能。
 儲存時只記錄與基準不同的欄位；欄位改回基準值會從覆寫檔移除。按「清除設定覆寫」會刪除整個 `<dataDirectory>/config.override.json`，回到基準設定檔；這只影響設定，不會修改基準檔、影片、儲存池或自動補齊今日用量。
 
 程序啟動時先讀基準 JSON，再套用覆寫並重新驗證；未知欄位、無效端口或無效秒數會讓啟動失敗。管理頁儲存後會顯示「需重新啟動」，按下確認後服務以 exit code 75 結束，交由 Docker `restart: unless-stopped`、systemd `Restart=on-failure` 或 `npm run dev` 的監督流程重新啟動並套用。直接手動執行二進位且沒有監督程式時，服務會停止，需自行重新啟動。
@@ -46,6 +48,8 @@ Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的
 ## 自動排程與背景負載
 
 `autoScan` 控制目錄 metadata 掃描（`WalkDir`／`Stat`），不讀影片內容；`scanIntervalSeconds` 是熱池的基礎間隔。每個儲存池依最後活動時間分級：熱（1 小時內）用基礎間隔、暖前段（1–6 小時）5 分鐘、暖後段（6–24 小時）15 分鐘、冷（1–7 天）30 分鐘、休眠（超過 7 天）用 `scanIdleMaxSeconds`（預設 21600 秒／6 小時，可調到 86400 秒／24 小時）。有新檔／變更／待穩定檔案、手動掃描或 watcher 事件時回到熱；只掃描到期的池，不會因為一個池活躍就讓全部池一直付出完整 traversal。`last_activity_at` 存在資料庫，重啟後仍保留分級；掃描狀態本身在記憶體。
+
+每個儲存池預設 `scanExcludeSystem=true`，掃描會跳過 Windows、Program Files、ProgramData、AppData、Recycle Bin、System Volume Information、隱藏目錄、`node_modules`、`.git` 等；關閉前會要求確認，關閉後才進行真正的全盤掃描。新增儲存池若是磁碟根目錄（例如 `C:\`），介面會顯示全盤掃描警告。Docker 內只能註冊容器內 target，不能直接把主機 `C:\` 當成路徑。
 
 儲存池頁可對單一池按「掃描此池」，對應 `POST /api/v1/pools/{id}/scan`；完成後會更新該池活動時間並回到熱級。全域「立即掃描新增影片」會掃描所有池並重置分級。真正大量讀取的是匯入／重新探測的 FFprobe＋SHA-256。
 

@@ -462,5 +462,11 @@
   "scanTier.legendColdRest": "1–7 天 30 分",
   "scanTier.legendDormantRest": ">7 天",
   "settings.liveChanged": "設定已在其他分頁更新；目前表單有未儲存變更。",
-  "settings.liveReload": "重新載入設定"
+  "settings.liveReload": "重新載入設定",
+  "library.scanPolicy": "掃描政策",
+  "library.scanExcludeSystem": "排除系統資料夾（建議）",
+  "library.scanExcludeSystemHint": "關閉後會掃描系統、程式、快取與隱藏目錄；僅在確定要全盤掃描時關閉。",
+  "library.wholeDiskWarning": "這是磁碟根目錄；全盤掃描可能包含大量系統、快取或遊戲影片。",
+  "library.scanExcludeSystemConfirm": "關閉系統資料夾排除後，掃描會包含 Windows、Program Files、AppData、隱藏目錄與快取。確定要開啟全盤掃描嗎？",
+  "library.scanExcludeSystemConfirmButton": "確定關閉排除"
 }

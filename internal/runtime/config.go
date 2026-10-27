@@ -16,23 +16,24 @@ import (
 // Config 定義本機監聽與靜態管理頁面的位置。
 // 初版採 JSON，避免尚未使用的設定格式引入外部相依。
 type Config struct {
-	Host                       string `json:"host"`
-	PreferredPort              int    `json:"preferredPort"`
-	FallbackPorts              []int  `json:"fallbackPorts"`
-	WebDirectory               string `json:"webDirectory"`
-	DataDirectory              string `json:"dataDirectory"`
-	AutoScan                   bool   `json:"autoScan"`
-	ScanIntervalSeconds        int    `json:"scanIntervalSeconds"`
-	ScanIdleMaxSeconds         int    `json:"scanIdleMaxSeconds"`
-	FileStableSeconds          int    `json:"fileStableSeconds"`
-	AutoBackfill               bool   `json:"autoBackfill"`
-	BackfillIntervalSeconds    int    `json:"backfillIntervalSeconds"`
-	BackfillDailyLimit         int    `json:"backfillDailyLimit"`
-	BackfillDailyGiB           int    `json:"backfillDailyGiB"`
-	HashLimitMiBps             int    `json:"hashLimitMiBps"`
-	RememberLastSuccessfulPort bool   `json:"rememberLastSuccessfulPort"`
-	FFprobePath                string `json:"ffprobePath"`
-	ProbeTimeoutSeconds        int    `json:"probeTimeoutSeconds"`
+	Host                       string   `json:"host"`
+	PreferredPort              int      `json:"preferredPort"`
+	FallbackPorts              []int    `json:"fallbackPorts"`
+	WebDirectory               string   `json:"webDirectory"`
+	DataDirectory              string   `json:"dataDirectory"`
+	AutoScan                   bool     `json:"autoScan"`
+	ScanIntervalSeconds        int      `json:"scanIntervalSeconds"`
+	ScanIdleMaxSeconds         int      `json:"scanIdleMaxSeconds"`
+	FileStableSeconds          int      `json:"fileStableSeconds"`
+	AutoBackfill               bool     `json:"autoBackfill"`
+	BackfillIntervalSeconds    int      `json:"backfillIntervalSeconds"`
+	BackfillDailyLimit         int      `json:"backfillDailyLimit"`
+	BackfillDailyGiB           int      `json:"backfillDailyGiB"`
+	HashLimitMiBps             int      `json:"hashLimitMiBps"`
+	RememberLastSuccessfulPort bool     `json:"rememberLastSuccessfulPort"`
+	FFprobePath                string   `json:"ffprobePath"`
+	ProbeTimeoutSeconds        int      `json:"probeTimeoutSeconds"`
+	ExtraVideoExtensions       []string `json:"extraVideoExtensions,omitempty"`
 }
 
 // LoadConfig 讀取 path 的設定；空路徑回傳指定 port、所有 IPv4 介面的預設值。

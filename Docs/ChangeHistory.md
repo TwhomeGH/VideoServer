@@ -2,6 +2,51 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 03:00 儲存池安全掃描與影片格式能力
+
+**類型**: 功能
+
+**檔案**:
+
+- `internal/media/formats.go`
+- `internal/media/formats_test.go`
+- `internal/library/store.go`
+- `internal/library/scanner.go`
+- `internal/library/jobs.go`
+- `internal/library/videos.go`
+- `internal/library/http.go`
+- `internal/library/scan_policy_test.go`
+- `internal/library/entry_windows.go`
+- `internal/library/entry_other.go`
+- `Docs/content-nodes.md`
+- `internal/runtime/config.go`
+- `internal/runtime/server.go`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/lang/`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- 全盤池沒有系統目錄排除，`C:\` 會掃到 Windows、AppData、快取與程式目錄
+- 影片格式清單寫死，未參考 FFprobe demuxer；`.ts`／`.mts` 也與 TypeScript 衝突
+
+### 修改
+
+- 新增每池 `scanExcludeSystem`，預設開啟；安全排除 Windows、Program Files、ProgramData、AppData、Recycle Bin、隱藏目錄、`node_modules`、`.git` 等。
+- 儲存池 API 回傳 `scanExcludeSystem`、`wholeDisk`；PATCH 可切換，關閉前 UI 二次確認；磁碟根目錄顯示全盤警告。
+- 掃描時排除目錄直接 `SkipDir`，不只過濾檔案。
+- 新增影片格式 allowlist：啟動時 `ffprobe -formats` 驗證 demuxer；支援 `extraVideoExtensions` 基底設定。
+- 預設加入常見容器；`.ts`／`.mts` 預設關閉，額外開啟時做 188／192-byte MPEG-TS sync 檢查，避免 TypeScript。
+- 手動匯入與掃描共用同一格式能力；FFprobe 仍是最終驗證。
+
+### 驗證
+
+- 單位測試驗證系統路徑排除、掃描政策切換、TS／MTS 嗅探與 TypeScript 拒絕。
+- 測試站顯示預設排除、`wholeDisk=false`；PATCH 可切換並恢復。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
+---
+
 ## 2026.10.28 01:30 SSE 工作／掃描／設定事件與快照同步
 
 **類型**: 功能

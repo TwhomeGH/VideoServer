@@ -462,5 +462,11 @@
   "scanTier.legendColdRest": "1–7 天 30 分",
   "scanTier.legendDormantRest": ">7 天",
   "settings.liveChanged": "设置已在其他分页更新；目前表单有未保存变更。",
-  "settings.liveReload": "重新加载设置"
+  "settings.liveReload": "重新加载设置",
+  "library.scanPolicy": "扫描政策",
+  "library.scanExcludeSystem": "排除系统文件夹（建议）",
+  "library.scanExcludeSystemHint": "关闭后会扫描系统、程序、缓存与隐藏目录；仅在确定要全盘扫描时关闭。",
+  "library.wholeDiskWarning": "这是磁盘根目录；全盘扫描可能包含大量系统、缓存或游戏视频。",
+  "library.scanExcludeSystemConfirm": "关闭系统文件夹排除后，扫描会包含 Windows、Program Files、AppData、隐藏目录与缓存。确定要打开全盘扫描吗？",
+  "library.scanExcludeSystemConfirmButton": "确定关闭排除"
 }

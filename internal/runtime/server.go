@@ -22,6 +22,7 @@ import (
 	"github.com/TwhomeGH/VideoServer/internal/diagnostics"
 	"github.com/TwhomeGH/VideoServer/internal/events"
 	"github.com/TwhomeGH/VideoServer/internal/library"
+	"github.com/TwhomeGH/VideoServer/internal/media"
 	"github.com/TwhomeGH/VideoServer/pkg/buildinfo"
 	"github.com/TwhomeGH/VideoServer/pkg/protocol"
 )
@@ -160,6 +161,11 @@ func Main(service string, port int) int {
 			return 1
 		}
 		defer store.Close()
+		formats := media.LoadVideoFormats(context.Background(), config.FFprobePath, config.ExtraVideoExtensions)
+		for _, warning := range formats.Warnings() {
+			logger.Warn("影片格式能力警告", "warning", warning)
+		}
+		store.SetVideoFormats(formats)
 		queue, err = library.NewImportQueue(store, config.FFprobePath, time.Duration(config.ProbeTimeoutSeconds)*time.Second, logger)
 		if err != nil {
 			logger.Error("初始化匯入佇列失敗", "error", err)

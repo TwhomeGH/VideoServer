@@ -345,6 +345,29 @@ func (s *Scanner) updateNextLocked(pools []Pool) {
 	s.status.NextRunAt = next.UTC().Format(time.RFC3339Nano)
 }
 
+var systemExcludedNames = map[string]bool{
+	"windows": true, "program files": true, "program files (x86)": true,
+	"programdata": true, "$recycle.bin": true, "system volume information": true,
+	"recovery": true, "perflogs": true, "node_modules": true, ".git": true,
+	".svn": true, ".hg": true, "proc": true, "sys": true, "dev": true,
+	"run": true, "lost+found": true, "appdata": true,
+}
+
+func shouldExcludeSystemPath(relative string) bool {
+	clean := filepath.Clean(relative)
+	if clean == "." || clean == "" || clean == string(filepath.Separator) {
+		return false
+	}
+	parts := strings.Split(filepath.ToSlash(clean), "/")
+	for _, part := range parts {
+		name := strings.ToLower(part)
+		if strings.HasPrefix(name, ".") || systemExcludedNames[name] {
+			return true
+		}
+	}
+	return false
+}
+
 func scanTier(now, lastActivity time.Time, base, idleMax time.Duration) (string, time.Duration) {
 	if base <= 0 {
 		base = 30 * time.Second
@@ -384,15 +407,6 @@ func (r *ScanResult) failure(err error) {
 	r.Failed++
 	if len(r.Errors) < 20 {
 		r.Errors = append(r.Errors, err.Error())
-	}
-}
-
-func supportedVideo(path string) bool {
-	switch strings.ToLower(filepath.Ext(path)) {
-	case ".mp4", ".webm", ".mkv", ".mov", ".avi", ".m4v":
-		return true
-	default:
-		return false
 	}
 }
 
@@ -506,12 +520,33 @@ func (s *Scanner) scanPools(ctx context.Context, now time.Time, pools []Pool, on
 				return nil
 			}
 			// 不跟隨符號連結，避免自動掃描越過管理員註冊的池邊界。
-			if entry.IsDir() || entry.Type()&os.ModeSymlink != 0 || !supportedVideo(path) {
+			if entry.Type()&os.ModeSymlink != 0 || isReparsePoint(path) {
+				if entry.IsDir() {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if pool.ScanExcludeSystem && isHiddenOrSystem(path) {
+				if entry.IsDir() {
+					return filepath.SkipDir
+				}
 				return nil
 			}
 			relative, err := filepath.Rel(root, path)
 			if err != nil {
 				result.failure(err)
+				return nil
+			}
+			if entry.IsDir() {
+				if pool.ScanExcludeSystem && shouldExcludeSystemPath(relative) {
+					return filepath.SkipDir
+				}
+				return nil
+			}
+			if pool.ScanExcludeSystem && shouldExcludeSystemPath(relative) {
+				return nil
+			}
+			if !s.store.supportedVideo(path) {
 				return nil
 			}
 			info, err := entry.Info()

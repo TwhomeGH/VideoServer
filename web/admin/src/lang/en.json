@@ -462,5 +462,11 @@
   "scanTier.legendColdRest": "1–7d 30m",
   "scanTier.legendDormantRest": ">7d",
   "settings.liveChanged": "Settings changed in another tab; this form has unsaved edits.",
-  "settings.liveReload": "Reload settings"
+  "settings.liveReload": "Reload settings",
+  "library.scanPolicy": "Scan policy",
+  "library.scanExcludeSystem": "Exclude system folders (recommended)",
+  "library.scanExcludeSystemHint": "Turning this off scans system, program, cache, and hidden folders; only disable for an intentional whole-disk scan.",
+  "library.wholeDiskWarning": "This is a disk root; a full scan may include many system, cache, or game videos.",
+  "library.scanExcludeSystemConfirm": "Disabling system-folder exclusions scans Windows, Program Files, AppData, hidden folders, and caches. Enable whole-disk scanning?",
+  "library.scanExcludeSystemConfirmButton": "Disable exclusions"
 }
