@@ -293,7 +293,7 @@
   "library.scanBackoff": "Tiered scan: hot {hot}, warm 5 min, cold 30 min, dormant {dormant}.",
   "library.scanPool": "Scan this pool",
   "library.poolScanLabel": "Scan",
-  "library.poolScanNext": "Next in about {duration} ({tier}, interval {interval})",
+  "library.poolScanNext": "Next in about {duration} (interval {interval})",
   "library.poolScanWaiting": "Waiting for first scan",
   "library.poolScanDisabled": "Automatic scan off",
   "library.poolScanOffline": "Offline; not scanning",
@@ -448,5 +448,6 @@
   "duration.unitSeconds": "seconds",
   "duration.unitMinutes": "minutes",
   "duration.unitHours": "hours",
-  "duration.unitDays": "days"
+  "duration.unitDays": "days",
+  "scanTier.legend": "Hot: under 1h · Warm: 1–24h · Cold: 1–7d · Dormant: over 7d"
 }

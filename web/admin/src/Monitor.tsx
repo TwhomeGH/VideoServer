@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { api, jsonRequest } from './api';
 import { useI18n } from './i18n';
 import { formatDuration } from './format';
+import { ScanTierBadge } from './ScanTierBadge';
 import type { ImportJob } from './ImportJobs';
 import { JobProgress } from './JobProgress';
 
@@ -78,8 +79,6 @@ export function Monitor() {
     const translated = t(key);
     return translated === key ? phase : translated;
   };
-  const tierLabel = (tier?: string) => tier === 'hot' ? t('scanTier.hot') : tier === 'warm' ? t('scanTier.warm')
-    : tier === 'cold' ? t('scanTier.cold') : tier === 'dormant' ? t('scanTier.dormant') : t('common.notProvided');
   const resetUsage = async () => {
     setUsageBusy(true);
     setUsageNotice('');
@@ -152,10 +151,11 @@ export function Monitor() {
                 {data.tasks.scan.pools?.length
                   ? data.tasks.scan.pools.map(item => <li key={item.poolId}>
                     <strong>{item.name || item.poolId}</strong>
-                    <span className="muted">{tierLabel(item.tier)}{t('common.dot')}{t('monitor.scanPoolNext', { duration: formatDuration(item.nextRunInSeconds, t) })}{t('common.dot')}{t('monitor.scanPoolBackoff', { duration: formatDuration(item.backoffSeconds, t) })}</span>
+                    <span className="monitor-scan-meta"><ScanTierBadge tier={item.tier} /><span className="muted">{t('monitor.scanPoolNext', { duration: formatDuration(item.nextRunInSeconds, t) })}{t('common.dot')}{t('monitor.scanPoolBackoff', { duration: formatDuration(item.backoffSeconds, t) })}</span></span>
                   </li>)
                   : <li className="muted">{t('monitor.scanNoPools')}</li>}
               </ul>
+              <p className="muted scan-tier-legend">{t('scanTier.legend')}</p>
             </section>
             <section><h2>{t('monitor.backfillTitle')}</h2>
               {data.tasks.backfill.enabled

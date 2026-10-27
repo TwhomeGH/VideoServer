@@ -293,7 +293,7 @@
   "library.scanBackoff": "分級掃描：熱 {hot}、暖 5 分、冷 30 分、休眠 {dormant}。",
   "library.scanPool": "掃描此池",
   "library.poolScanLabel": "掃描",
-  "library.poolScanNext": "下次約 {duration}後（{tier}，間隔 {interval}）",
+  "library.poolScanNext": "下次約 {duration}後（間隔 {interval}）",
   "library.poolScanWaiting": "等待首次掃描",
   "library.poolScanDisabled": "不自動掃描",
   "library.poolScanOffline": "離線，暫不掃描",
@@ -448,5 +448,6 @@
   "duration.unitSeconds": "秒",
   "duration.unitMinutes": "分",
   "duration.unitHours": "小時",
-  "duration.unitDays": "天"
+  "duration.unitDays": "天",
+  "scanTier.legend": "熱：1 小時內 · 暖：1–24 小時 · 冷：1–7 天 · 休眠：超過 7 天"
 }

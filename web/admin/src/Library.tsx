@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from './api';
 import { useI18n } from './i18n';
 import { formatDuration } from './format';
+import { ScanTierBadge } from './ScanTierBadge';
 import { Attribution, emptyMetadata, MetadataFields, type VideoMetadata } from './VideoMetadata';
 import type { Page } from './navigation';
 import { ImportJobs, type ImportJob } from './ImportJobs';
@@ -192,11 +193,9 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
             const status = !pool.enabled ? t('library.disabled') : pool.online ? t('library.online') : t('library.offline');
             const statusClass = !pool.enabled ? 'disabled' : pool.online ? 'online' : 'offline';
             const scanInfo = data.scan?.pools?.find(item => item.poolId === pool.id);
-            const tierLabel = (tier?: string) => tier === 'hot' ? t('scanTier.hot') : tier === 'warm' ? t('scanTier.warm')
-              : tier === 'cold' ? t('scanTier.cold') : tier === 'dormant' ? t('scanTier.dormant') : t('common.notProvided');
             const scanLabel = !pool.enabled ? t('library.poolScanDisabled')
               : !pool.online ? t('library.poolScanOffline')
-                : scanInfo ? t('library.poolScanNext', { duration: formatDuration(scanInfo.nextRunInSeconds, t), interval: formatDuration(scanInfo.backoffSeconds, t), tier: tierLabel(scanInfo.tier) })
+                : scanInfo ? t('library.poolScanNext', { duration: formatDuration(scanInfo.nextRunInSeconds, t), interval: formatDuration(scanInfo.backoffSeconds, t) })
                   : t('library.poolScanWaiting');
             return <li key={pool.id} className="pool-card">
               <div className="pool-head">
@@ -210,7 +209,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
                   ? <code className="volume-id" title={pool.volumeId}>{pool.volumeId}</code>
                   : pool.volumeStatus === 'unsupported' ? t('library.volumeNotApplicable')
                     : pool.volumeStatus === 'unbound' ? t('library.volumeUnbound') : t('common.notProvided')}</dd></div>
-                <div><dt>{t('library.poolScanLabel')}</dt><dd>{scanLabel}</dd></div>
+                <div><dt>{t('library.poolScanLabel')}</dt><dd>{scanInfo && <><ScanTierBadge tier={scanInfo.tier} /> </>}{scanLabel}</dd></div>
               </dl>
               <div className="pool-actions">
                 {pool.volumeId && <span className="muted">{t('library.volumeTracked')}</span>}
@@ -222,6 +221,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
               </div>
             </li>;
           })}</ul>
+          <p className="muted scan-tier-legend">{t('scanTier.legend')}</p>
         </section>
         <section><h2>{t('library.addPoolTitle')}</h2><p className="muted">{t('library.addPoolIntro')}</p>
           <form onSubmit={event => { event.preventDefault(); void submit(async () => {

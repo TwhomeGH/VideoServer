@@ -1,6 +1,6 @@
-:root { font-family: system-ui, sans-serif; color-scheme: light; --bg:#f1f4f8; --surface:#fff; --text:#172434; --muted:#576778; --line:#dbe2ea; --accent:#086c58; --warn:#b45309; --danger:#b91c1c; }
-:root[data-theme="dark"] { color-scheme:dark; --bg:#111820; --surface:#1c2632; --text:#edf3f9; --muted:#a5b5c6; --line:#354355; --accent:#75dfbd; --warn:#fbbf24; --danger:#f87171; }
-@media(prefers-color-scheme:dark) { :root[data-theme="system"] { color-scheme:dark; --bg:#111820; --surface:#1c2632; --text:#edf3f9; --muted:#a5b5c6; --line:#354355; --accent:#75dfbd; --warn:#fbbf24; --danger:#f87171; } }
+:root { font-family: system-ui, sans-serif; color-scheme: light; --bg:#f1f4f8; --surface:#fff; --text:#172434; --muted:#576778; --line:#dbe2ea; --accent:#086c58; --warn:#b45309; --danger:#b91c1c; --tier-hot:#086c58; --tier-warm:#b45309; --tier-cold:#2563eb; }
+:root[data-theme="dark"] { color-scheme:dark; --bg:#111820; --surface:#1c2632; --text:#edf3f9; --muted:#a5b5c6; --line:#354355; --accent:#75dfbd; --warn:#fbbf24; --danger:#f87171; --tier-hot:#75dfbd; --tier-warm:#fbbf24; --tier-cold:#93c5fd; }
+@media(prefers-color-scheme:dark) { :root[data-theme="system"] { color-scheme:dark; --bg:#111820; --surface:#1c2632; --text:#edf3f9; --muted:#a5b5c6; --line:#354355; --accent:#75dfbd; --warn:#fbbf24; --danger:#f87171; --tier-hot:#75dfbd; --tier-warm:#fbbf24; --tier-cold:#93c5fd; } }
 * { box-sizing:border-box; }
 body { margin:0; background:var(--bg); color:var(--text); }
 main { max-width:1200px; margin:56px auto; padding:0 24px; }
@@ -49,6 +49,13 @@ dd { margin:0; overflow-wrap:anywhere; }
 .state-badge.offline { border-color:var(--warn); color:var(--warn); }
 .state-badge.disabled { border-color:var(--line); color:var(--muted); }
 .state-badge.failed { border-color:var(--danger); color:var(--danger); }
+.tier-badge { display:inline-flex; align-items:center; gap:4px; border:1px solid currentColor; border-radius:999px; padding:2px 8px; font-size:.72rem; line-height:1.4; white-space:nowrap; }
+.tier-badge::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+.tier-badge.hot { color:var(--tier-hot); }
+.tier-badge.warm { color:var(--tier-warm); }
+.tier-badge.cold { color:var(--tier-cold); }
+.tier-badge.dormant { color:var(--muted); }
+.scan-tier-legend { margin:10px 0 0; font-size:.78rem; }
 .confirm-panel { display:grid; gap:12px; margin-top:16px; padding:16px; border:1px solid var(--line); border-radius:10px; background:var(--bg); }
 .confirm-panel p { margin:0; }
 .notice { color:var(--accent); }
@@ -173,9 +180,10 @@ body:has(dialog[open]) { overflow:hidden; }
 .monitor-scans li:last-child { border-bottom:0; }
 .monitor-scans strong { overflow-wrap:anywhere; }
 .monitor-scans span { text-align:right; }
+.monitor-scan-meta { display:flex; align-items:center; justify-content:flex-end; gap:8px; flex-wrap:wrap; }
 @media(min-width:1000px) { .monitor-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media(max-width:900px) { .monitor-dashboard { grid-template-columns:1fr; } }
-@media(max-width:500px) { .monitor-scans li { grid-template-columns:1fr; } .monitor-scans span { text-align:left; white-space:normal; } }
+@media(max-width:500px) { .monitor-scans li { grid-template-columns:1fr; } .monitor-scans span { text-align:left; white-space:normal; } .monitor-scan-meta { justify-content:flex-start; } }
 .metric-value { font-size: 1.7rem; font-weight: 700; margin-block: .5rem; }
 .monitor-trend { display: block; width: 100%; height: 65px; }
 .monitor-jobs { list-style: none; padding: 0; display: grid; gap: 1rem; }
