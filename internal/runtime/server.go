@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
+	_ "time/tzdata"
 
 	"github.com/TwhomeGH/VideoServer/internal/auth"
 	"github.com/TwhomeGH/VideoServer/internal/diagnostics"

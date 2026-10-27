@@ -1851,6 +1851,65 @@
           "影片庫與儲存池"
         ]
       }
+    },
+    "/api/v1/backfill/usage/reset": {
+      "x-dvn-service": "video-node",
+      "post": {
+        "operationId": "resetBackfillUsage",
+        "summary": "重設今日自動補齊用量",
+        "description": "清空今天的自動補齊部數與容量用量；不影響其他日期或既有工作。",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "confirm": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "confirm"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "重設後的補齊狀態",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BackfillStatus"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "415": {
+            "$ref": "#/components/responses/UnsupportedMediaType"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
     }
   },
   "components": {

@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react';
-import { api } from './api';
+import { api, jsonRequest } from './api';
 import { useI18n } from './i18n';
 import type { ImportJob } from './ImportJobs';
 import { JobProgress } from './JobProgress';
 
-type MonitorData = {
-  service: string; startedAt: string; sampledAt: string; uptimeSeconds: number; cpuPercent: number | null; cpuError?: string;
+type MonitorData = {  service: string; startedAt: string; sampledAt: string; uptimeSeconds: number; cpuPercent: number | null; cpuError?: string;
   logicalCPUs: number; goMaxProcs: number; heapAllocBytes: number; goReservedBytes: number; goroutines: number;
   requests: number; inFlight: number; errors5xx: number; receivedBytes: number; sentBytes: number;
   receiveBytesPerSecond: number; sendBytesPerSecond: number; requestsPerSecond: number; tasksError?: string;
@@ -22,6 +21,8 @@ type MonitorData = {
     lastScheduledAt?: string; lastVideoId?: string;
   } } | null;
 };
+
+type BackfillStatus = NonNullable<MonitorData['tasks']>['backfill'];
 
 function bytes(value: number): string {
   if (value < 1024) return `${value.toFixed(0)} B`;
@@ -46,6 +47,9 @@ export function Monitor() {
   const [history, setHistory] = useState<MonitorData[]>([]);
   const [error, setError] = useState('');
   const [receivedAt, setReceivedAt] = useState<number | null>(null);
+  const [confirmingUsageReset, setConfirmingUsageReset] = useState(false);
+  const [usageBusy, setUsageBusy] = useState(false);
+  const [usageNotice, setUsageNotice] = useState('');
   useEffect(() => {
     const controller = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
@@ -72,6 +76,20 @@ export function Monitor() {
     const key = `jobPhase.${phase}`;
     const translated = t(key);
     return translated === key ? phase : translated;
+  };
+  const resetUsage = async () => {
+    setUsageBusy(true);
+    setUsageNotice('');
+    try {
+      const status = await api<BackfillStatus>('backfill/usage/reset', jsonRequest('POST', { confirm: true }));
+      setData(current => current?.tasks ? { ...current, tasks: { ...current.tasks, backfill: status } } : current);
+      setUsageNotice(t('monitor.backfillResetDone'));
+    } catch (reason) {
+      setUsageNotice(t('monitor.backfillResetFailed', { error: reason instanceof Error ? reason.message : String(reason) }));
+    } finally {
+      setUsageBusy(false);
+      setConfirmingUsageReset(false);
+    }
   };
   const received = receivedAt ? new Date(receivedAt).toLocaleTimeString(locale) : '—';
   return <>
@@ -151,6 +169,12 @@ export function Monitor() {
                   {data.tasks.backfill.limitReached && <p role="status">{t('monitor.backfillLimitReached', {
                     time: data.tasks.backfill.dailyResetAt ? new Date(data.tasks.backfill.dailyResetAt).toLocaleString(locale) : '',
                   })}</p>}
+                  {data.tasks.backfill.limitReached && !confirmingUsageReset && <button type="button" disabled={usageBusy}
+                    onClick={() => { setUsageNotice(''); setConfirmingUsageReset(true); }}>{t('monitor.backfillResetUsage')}</button>}
+                  {confirmingUsageReset && <div className="confirm-panel"><p>{t('monitor.backfillResetConfirm')}</p>
+                    <div className="button-row"><button type="button" disabled={usageBusy} onClick={() => void resetUsage()}>{usageBusy ? t('settings.saving') : t('monitor.backfillResetConfirmButton')}</button>
+                      <button type="button" disabled={usageBusy} onClick={() => setConfirmingUsageReset(false)}>{t('common.cancel')}</button></div></div>}
+                  {usageNotice && <p role="status">{usageNotice}</p>}
                   <p className="muted">{data.tasks.backfill.nextVideoTitle
                     ? t('monitor.backfillNextCandidate', { title: data.tasks.backfill.nextVideoTitle })
                     : t('monitor.backfillNoCandidate')}</p>

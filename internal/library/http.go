@@ -128,6 +128,26 @@ func (s *Store) Register(mux *http.ServeMux) {
 		}
 		respond(w, 200, pools)
 	})
+	if s.queue != nil {
+		mux.HandleFunc("POST /api/v1/backfill/usage/reset", func(w http.ResponseWriter, r *http.Request) {
+			var request struct {
+				Confirm bool `json:"confirm"`
+			}
+			if !decode(w, r, &request) {
+				return
+			}
+			if !request.Confirm {
+				failure(w, 400, "重設今日用量需要 confirm=true")
+				return
+			}
+			status, err := s.queue.ResetBackfillUsage(r.Context())
+			if err != nil {
+				failure(w, 500, "無法重設自動補齊用量")
+				return
+			}
+			respond(w, 200, status)
+		})
+	}
 	mux.HandleFunc("PATCH /api/v1/pools/{id}", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
 			Enabled *bool `json:"enabled"`

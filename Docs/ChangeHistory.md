@@ -2,6 +2,43 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.27 22:00 自動補齊重置與服務時區
+
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/reprobe.go`
+- `internal/library/http.go`
+- `internal/library/backfill_test.go`
+- `internal/runtime/server.go`
+- `web/admin/src/Monitor.tsx`
+- `web/admin/src/lang/`
+- `compose.yaml`
+- `testing/compose.yaml`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- 達到每日上限後只能等隔日，沒有手動重設入口
+- Docker 預設時區可能是 UTC，日界與本地時間不一致
+
+### 修改
+
+- 新增 `POST /api/v1/backfill/usage/reset`，要求 `confirm: true`，只清除今天的 `backfill_usage`。
+- 監看頁在上限用完時顯示「重設今日用量」，按下後再顯示確認面板，二次確認才送出。
+- Compose 的 video-node／central／worker 預設 `TZ=Asia/Taipei`，可用環境變數覆寫。
+- Go 二進位內嵌 `time/tzdata`，不依賴 Alpine 映像的 zoneinfo。
+- 重設只影響每日用量，不刪工作、不重設候選跳過狀態。
+
+### 驗證
+
+- 單元測試驗證用量重設與 `limitReached` 回到 false。
+- 測試站驗證 `dailyResetAt` 為台北日界、設定與監看顯示正確。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
+---
+
 ## 2026.10.27 21:40 自動補齊每日部數與容量上限
 
 **類型**: 功能

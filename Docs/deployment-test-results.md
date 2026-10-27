@@ -81,6 +81,16 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## TZ 與自動補齊重置驗收
+
+2026-10-27 在 `dvn-testing`（image 來源 `df524a24e706`）驗證：
+
+- Compose 預設 `TZ=Asia/Taipei`，Go 內嵌 tzdata；`dailyResetAt` 為 `2026-10-27T16:00:00Z`，換算台北時間為隔日 00:00。
+- `POST /api/v1/backfill/usage/reset` 未帶 `confirm: true` 回 400；帶確認回 200，今日用量歸零、`limitReached` 為 false。
+- 監看頁只在達到每日上限時顯示「重設今日用量」，按下後再顯示確認面板，二次確認才送出。
+- 重設只清今天，不影響其他日期、既有工作或候選跳過狀態。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
 ## 自動補齊每日上限與佇列閒置驗收
 
 2026-10-27 在 `dvn-testing`（image 來源 `979097139948`）驗證：

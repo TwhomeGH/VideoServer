@@ -248,6 +248,16 @@ ON CONFLICT(day) DO UPDATE SET videos=videos+1, bytes=bytes+excluded.bytes`, day
 	return err
 }
 
+// ResetBackfillUsage 清空今天的自動補齊用量；不影響其他日期或既有工作。
+func (q *ImportQueue) ResetBackfillUsage(ctx context.Context) (BackfillStatus, error) {
+	day := time.Now().Format("2006-01-02")
+	if _, err := q.store.db.ExecContext(ctx, "DELETE FROM backfill_usage WHERE day=?", day); err != nil {
+		return BackfillStatus{}, err
+	}
+	q.logger.Warn("自動補齊今日用量已手動重設", "day", day)
+	return q.BackfillStatus(ctx)
+}
+
 // BackfillStatus 回傳目前設定、下次檢查時間與待檢查候選數。
 func (q *ImportQueue) BackfillStatus(ctx context.Context) (BackfillStatus, error) {
 	q.backfillMu.Lock()

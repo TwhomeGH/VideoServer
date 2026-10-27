@@ -69,6 +69,10 @@ func TestBackfillDailyLimits(t *testing.T) {
 	if status.DailyVideos != 1 || !status.LimitReached || status.DailyResetAt == "" {
 		t.Fatalf("daily limit not reflected: %+v", status)
 	}
+	status, err = queue.ResetBackfillUsage(context.Background())
+	if err != nil || status.DailyVideos != 0 || status.LimitReached {
+		t.Fatalf("daily usage was not reset: %+v %v", status, err)
+	}
 }
 
 func TestBackfillMissingMediaOneAtATime(t *testing.T) {

@@ -51,7 +51,9 @@ Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的
 
 `autoBackfill` 預設關閉。開啟後每 `backfillIntervalSeconds`（預設 60 秒）檢查一次，只在整個佇列閒置時排一筆缺少技術資訊的影片，不會與手動匯入或掃描競爭。「閒置」是指 `import_jobs` 沒有任何 queued／running 工作，包含手動匯入、掃描與手動重讀；不是只看自動補齊。有缺少技術資訊的候選時才會排程。
 
-每日上限 `backfillDailyLimit`（預設 50 部）與 `backfillDailyGiB`（預設 20 GiB）取先到者，`0` 表示不限；只限制**自動**補齊，手動「重新讀取影片資訊」不受限。用量以排程當下計入，持久化在 `backfill_usage`，以服務本地日切換，重啟不會歸零；達到上限後停止自動排程，候選保留，隔日重新開始。Docker 的時區預設可能是 UTC，會影響跨日時間，可用 `TZ` 設定服務時區。
+每日上限 `backfillDailyLimit`（預設 50 部）與 `backfillDailyGiB`（預設 20 GiB）取先到者，`0` 表示不限；只限制**自動**補齊，手動「重新讀取影片資訊」不受限。用量以排程當下計入，持久化在 `backfill_usage`，以服務本地日切換，重啟不會歸零；達到上限後停止自動排程，候選保留，隔日重新開始。監看頁在上限用完時提供「重設今日用量」，需要二次確認；只清今天，不影響其他日期或既有工作。
+
+Docker 預設可能使用 UTC；Compose 已預設 `TZ=Asia/Taipei`，也可用環境變數覆寫。Go 二進位內嵌 `time/tzdata`，不依賴映像檔的 zoneinfo，因此容器內也能正確切換日界。
 
 `hashLimitMiBps` 限制 SHA-256 讀取速度（預設 64 MiB/s，0 表示不限），套用到匯入與重新探測；佇列仍一次只處理一個工作。
 

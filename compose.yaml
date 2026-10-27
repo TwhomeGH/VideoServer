@@ -14,6 +14,7 @@ services:
       - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_NODE_PORT:-18610}:18610"
     environment:
       DVN_ADMIN_PASSWORD: ${DVN_ADMIN_PASSWORD:-}
+      TZ: ${TZ:-Asia/Taipei}
     volumes:
       - node-data:/data
       - type: bind
@@ -45,6 +46,7 @@ services:
       - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_CENTRAL_PORT:-18620}:18620"
     environment:
       DVN_ADMIN_PASSWORD: ${DVN_ADMIN_PASSWORD:-}
+      TZ: ${TZ:-Asia/Taipei}
     volumes:
       - central-data:/data
       - type: bind
@@ -70,6 +72,7 @@ services:
       - "${DVN_BIND_ADDRESS:-0.0.0.0}:${DVN_WORKER_PORT:-18630}:18630"
     environment:
       DVN_ADMIN_PASSWORD: ${DVN_ADMIN_PASSWORD:-}
+      TZ: ${TZ:-Asia/Taipei}
     volumes:
       - worker-data:/data
       - type: bind
