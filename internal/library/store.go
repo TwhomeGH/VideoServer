@@ -78,6 +78,7 @@ type Pool struct {
 	RemoteURL         string `json:"remoteUrl,omitempty"`
 	RemoteUser        string `json:"remoteUser,omitempty"`
 	RemoteRoot        string `json:"remoteRoot,omitempty"`
+	TLSSkipVerify     bool   `json:"tlsSkipVerify"`
 	WholeDisk         bool   `json:"wholeDisk"`
 	volumeRelative    string
 }
@@ -153,8 +154,8 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("SELECT COALESCE(MAX(version),0) FROM schema_version").Scan(&version); err != nil {
 		return err
 	}
-	if version > 11 {
-		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 11", version)
+	if version > 12 {
+		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 12", version)
 	}
 	if _, err := tx.Exec(`
  CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
@@ -342,6 +343,20 @@ INSERT INTO schema_version VALUES(9);`); err != nil {
 			return err
 		}
 	}
+	if version < 12 {
+		exists, err := columnExists(tx, "pools", "tls_skip_verify")
+		if err != nil {
+			return err
+		}
+		if !exists {
+			if _, err := tx.Exec("ALTER TABLE pools ADD COLUMN tls_skip_verify INTEGER NOT NULL DEFAULT 0"); err != nil {
+				return err
+			}
+		}
+		if _, err := tx.Exec("INSERT INTO schema_version VALUES(12)"); err != nil {
+			return err
+		}
+	}
 	if _, err := tx.Exec("INSERT OR IGNORE INTO metadata VALUES('nodeId', ?)", identifier()); err != nil {
 		return err
 	}
@@ -377,7 +392,7 @@ func (s *Store) Close() error { return s.db.Close() }
 
 // Pools 回傳所有已註冊儲存池，離線或被停用的池保留資料而不刪除。
 func (s *Store) Pools() ([]Pool, error) {
-	rows, err := s.db.Query("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only,provider,remote_url,remote_user,remote_root FROM pools ORDER BY name,id")
+	rows, err := s.db.Query("SELECT id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only,provider,remote_url,remote_user,remote_root,tls_skip_verify FROM pools ORDER BY name,id")
 	if err != nil {
 		return nil, err
 	}
@@ -386,7 +401,7 @@ func (s *Store) Pools() ([]Pool, error) {
 	for rows.Next() {
 		var pool Pool
 		var enabled, excludeSystem, indexOnly int
-		if err := rows.Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled, &pool.LastActivityAt, &excludeSystem, &indexOnly, &pool.Provider, &pool.RemoteURL, &pool.RemoteUser, &pool.RemoteRoot); err != nil {
+		if err := rows.Scan(&pool.ID, &pool.Name, &pool.Path, &pool.VolumeID, &pool.volumeRelative, &pool.Filesystem, &enabled, &pool.LastActivityAt, &excludeSystem, &indexOnly, &pool.Provider, &pool.RemoteURL, &pool.RemoteUser, &pool.RemoteRoot, &pool.TLSSkipVerify); err != nil {
 			return nil, err
 		}
 		pool.Enabled = enabled != 0
@@ -435,12 +450,12 @@ func (s *Store) AddPool(name, path string) (Pool, error) {
 		Filesystem: filesystem, VolumeID: volumeID, volumeRelative: volumeRelative, LastActivityAt: timestamp(), ScanExcludeSystem: true, IndexOnly: false, Provider: "local", WholeDisk: isWholeDisk(path),
 	}
 	applyVolumeStatus(&pool)
-	_, err = s.db.Exec("INSERT INTO pools(id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only,provider,remote_url,remote_user,remote_root) VALUES(?,?,?,?,?,?,1,?,1,0,'local','','','')", pool.ID, pool.Name, pool.Path, pool.VolumeID, pool.volumeRelative, pool.Filesystem, pool.LastActivityAt)
+	_, err = s.db.Exec("INSERT INTO pools(id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only,provider,remote_url,remote_user,remote_root,tls_skip_verify) VALUES(?,?,?,?,?,?,1,?,1,0,'local','','','',0)", pool.ID, pool.Name, pool.Path, pool.VolumeID, pool.volumeRelative, pool.Filesystem, pool.LastActivityAt)
 	return pool, err
 }
 
 // AddRemotePool 註冊唯讀 WebDAV 池；目前只支援 index-only discovery。
-func (s *Store) AddRemotePool(name, remoteURL, username, password, root string) (Pool, error) {
+func (s *Store) AddRemotePool(name, remoteURL, username, password, root string, tlsSkipVerify bool) (Pool, error) {
 	name = strings.TrimSpace(name)
 	remoteURL = strings.TrimSpace(remoteURL)
 	if name == "" || remoteURL == "" {
@@ -452,11 +467,11 @@ func (s *Store) AddRemotePool(name, remoteURL, username, password, root string) 
 	}
 	pool := Pool{
 		ID: identifier(), Name: name, Path: remoteURL, Online: true, Enabled: true,
-		Provider: "webdav", RemoteURL: remoteURL, RemoteUser: username, RemoteRoot: strings.TrimSpace(root),
+		Provider: "webdav", RemoteURL: remoteURL, RemoteUser: username, RemoteRoot: strings.TrimSpace(root), TLSSkipVerify: tlsSkipVerify,
 		Filesystem: "WebDAV", VolumeStatus: "unsupported", LastActivityAt: timestamp(),
 		ScanExcludeSystem: true, IndexOnly: true, WholeDisk: false,
 	}
-	_, err = s.db.Exec("INSERT INTO pools(id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only,provider,remote_url,remote_user,remote_root) VALUES(?,?,?,?,?,?,1,?,1,1,'webdav',?,?,?)", pool.ID, pool.Name, pool.Path, pool.VolumeID, pool.volumeRelative, pool.Filesystem, pool.LastActivityAt, pool.RemoteURL, pool.RemoteUser, pool.RemoteRoot)
+	_, err = s.db.Exec("INSERT INTO pools(id,name,path,volume_id,volume_relative,filesystem,enabled,last_activity_at,scan_exclude_system,index_only,provider,remote_url,remote_user,remote_root,tls_skip_verify) VALUES(?,?,?,?,?,?,1,?,1,1,'webdav',?,?,?,?)", pool.ID, pool.Name, pool.Path, pool.VolumeID, pool.volumeRelative, pool.Filesystem, pool.LastActivityAt, pool.RemoteURL, pool.RemoteUser, pool.RemoteRoot, pool.TLSSkipVerify)
 	if err != nil {
 		return Pool{}, err
 	}

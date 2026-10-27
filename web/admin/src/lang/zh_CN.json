@@ -517,5 +517,10 @@
   "library.verifyProgress": "正在验证 SHA-256… {percent}%",
   "library.cancelVerify": "取消验证",
   "importJobs.sourceVerify": "SHA-256 验证",
-  "monitor.verify": "SHA-256 验证"
+  "monitor.verify": "SHA-256 验证",
+  "library.tlsSkipVerify": "略过 TLS 凭证验证（不安全）",
+  "library.tlsSkipVerifyHint": "默认会验证系统 CA；仅在自签凭证且了解风险时勾选。",
+  "library.tlsInsecure": "HTTPS · TLS 验证已禁用",
+  "library.tlsVerified": "HTTPS · 验证系统 CA",
+  "library.httpWarning": "HTTP · 未加密"
 }

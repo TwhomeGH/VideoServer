@@ -94,7 +94,8 @@ func (q *ImportQueue) processRemoteVerify(ctx context.Context, job ImportJob) er
 	if err != nil {
 		return err
 	}
-	size, etag, modified, err := webDAVHead(ctx, target, username, password)
+	headClient := q.store.webDAVHTTPClient(pool, 15*time.Second)
+	size, etag, modified, err := webDAVHead(ctx, headClient, target, username, password)
 	if err != nil {
 		return err
 	}
@@ -141,7 +142,7 @@ func (q *ImportQueue) processRemoteVerify(ctx context.Context, job ImportJob) er
 		} else if modified != "" {
 			request.Header.Set("If-Range", modified)
 		}
-		response, err := (&http.Client{}).Do(request)
+		response, err := q.store.webDAVHTTPClient(pool, 0).Do(request)
 		if err != nil {
 			return err
 		}
@@ -194,7 +195,7 @@ func (q *ImportQueue) processRemoteVerify(ctx context.Context, job ImportJob) er
 	if processed != total {
 		return fmt.Errorf("驗證讀取長度不符：%d/%d", processed, total)
 	}
-	finalSize, finalEtag, finalModified, err := webDAVHead(ctx, target, username, password)
+	finalSize, finalEtag, finalModified, err := webDAVHead(ctx, headClient, target, username, password)
 	if err != nil {
 		return err
 	}
@@ -213,13 +214,13 @@ func (q *ImportQueue) processRemoteVerify(ctx context.Context, job ImportJob) er
 	return nil
 }
 
-func webDAVHead(ctx context.Context, target *url.URL, username, password string) (int64, string, string, error) {
+func webDAVHead(ctx context.Context, client *http.Client, target *url.URL, username, password string) (int64, string, string, error) {
 	request, err := http.NewRequestWithContext(ctx, http.MethodHead, target.String(), nil)
 	if err != nil {
 		return 0, "", "", err
 	}
 	request.SetBasicAuth(username, password)
-	response, err := (&http.Client{Timeout: 15 * time.Second}).Do(request)
+	response, err := client.Do(request)
 	if err != nil {
 		return 0, "", "", err
 	}

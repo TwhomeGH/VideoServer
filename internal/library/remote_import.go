@@ -103,7 +103,7 @@ func (s *Store) openListSHA256(ctx context.Context, pool Pool, relative string) 
 	if err != nil {
 		return ""
 	}
-	client := &http.Client{Timeout: 10 * time.Second}
+	client := s.webDAVHTTPClient(pool, 10*time.Second)
 	loginBody, _ := json.Marshal(map[string]string{"username": username, "password": password})
 	loginURL := *base
 	loginURL.Path = apiPath + "/auth/login"

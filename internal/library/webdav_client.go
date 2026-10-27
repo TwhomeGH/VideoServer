@@ -70,7 +70,7 @@ func (s *Store) listWebDAV(ctx context.Context, pool Pool) ([]webDAVEntry, error
 	if rootPath == "" {
 		rootPath = "/"
 	}
-	client := &http.Client{Timeout: webDAVTimeout}
+	client := s.webDAVHTTPClient(pool, webDAVTimeout)
 	entries := []webDAVEntry{}
 	seen := map[string]bool{}
 	if err := s.walkWebDAV(ctx, client, base, username, password, rootPath, "", 0, seen, &entries, pool); err != nil {

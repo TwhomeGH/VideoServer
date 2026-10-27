@@ -81,6 +81,16 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## WebDAV TLS 驗證
+
+2026-10-28 在 `dvn-testing`（image 來源 `7de2198ef30f`）驗證：
+
+- 自簽 TLS 測試：預設 client 拒絕，自訂 `tlsSkipVerify=true` 才成功。
+- 現有 OpenList HTTP 池顯示「HTTP · 未加密」，`tlsSkipVerify=false`。
+- WebDAV list／HEAD／Range／probe／verify 共用同一個 TLS client。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：尚未提供 per-pool 自訂 CA；需使用系統 trust store。
+
 ## WebDAV Range 分塊驗證
 
 2026-10-28 在 `dvn-testing`（image 來源 `2373c230e760`）驗證：

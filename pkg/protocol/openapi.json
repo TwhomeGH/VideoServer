@@ -888,6 +888,9 @@
                   },
                   "root": {
                     "type": "string"
+                  },
+                  "tlsSkipVerify": {
+                    "type": "boolean"
                   }
                 },
                 "required": [
@@ -2859,6 +2862,9 @@
           },
           "remoteRoot": {
             "type": "string"
+          },
+          "tlsSkipVerify": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -2870,7 +2876,8 @@
           "scanExcludeSystem",
           "wholeDisk",
           "indexOnly",
-          "provider"
+          "provider",
+          "tlsSkipVerify"
         ]
       },
       "ImportJob": {

@@ -120,7 +120,7 @@ func (s *Store) proxyWebDAV(w http.ResponseWriter, r *http.Request, pool Pool, r
 			request.Header.Set(header, value)
 		}
 	}
-	response, err := (&http.Client{}).Do(request)
+	response, err := s.webDAVHTTPClient(pool, 0).Do(request)
 	if err != nil {
 		failure(w, 502, "無法連線 WebDAV")
 		return
@@ -188,13 +188,14 @@ func (s *Store) Register(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("POST /api/v1/pools", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
-			Name     string `json:"name"`
-			Path     string `json:"path"`
-			Provider string `json:"provider"`
-			URL      string `json:"url"`
-			Username string `json:"username"`
-			Password string `json:"password"`
-			Root     string `json:"root"`
+			Name          string `json:"name"`
+			Path          string `json:"path"`
+			Provider      string `json:"provider"`
+			URL           string `json:"url"`
+			Username      string `json:"username"`
+			Password      string `json:"password"`
+			Root          string `json:"root"`
+			TLSSkipVerify bool   `json:"tlsSkipVerify"`
 		}
 		if !decode(w, r, &request) {
 			return
@@ -202,7 +203,7 @@ func (s *Store) Register(mux *http.ServeMux) {
 		var pool Pool
 		var err error
 		if request.Provider == "webdav" || (request.Provider == "" && request.URL != "") {
-			pool, err = s.AddRemotePool(request.Name, request.URL, request.Username, request.Password, request.Root)
+			pool, err = s.AddRemotePool(request.Name, request.URL, request.Username, request.Password, request.Root, request.TLSSkipVerify)
 		} else {
 			pool, err = s.AddPool(request.Name, request.Path)
 		}

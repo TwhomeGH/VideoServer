@@ -58,7 +58,8 @@
 - [x] WebDAV 遠端 library 參考、OpenList SHA-256 優先與背景驗證。
 - [x] 遠端 FFprobe 技術資訊與背景驗證 hash 限速。
 - [x] 背景驗證 Range 分塊、ETag/size 一致性、進度與取消。
-- [ ] TLS 憑證政策與遠端 rename/file identity。
+- [x] WebDAV HTTPS 系統 CA 驗證與明確 tlsSkipVerify opt-in。
+- [ ] per-pool 自訂 CA、遠端 rename/file identity。
 - [ ] 儲存池自訂 include／exclude globs。
 - [ ] 儲存池 SMART 健康診斷（選配；需平台權限與裝置支援，不影響可用性）。
 - [x] 影片庫分頁、標題／簡介搜尋、Tag／分類／儲存池／18+ 篩選與排序。

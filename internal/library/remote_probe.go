@@ -20,7 +20,7 @@ func (q *ImportQueue) processRemoteProbe(ctx context.Context, job ImportJob, vid
 	if err != nil {
 		return err
 	}
-	info, err := media.ProbeRemote(ctx, target.String(), username, password, q.ffprobePath, q.probeTimeout)
+	info, err := media.ProbeRemote(ctx, target.String(), username, password, pool.TLSSkipVerify, q.ffprobePath, q.probeTimeout)
 	if err != nil {
 		return err
 	}

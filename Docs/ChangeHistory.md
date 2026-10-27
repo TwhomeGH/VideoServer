@@ -2,6 +2,46 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 06:15 WebDAV TLS 驗證與明確 opt-in
+
+**類型**: 安全性
+
+**檔案**:
+
+- `internal/library/webdav_http.go`
+- `internal/library/store.go`
+- `internal/library/http.go`
+- `internal/library/webdav_client.go`
+- `internal/library/remote_import.go`
+- `internal/library/remote_verify.go`
+- `internal/media/probe.go`
+- `web/admin/src/Library.tsx`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- WebDAV 使用 HTTP + Basic Auth，憑證與影片流量明文
+- 沒有統一的 TLS 設定，各處各自建立 `http.Client`
+- 自簽憑證沒有明確、受控的處理方式
+
+### 修改
+
+- pools schema v12 新增 `tls_skip_verify`；預設 false。
+- 新增共用 `webDAVHTTPClient`：HTTPS 預設驗證系統 CA，只有 `tlsSkipVerify` 才關閉驗證。
+- WebDAV list／HEAD／Range 播放代理／遠端 probe／verify／OpenList hash API 全部走同一個 client。
+- 遠端 FFprobe 在 skip-verify 時加 `-tls_verify 0`。
+- UI 新增明確的「略過 TLS 憑證驗證（不安全）」選項與 HTTP 未加密提示。
+- OpenAPI 新增 `tlsSkipVerify`。
+
+### 驗證
+
+- 本地 TLS 測試：自簽憑證預設被拒絕，`tlsSkipVerify=true` 才可連線。
+- 現有 HTTP OpenList 池顯示「HTTP · 未加密」，`tlsSkipVerify=false`。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：尚未提供 per-pool 自訂 CA 上傳；需放進容器系統 trust store。
+
+---
+
 ## 2026.10.28 06:00 WebDAV 驗證改為 Range 分塊與可取消工作
 
 **類型**: 改善

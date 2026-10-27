@@ -517,5 +517,10 @@
   "library.verifyProgress": "Verifying SHA-256… {percent}%",
   "library.cancelVerify": "Cancel verification",
   "importJobs.sourceVerify": "SHA-256 verification",
-  "monitor.verify": "SHA-256 verification"
+  "monitor.verify": "SHA-256 verification",
+  "library.tlsSkipVerify": "Skip TLS certificate verification (insecure)",
+  "library.tlsSkipVerifyHint": "System CAs are verified by default; only enable for self-signed certificates when you understand the risk.",
+  "library.tlsInsecure": "HTTPS · TLS verification disabled",
+  "library.tlsVerified": "HTTPS · system CA verified",
+  "library.httpWarning": "HTTP · unencrypted"
 }

@@ -46,6 +46,12 @@ curl -D - -o NUL -u USER:PASS -H "Range: bytes=0-1023" \
 - 只支援 WebDAV；OpenList 的 SMB 後端仍由 OpenList 自己掛載，DVN 不直接連 SMB。
 - 播放是即時代理，不落地快取；流量經過 Video Node。
 
+## TLS
+
+HTTPS 預設會驗證系統 CA。自簽憑證可在新增 WebDAV 池時勾選「略過 TLS 憑證驗證」，這是明確的不安全 opt-in；UI 會標示，取消後恢復驗證。HTTP 仍可用於區網測試，但卡片會顯示「HTTP · 未加密」。
+
+WebDAV list／HEAD／Range／播放代理／遠端 probe／verify 與 OpenList hash API 都共用同一個 TLS 設定；遠端 FFprobe 在 skip-verify 時會加 `-tls_verify 0`。自訂 CA 目前請放進容器的系統 trust store，尚未提供 per-pool CA 上傳。
+
 ## Docker 與網路
 
 Video Node 容器必須能連到 OpenList。若 OpenList 在 Docker 主機上，容器可用 `host.docker.internal`；若在區網其他機器，直接用 LAN IP。不要期待 Windows 的 WebDAV 磁碟一定可以 bind 給 Docker Desktop；原生 WebDAV provider 就是為了避開這個問題。
