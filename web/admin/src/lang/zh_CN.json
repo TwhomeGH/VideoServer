@@ -479,7 +479,7 @@
   "discovered.clearPage": "取消本页选取",
   "discovered.importSelected": "导入已选 {count} 部",
   "discovered.importOne": "导入",
-  "discovered.imported": "已排入 {count} 部导入工作。",
+  "discovered.imported": "已处理 {count} 部视频。",
   "discovered.empty": "目前没有未导入的视频。",
   "discovered.noMatches": "没有符合搜索的视频。",
   "discovered.file": "视频",
@@ -506,8 +506,13 @@
   "library.webdavUser": "WebDAV 用户",
   "library.webdavPassword": "WebDAV 密码",
   "discovered.remoteOnly": "WebDAV（仅索引）",
-  "discovered.remoteImportUnavailable": "WebDAV 池目前仅支持索引，尚未支持导入。",
   "discovered.play": "播放",
   "discovered.playerAria": "播放找到的视频",
-  "discovered.playerNote": "视频由 OpenList WebDAV 透过 DVN 代理播放；帐密不会送到浏览器。"
+  "discovered.playerNote": "视频由 OpenList WebDAV 透过 DVN 代理播放；帐密不会送到浏览器。",
+  "library.webdavSource": "来源：WebDAV",
+  "library.unverified": "SHA-256 未验证",
+  "library.verified": "SHA-256 已验证",
+  "discovered.addRemote": "加入书库",
+  "library.verifyHash": "验证 SHA-256",
+  "library.verifying": "验证中…"
 }

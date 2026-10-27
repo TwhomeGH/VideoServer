@@ -105,6 +105,12 @@ func (s *Store) markDiscoveredMissing(ctx context.Context, poolID string, seen m
 	return nil
 }
 
+func (s *Store) discoveredItem(ctx context.Context, poolID, relative string) (DiscoveredMedia, error) {
+	var item DiscoveredMedia
+	err := s.db.QueryRowContext(ctx, "SELECT d.pool_id,COALESCE(p.name,''),p.provider,d.relative_path,d.size,d.modified_at,d.first_seen,d.last_seen FROM discovered_media d JOIN pools p ON p.id=d.pool_id WHERE d.pool_id=? AND d.path_key=? AND d.status='found'", poolID, fileKey(poolID, relative)).Scan(&item.PoolID, &item.PoolName, &item.Provider, &item.RelativePath, &item.Size, &item.ModifiedAt, &item.FirstSeen, &item.LastSeen)
+	return item, err
+}
+
 func (s *Store) ListDiscovered(ctx context.Context, poolID, query string, page, pageSize int) (DiscoveredPage, error) {
 	if page < 1 {
 		page = 1

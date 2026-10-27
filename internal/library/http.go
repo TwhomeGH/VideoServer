@@ -95,7 +95,11 @@ func (s *Store) serveDiscoveredContent(w http.ResponseWriter, r *http.Request) {
 		failure(w, 404, "找不到找到的影片")
 		return
 	}
-	username, password, err := s.WebDAVCredentials(poolID)
+	s.proxyWebDAV(w, r, pool, relative)
+}
+
+func (s *Store) proxyWebDAV(w http.ResponseWriter, r *http.Request, pool Pool, relative string) {
+	username, password, err := s.WebDAVCredentials(pool.ID)
 	if err != nil {
 		failure(w, 500, "無法讀取 WebDAV 憑證")
 		return
@@ -116,8 +120,7 @@ func (s *Store) serveDiscoveredContent(w http.ResponseWriter, r *http.Request) {
 			request.Header.Set(header, value)
 		}
 	}
-	client := &http.Client{}
-	response, err := client.Do(request)
+	response, err := (&http.Client{}).Do(request)
 	if err != nil {
 		failure(w, 502, "無法連線 WebDAV")
 		return
@@ -433,6 +436,7 @@ func (s *Store) Register(mux *http.ServeMux) {
 			}
 			jobs := []ImportJob{}
 			errorsList := []string{}
+			imported := 0
 			for _, item := range request.Items {
 				pool, lookupErr := s.poolByID(item.PoolID)
 				if lookupErr != nil {
@@ -440,7 +444,11 @@ func (s *Store) Register(mux *http.ServeMux) {
 					continue
 				}
 				if pool.Provider == "webdav" {
-					errorsList = append(errorsList, "WebDAV 池目前僅支援索引，尚未支援匯入")
+					if _, err := s.ImportRemoteVideo(r.Context(), item.PoolID, item.RelativePath, "", Metadata{}); err != nil {
+						errorsList = append(errorsList, err.Error())
+					} else {
+						imported++
+					}
 					continue
 				}
 				job, added, err := s.queue.Enqueue(r.Context(), item.PoolID, item.RelativePath, "", "manual", Metadata{})
@@ -450,9 +458,10 @@ func (s *Store) Register(mux *http.ServeMux) {
 				}
 				if added {
 					jobs = append(jobs, job)
+					imported++
 				}
 			}
-			respond(w, 200, map[string]any{"imported": len(jobs), "jobs": jobs, "errors": errorsList})
+			respond(w, 200, map[string]any{"imported": imported, "jobs": jobs, "errors": errorsList})
 		})
 		mux.HandleFunc("GET /api/v1/import-jobs", func(w http.ResponseWriter, r *http.Request) {
 			jobs, err := s.queue.Jobs()
@@ -481,6 +490,23 @@ func (s *Store) Register(mux *http.ServeMux) {
 				return
 			}
 			respond(w, 202, job)
+		})
+
+		mux.HandleFunc("POST /api/v1/videos/{id}/verify", func(w http.ResponseWriter, r *http.Request) {
+			var request struct{}
+			if !decode(w, r, &request) {
+				return
+			}
+			video, err := s.VerifyRemoteVideo(r.Context(), r.PathValue("id"))
+			if errors.Is(err, sql.ErrNoRows) {
+				failure(w, 404, "找不到影片")
+				return
+			}
+			if err != nil {
+				failure(w, 409, err.Error())
+				return
+			}
+			respond(w, 202, video)
 		})
 		mux.HandleFunc("GET /api/v1/import-jobs/{id}", func(w http.ResponseWriter, r *http.Request) {
 			job, err := s.queue.Job(r.PathValue("id"))
@@ -518,6 +544,19 @@ func (s *Store) play(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		failure(w, 500, "無法讀取影片索引")
+		return
+	}
+	if video.Provider == "webdav" {
+		pool, err := s.poolByID(video.PoolID)
+		if err != nil {
+			failure(w, 404, "找不到儲存池")
+			return
+		}
+		if !pool.Enabled {
+			failure(w, 409, "所屬儲存池已停用")
+			return
+		}
+		s.proxyWebDAV(w, r, pool, video.relativePath)
 		return
 	}
 	file, err := s.openVideo(video)

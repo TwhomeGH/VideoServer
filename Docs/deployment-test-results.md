@@ -81,6 +81,18 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## WebDAV 遠端加入書庫與驗證
+
+2026-10-28 在 `dvn-testing`（image 來源 `dd75f30ada49`）驗證：
+
+- 從 OpenList discovered 加入 183 MB、163 MB 兩部影片；沒有建立 import job。
+- 兩部 library 記錄為 `provider=webdav`、`hashStatus=unverified`；Range 播放回 206。
+- 對 163 MB 影片啟動驗證，回 202／pending，8 秒內完成 `6158e3a9…`。
+- 完成後 `hashStatus=verified`；未驗證卡片提供「驗證 SHA-256」。
+- OpenList local storage 的 `hash_info` 為 null，因此沒有直接取得 SHA-256。
+- 390px 無水平溢出；Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：遠端 FFprobe、hash 限速與 TLS 政策尚未實作。
+
 ## WebDAV Range 代理驗收
 
 2026-10-28 在 `dvn-testing`（image 來源 `d8f5a5cce251`）驗證：

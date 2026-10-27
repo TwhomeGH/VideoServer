@@ -55,7 +55,8 @@
 - [x] Index-only 全盤查找模式、找到的影片清單與手動匯入。
 - [x] 唯讀 WebDAV 儲存池：PROPFIND 掃描、index-only discovery、憑證檔。
 - [x] WebDAV Range 代理播放；播放器不接觸 OpenList 帳密。
-- [ ] WebDAV 遠端匯入下載與 TLS 憑證政策。
+- [x] WebDAV 遠端 library 參考、OpenList SHA-256 優先與背景驗證。
+- [ ] 遠端 FFprobe 技術資訊、hash 限速與 TLS 憑證政策。
 - [ ] 儲存池自訂 include／exclude globs。
 - [ ] 儲存池 SMART 健康診斷（選配；需平台權限與裝置支援，不影響可用性）。
 - [x] 影片庫分頁、標題／簡介搜尋、Tag／分類／儲存池／18+ 篩選與排序。

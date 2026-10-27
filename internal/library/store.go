@@ -96,6 +96,8 @@ type Video struct {
 	ImportedAt        string      `json:"importedAt"`
 	Available         bool        `json:"available"`
 	UnavailableReason string      `json:"unavailableReason,omitempty"`
+	Provider          string      `json:"provider"`
+	HashStatus        string      `json:"hashStatus"`
 	Media             *media.Info `json:"media,omitempty"`
 	relativePath      string
 	modifiedAt        int64
@@ -151,8 +153,8 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("SELECT COALESCE(MAX(version),0) FROM schema_version").Scan(&version); err != nil {
 		return err
 	}
-	if version > 10 {
-		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 10", version)
+	if version > 11 {
+		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 11", version)
 	}
 	if _, err := tx.Exec(`
  CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
@@ -314,6 +316,29 @@ INSERT INTO schema_version VALUES(9);`); err != nil {
 			}
 		}
 		if _, err := tx.Exec("INSERT INTO schema_version VALUES(10)"); err != nil {
+			return err
+		}
+	}
+	if version < 11 {
+		columns := []struct {
+			name       string
+			definition string
+		}{
+			{"provider", "TEXT NOT NULL DEFAULT 'local'"},
+			{"hash_status", "TEXT NOT NULL DEFAULT 'verified'"},
+		}
+		for _, column := range columns {
+			exists, err := columnExists(tx, "videos", column.name)
+			if err != nil {
+				return err
+			}
+			if !exists {
+				if _, err := tx.Exec("ALTER TABLE videos ADD COLUMN " + column.name + " " + column.definition); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := tx.Exec("INSERT INTO schema_version VALUES(11)"); err != nil {
 			return err
 		}
 	}

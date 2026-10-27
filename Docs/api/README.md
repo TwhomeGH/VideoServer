@@ -69,13 +69,15 @@ npx --yes @redocly/cli lint pkg/protocol/openapi.json --extends=minimal
 
 新增或修改 API 時，需同步更新規格、能力公告及契約測試。新增可選欄位通常可保留協定 v1；改變欄位語意、移除欄位、改動必要授權／工作流程等破壞相容性的變更，須先安排新協定與遷移策略。
 
-`POST /api/v1/pools` 支援本機目錄與 WebDAV：本機用 `{ "name", "path" }`；WebDAV 用 `{ "name", "provider": "webdav", "url", "username", "password", "root" }`，其中 `root` 是 `/dav` 下的子目錄。WebDAV 池固定 index-only，遠端匯入尚未支援。回應不會包含密碼。
+`POST /api/v1/pools` 支援本機目錄與 WebDAV：本機用 `{ "name", "path" }`；WebDAV 用 `{ "name", "provider": "webdav", "url", "username", "password", "root" }`，其中 `root` 是 `/dav` 下的子目錄。WebDAV 池固定 index-only；discovered 項目可加入遠端 library。回應不會包含密碼。
 
 ## Index-only 找到的影片
 
 `GET /api/v1/discovered` 列出 index-only 掃描找到、尚未進入影片庫的檔案，支援 `poolId`、`q`、`page`、`pageSize`。`POST /api/v1/discovered/import` 接受 `{ "items": [{ "poolId", "relativePath" }] }`，一次最多 100 筆，會建立手動匯入工作；匯入成功後該項目會從清單消失。這兩個端點都需要登入。
 
 `GET /api/v1/discovered/content?poolId=...&path=...` 代理 WebDAV 影片；支援 `Range` 與 `HEAD`，回 200／206，路徑必須是目前 discovery 清單中的項目。瀏覽器不會取得 WebDAV 帳密。
+
+`POST /api/v1/videos/{id}/verify` 對未驗證的 WebDAV library 影片啟動背景 SHA-256；回 202，完成後 `hashStatus=verified`。遠端檔案不會落地保存。
 
 ## SSE 事件串流
 

@@ -2297,6 +2297,60 @@
           "影片庫與儲存池"
         ]
       }
+    },
+    "/api/v1/videos/{id}/verify": {
+      "post": {
+        "operationId": "verifyVideoHash",
+        "summary": "背景下載遠端影片並計算 SHA-256",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "已開始驗證",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Video"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "找不到影片"
+          },
+          "409": {
+            "description": "不是遠端影片或已在驗證"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
     }
   },
   "components": {
@@ -2653,6 +2707,22 @@
               "source_changed",
               "source_missing"
             ]
+          },
+          "provider": {
+            "type": "string",
+            "enum": [
+              "local",
+              "webdav"
+            ]
+          },
+          "hashStatus": {
+            "type": "string",
+            "enum": [
+              "verified",
+              "unverified",
+              "pending",
+              "failed"
+            ]
           }
         },
         "required": [
@@ -2677,7 +2747,9 @@
           "sourcePlatform",
           "sourcePending",
           "repostNote",
-          "language"
+          "language",
+          "provider",
+          "hashStatus"
         ]
       },
       "Pool": {

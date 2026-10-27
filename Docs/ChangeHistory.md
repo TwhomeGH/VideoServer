@@ -2,6 +2,53 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 05:05 WebDAV 遠端加入書庫與 SHA-256 驗證
+
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/remote_import.go`
+- `internal/library/remote_verify.go`
+- `internal/library/videos.go`
+- `internal/library/http.go`
+- `internal/library/store.go`
+- `internal/library/discovery.go`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/Discovered.tsx`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- WebDAV 找到的影片只能播放，不能加入正式 library
+- 若匯入就下載完整檔案，2 GB 影片成本太高
+- OpenList 不一定有 SHA-256
+
+### 修改
+
+- 新增遠端 library 參考：`videos.provider=webdav`、`hash_status`（schema v11），不下载副本。
+- 「加入書庫」直接建立 video；播放沿用 WebDAV Range 代理。
+- 先用 OpenList JSON API 的 `hash_info.sha256`；合法 64 hex 才標記已驗證，否則 `unverified`。
+- 未驗證影片提供「驗證 SHA-256」：背景下載串流計算，不落地保存；狀態 `pending` → `verified`／`failed`。
+- 遠端影片隱藏「重新讀取影片資訊」，避免走本機 openVideo。
+- OpenAPI 新增 verify；Video 增加 provider／hashStatus。
+
+### 驗證
+
+- 從 OpenList 加入 183 MB 與 163 MB 兩部影片，沒有建立 import job。
+- library 顯示 `provider=webdav`、`hashStatus=unverified`；兩部 Range 播放皆回 206。
+- 對 163 MB 影片按驗證：202、`pending`，8 秒內完成 SHA-256 `6158e3a9…`。
+- 已驗證影片顯示「來源：WebDAV · SHA-256 已驗證」；未驗證顯示未驗證並提供驗證按鈕。
+- 390px 無水平溢出；Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
+### 限制
+
+- 遠端影片目前沒有 FFprobe 技術資訊。
+- 背景驗證尚未套用 `hashLimitMiBps`，也沒有進度百分比或取消。
+- 遠端參考在 OpenList 離線時不可用。
+
+---
+
 ## 2026.10.28 04:45 WebDAV Range 代理播放
 
 **類型**: 功能

@@ -14,11 +14,11 @@ import (
 	"github.com/TwhomeGH/VideoServer/internal/media"
 )
 
-const videoColumns = `id,publication_id,replica_id,pool_id,title,file_hash,source_hash,size,imported_at,relative_path,modified_at,description,category,adult,license`
+const videoColumns = `id,publication_id,replica_id,pool_id,title,file_hash,source_hash,size,imported_at,relative_path,modified_at,description,category,adult,license,provider,hash_status`
 
 func scanVideo(row interface{ Scan(...any) error }) (Video, error) {
 	var v Video
-	err := row.Scan(&v.ID, &v.PublicationID, &v.ReplicaID, &v.PoolID, &v.Title, &v.FileHash, &v.SourceHash, &v.Size, &v.ImportedAt, &v.relativePath, &v.modifiedAt, &v.Description, &v.Category, &v.Adult, &v.License)
+	err := row.Scan(&v.ID, &v.PublicationID, &v.ReplicaID, &v.PoolID, &v.Title, &v.FileHash, &v.SourceHash, &v.Size, &v.ImportedAt, &v.relativePath, &v.modifiedAt, &v.Description, &v.Category, &v.Adult, &v.License, &v.Provider, &v.HashStatus)
 	return v, err
 }
 
@@ -122,14 +122,14 @@ func (s *Store) importVideo(ctx context.Context, poolID, relative, title string,
 	if err != nil {
 		return v, err
 	}
-	v = Video{ID: identifier(), PublicationID: identifier(), ReplicaID: identifier(), PoolID: poolID, Title: strings.TrimSpace(title), FileHash: digest, SourceHash: digest, Size: before.Size(), ImportedAt: time.Now().UTC().Format(time.RFC3339Nano), Available: true, relativePath: relative, modifiedAt: before.ModTime().UnixNano()}
+	v = Video{ID: identifier(), PublicationID: identifier(), ReplicaID: identifier(), PoolID: poolID, Title: strings.TrimSpace(title), FileHash: digest, SourceHash: digest, Size: before.Size(), ImportedAt: time.Now().UTC().Format(time.RFC3339Nano), Available: true, Provider: "local", HashStatus: "verified", relativePath: relative, modifiedAt: before.ModTime().UnixNano()}
 	v.Metadata = details
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return v, err
 	}
 	defer tx.Rollback()
-	_, err = tx.ExecContext(ctx, `INSERT INTO videos (`+videoColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, v.ID, v.PublicationID, v.ReplicaID, v.PoolID, v.Title, v.FileHash, v.SourceHash, v.Size, v.ImportedAt, v.relativePath, v.modifiedAt, v.Description, v.Category, v.Adult, v.License)
+	_, err = tx.ExecContext(ctx, `INSERT INTO videos (`+videoColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, v.ID, v.PublicationID, v.ReplicaID, v.PoolID, v.Title, v.FileHash, v.SourceHash, v.Size, v.ImportedAt, v.relativePath, v.modifiedAt, v.Description, v.Category, v.Adult, v.License, v.Provider, v.HashStatus)
 	if err != nil {
 		return v, err
 	}
@@ -195,6 +195,15 @@ func (s *Store) listVideos(ctx context.Context, query string, args ...any) ([]Vi
 		}
 		if err := s.loadMedia(&result[i]); err != nil {
 			return nil, err
+		}
+		if result[i].Provider == "webdav" {
+			pool, err := s.poolByID(result[i].PoolID)
+			if err == nil && pool.Enabled {
+				result[i].Available = true
+			} else {
+				result[i].UnavailableReason = "pool_disabled"
+			}
+			continue
 		}
 		file, err := s.openVideo(result[i])
 		if err == nil {
