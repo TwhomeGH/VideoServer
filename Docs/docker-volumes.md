@@ -117,6 +117,32 @@ docker compose -f testing/compose.yaml -f testing/compose.local.yaml up -d --no-
 例如主機的 `H:\Video\旅行\第一天.mp4`，在 H 槽影片庫內的相對路徑是 `旅行/第一天.mp4`。註冊後會定期自動掃描新增影片；描述、Tag 與授權可再於影片庫編輯。
 避免把同一批檔案以重疊目錄反覆註冊為多個池；目前不同池會建立各自的索引。
 
+## Compose 多檔疊加
+
+這是 Docker Compose 的功能，不是 Docker Engine 本身：`docker compose -f a.yaml -f b.yaml` 會依序合併，後面的檔案可以覆寫或追加前面設定。`testing:up` 的實作是：
+
+```text
+-f testing/compose.yaml
+-f testing/compose.local.yaml   # 檔案存在時才加
+--profile all
+```
+
+合併規則：
+
+- 單值欄位（image、command、entrypoint 等）後檔覆寫前檔。
+- `environment`、`labels` 以鍵合併，後檔優先。
+- `volumes`、`devices` 以容器內 target 合併；target 相同時後檔覆寫。
+- `ports`、`expose`、`dns` 等序列會串接，不是覆寫；同一個 host port 仍可能衝突。
+- **相對路徑以第一個 `-f` 檔案（base）為基準**，不是以 override 檔所在位置為基準。`testing/compose.local.yaml` 和 base 同目錄，所以 `./local/media` 仍解析到 `testing/local/media`；`H:/Video` 是絕對路徑，不受影響。
+- 有指定 `-f` 時，Compose 不會自動再找 `compose.override.yaml`；根目錄日常部署則是不帶 `-f` 時自動載入 `compose.yaml` + `compose.override.yaml`。
+
+可用以下指令確認真正合併後的結果：
+
+```sh
+docker compose -f testing/compose.yaml -f testing/compose.local.yaml config
+docker compose -f testing/compose.yaml -f testing/compose.local.yaml config --volumes
+```
+
 ## 其他綁定方式
 
 Compose 以合併後的設定為準：`testing/compose.yaml` 加上 `testing/compose.local.yaml`，或根目錄 `compose.yaml` 加上 `compose.override.yaml`。`testing:up` 會自動疊加 local 檔；網頁要填的仍是容器內 target，不是主機 source。
