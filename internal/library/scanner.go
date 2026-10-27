@@ -30,6 +30,7 @@ type ScanResult struct {
 
 type PoolScanStatus struct {
 	PoolID           string `json:"poolId"`
+	Name             string `json:"name,omitempty"`
 	BackoffSeconds   int    `json:"backoffSeconds"`
 	Quiet            int    `json:"quiet"`
 	NextRunAt        string `json:"nextRunAt,omitempty"`
@@ -57,6 +58,7 @@ type observation struct {
 }
 
 type poolScanState struct {
+	name    string
 	next    time.Time
 	backoff time.Duration
 	quiet   int
@@ -123,7 +125,7 @@ func (s *Scanner) Status() ScanStatus {
 			remaining = 0
 		}
 		status.Pools = append(status.Pools, PoolScanStatus{
-			PoolID: id, BackoffSeconds: int(state.backoff / time.Second), Quiet: state.quiet,
+			PoolID: id, Name: state.name, BackoffSeconds: int(state.backoff / time.Second), Quiet: state.quiet,
 			NextRunAt: state.next.UTC().Format(time.RFC3339Nano), NextRunInSeconds: remaining,
 		})
 	}
@@ -234,12 +236,14 @@ func (s *Scanner) runDue(ctx context.Context) {
 	}
 	now := time.Now()
 	due := map[string]bool{}
+	names := map[string]string{}
 	for _, pool := range pools {
 		if !pool.Enabled || !pool.Online {
 			continue
 		}
 		if forceAll || forcePool[pool.ID] {
 			due[pool.ID] = true
+			names[pool.ID] = pool.Name
 			continue
 		}
 		if !automatic {
@@ -248,6 +252,7 @@ func (s *Scanner) runDue(ctx context.Context) {
 		state, exists := s.states[pool.ID]
 		if !exists || !now.Before(state.next) {
 			due[pool.ID] = true
+			names[pool.ID] = pool.Name
 		}
 	}
 	if len(due) == 0 {
@@ -275,6 +280,7 @@ func (s *Scanner) runDue(ctx context.Context) {
 	s.mu.Lock()
 	for id := range due {
 		state := s.states[id]
+		state.name = names[id]
 		if forceAll || forcePool[id] || active[id] {
 			state.quiet = 0
 			state.backoff = s.interval

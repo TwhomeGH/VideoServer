@@ -3134,6 +3134,9 @@
           },
           "nextRunInSeconds": {
             "type": "integer"
+          },
+          "name": {
+            "type": "string"
           }
         },
         "required": [

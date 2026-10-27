@@ -10,8 +10,9 @@ type MonitorData = {
   requests: number; inFlight: number; errors5xx: number; receivedBytes: number; sentBytes: number;
   receiveBytesPerSecond: number; sendBytesPerSecond: number; requestsPerSecond: number; tasksError?: string;
   tasks: { jobs: { counts: Record<string, number>; active: ImportJob[] }; scan: {
-    automatic: boolean; running: boolean; queued: boolean; intervalSeconds: number;
+    automatic: boolean; running: boolean; queued: boolean; intervalSeconds: number; idleMaxSeconds: number;
     nextRunAt?: string; nextRunInSeconds?: number;
+    pools?: { poolId: string; name?: string; backoffSeconds: number; quiet: number; nextRunAt?: string; nextRunInSeconds: number }[];
     last: { completedAt: string; enqueued: number; failed: number; pending: number; changed: number; deleted: number; offlinePools: number } | null;
   }; backfill: {
     enabled: boolean; intervalSeconds: number; nextCheckAt?: string; nextCheckInSeconds: number;
@@ -98,35 +99,48 @@ export function Monitor() {
       })}</p><p className="muted">{t('monitor.httpNote')}</p></section>
       {data.tasksError && <section><p role="alert">{data.tasksError}</p></section>}
       {data.tasks ? <>
-        <section><div className="section-heading"><h2>{t('monitor.jobsTitle')}</h2><a href="#jobs">{t('monitor.viewJobs')}</a></div>
-          <p>{t('monitor.jobCounts', {
-            queued: data.tasks.jobs.counts.queued,
-            running: data.tasks.jobs.counts.running,
-            failed: data.tasks.jobs.counts.failed,
-            completed: data.tasks.jobs.counts.completed,
-          })}</p>
-          {data.tasks.jobs.active.length === 0 && <p className="muted">{t('monitor.noActiveJobs')}</p>}
-          <ul className="monitor-jobs">{data.tasks.jobs.active.map(job => <li key={job.id}><strong>{job.title}</strong><span>{job.source === 'reprobe' ? t('monitor.reprobe') : t('monitor.import')}{t('common.dot')}{phaseLabel(job.phase)}</span><JobProgress job={job} /></li>)}</ul>
-          <p className="muted">{t('monitor.queueNote')}</p>
-        </section>
-        <section><h2>{t('monitor.scanTitle')}</h2><p>{data.tasks.scan.running ? t('monitor.scanRunning') : data.tasks.scan.queued ? t('monitor.scanQueued') : t('monitor.scanIdle')}{t('common.dot')}{data.tasks.scan.automatic ? t('monitor.scanEvery', { seconds: data.tasks.scan.intervalSeconds }) : t('monitor.scanDisabled')}</p>
-          {data.tasks.scan.automatic && !data.tasks.scan.running && <p className="muted">{t('monitor.scanNext', { seconds: data.tasks.scan.nextRunInSeconds || 0 })}</p>}
-          {data.tasks.scan.last && <p className="muted">{t('monitor.scanLast', {
-            time: new Date(data.tasks.scan.last.completedAt).toLocaleString(locale),
-            enqueued: data.tasks.scan.last.enqueued,
-            pending: data.tasks.scan.last.pending,
-            changed: data.tasks.scan.last.changed || 0,
-            deleted: data.tasks.scan.last.deleted || 0,
-            failed: data.tasks.scan.last.failed,
-            offline: data.tasks.scan.last.offlinePools,
-          })}</p>}
-          <a href="#pools">{t('monitor.managePools')}</a>
-        </section>
-        <section><h2>{t('monitor.backfillTitle')}</h2>
-          {data.tasks.backfill.enabled
-            ? <p>{t('monitor.backfillNext', { seconds: data.tasks.backfill.nextCheckInSeconds || 0 })}{t('common.dot')}{t('monitor.backfillCandidates', { count: data.tasks.backfill.candidateCount })}</p>
-            : <p className="muted">{t('monitor.backfillDisabled')}</p>}
-        </section>
+        <div className="monitor-dashboard">
+          <section><div className="section-heading"><h2>{t('monitor.jobsTitle')}</h2><a href="#jobs">{t('monitor.viewJobs')}</a></div>
+            <p>{t('monitor.jobCounts', {
+              queued: data.tasks.jobs.counts.queued,
+              running: data.tasks.jobs.counts.running,
+              failed: data.tasks.jobs.counts.failed,
+              completed: data.tasks.jobs.counts.completed,
+            })}</p>
+            {data.tasks.jobs.active.length === 0 && <p className="muted">{t('monitor.noActiveJobs')}</p>}
+            <ul className="monitor-jobs">{data.tasks.jobs.active.map(job => <li key={job.id}><strong>{job.title}</strong><span>{job.source === 'reprobe' ? t('monitor.reprobe') : t('monitor.import')}{t('common.dot')}{phaseLabel(job.phase)}</span><JobProgress job={job} /></li>)}</ul>
+            <p className="muted">{t('monitor.queueNote')}</p>
+          </section>
+          <div className="monitor-side">
+            <section><div className="section-heading"><h2>{t('monitor.scanTitle')}</h2><a href="#pools">{t('monitor.managePools')}</a></div>
+              <p>{data.tasks.scan.running ? t('monitor.scanRunning') : data.tasks.scan.queued ? t('monitor.scanQueued') : t('monitor.scanIdle')}{t('common.dot')}{data.tasks.scan.automatic ? t('monitor.scanEvery', { seconds: data.tasks.scan.intervalSeconds }) : t('monitor.scanDisabled')}</p>
+              {data.tasks.scan.automatic && <p className="muted">{t('monitor.scanIdleMax', { seconds: data.tasks.scan.idleMaxSeconds })}</p>}
+              {data.tasks.scan.automatic && !data.tasks.scan.running && <p className="muted">{t('monitor.scanNext', { seconds: data.tasks.scan.nextRunInSeconds || 0 })}</p>}
+              {data.tasks.scan.last && <p className="muted">{t('monitor.scanLast', {
+                time: new Date(data.tasks.scan.last.completedAt).toLocaleString(locale),
+                enqueued: data.tasks.scan.last.enqueued,
+                pending: data.tasks.scan.last.pending,
+                changed: data.tasks.scan.last.changed || 0,
+                deleted: data.tasks.scan.last.deleted || 0,
+                failed: data.tasks.scan.last.failed,
+                offline: data.tasks.scan.last.offlinePools,
+              })}</p>}
+              <ul className="monitor-scans">
+                {data.tasks.scan.pools?.length
+                  ? data.tasks.scan.pools.map(item => <li key={item.poolId}>
+                    <strong>{item.name || item.poolId}</strong>
+                    <span className="muted">{t('monitor.scanPoolNext', { seconds: item.nextRunInSeconds })}{t('common.dot')}{t('monitor.scanPoolBackoff', { seconds: item.backoffSeconds })}</span>
+                  </li>)
+                  : <li className="muted">{t('monitor.scanNoPools')}</li>}
+              </ul>
+            </section>
+            <section><h2>{t('monitor.backfillTitle')}</h2>
+              {data.tasks.backfill.enabled
+                ? <p>{t('monitor.backfillNext', { seconds: data.tasks.backfill.nextCheckInSeconds || 0 })}{t('common.dot')}{t('monitor.backfillCandidates', { count: data.tasks.backfill.candidateCount })}</p>
+                : <p className="muted">{t('monitor.backfillDisabled')}</p>}
+            </section>
+          </div>
+        </div>
       </> : !data.tasksError && <section><h2>{t('monitor.backgroundTitle')}</h2><p>{t('monitor.backgroundUnavailable')}</p></section>}
     </>}
   </>;
