@@ -1,10 +1,23 @@
 # ChangeHistory
 
-> 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
+> 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
 ## 2026.10.27 20:40 每池掃描退避、單池掃描與設定分組
 
-**類型**: 功能 · **檔案**: `internal/library/scanner.go`、`internal/library/http.go`、`internal/runtime/config.go`、`internal/runtime/configapi.go`、`internal/runtime/server.go`、`web/admin/src/Library.tsx`、`web/admin/src/Settings.tsx`、`web/admin/src/style.css`、`web/admin/src/lang/`、`pkg/protocol/openapi.json`
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/scanner.go`
+- `internal/library/http.go`
+- `internal/runtime/config.go`
+- `internal/runtime/configapi.go`
+- `internal/runtime/server.go`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/Settings.tsx`
+- `web/admin/src/style.css`
+- `web/admin/src/lang/`
+- `pkg/protocol/openapi.json`
 
 ### 問題
 
@@ -31,7 +44,17 @@
 
 ## 2026.10.27 20:10 儲存池卡片化、Volume GUID 顯示與手動資訊重查
 
-**類型**: 功能 · **檔案**: `internal/library/store.go`、`internal/library/http.go`、`internal/library/volume_*.go`、`web/admin/src/Library.tsx`、`web/admin/src/style.css`、`web/admin/src/lang/`、`pkg/protocol/openapi.json`
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/store.go`
+- `internal/library/http.go`
+- `internal/library/volume_*.go`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/style.css`
+- `web/admin/src/lang/`
+- `pkg/protocol/openapi.json`
 
 ### 問題
 
@@ -56,7 +79,16 @@
 
 ## 2026.10.27 13:00 週期掃描加入 changed／deleted reconciliation
 
-**類型**: 功能 · **檔案**: `internal/library/scanner.go`、`internal/library/scanner_test.go`、`pkg/protocol/openapi.json`、`web/admin/src/Library.tsx`、`web/admin/src/Monitor.tsx`、`web/admin/src/lang/`
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/scanner.go`
+- `internal/library/scanner_test.go`
+- `pkg/protocol/openapi.json`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/Monitor.tsx`
+- `web/admin/src/lang/`
 
 ### 問題
 
@@ -75,14 +107,24 @@
 ### 驗證
 
 - 新增 changed／deleted reconciliation 測試
-- 既有掃描穩定性、離線、手動匯入、volume GUID 測試維持通過。測試站 image `316d1362e1da` 的 `scan.last` 實測包含 changed／deleted，穩定庫為 0／0、skipped 179
+- 既有掃描穩定性、離線、手動匯入、volume GUID 測試維持通過。
+- 測試站 image `316d1362e1da` 的 `scan.last` 實測包含 changed／deleted，穩定庫為 0／0、skipped 179。
 - 儲存池頁顯示統計。
 
 ---
 
 ## 2026.10.27 12:40 Protocol 版本範圍與能力版本（向後相容）
 
-**類型**: 功能 · **檔案**: `pkg/protocol/protocol.go`、`pkg/protocol/http.go`、`pkg/protocol/openapi.json`、`pkg/protocol/protocol_test.go`、`Docs/peer-protocol.md`、`Docs/api/README.md`
+**類型**: 功能
+
+**檔案**:
+
+- `pkg/protocol/protocol.go`
+- `pkg/protocol/http.go`
+- `pkg/protocol/openapi.json`
+- `pkg/protocol/protocol_test.go`
+- `Docs/peer-protocol.md`
+- `Docs/api/README.md`
 
 ### 問題
 
@@ -92,7 +134,8 @@
 
 - 加入 min/max、`SupportedVersions`、`Negotiate` 與 `capabilityVersions`，保留既有 capabilities 與 `/api/v1` 行為
 - `MinSupported`／`MaxSupported` 目前都是 1；`Compatible` 改為範圍檢查，`Negotiate` 取交集最高版本。
-- `/api/v1/protocol` 新增 `minProtocolVersion`、`maxProtocolVersion`、`capabilityVersions`；既有 `capabilities` 名稱與順序不變。
+- `/api/v1/protocol` 新增 `minProtocolVersion`、`maxProtocolVersion`、`capabilityVersions`。
+- 既有 `capabilities` 名稱與順序不變。
 - 協定錯誤回應同步附版本範圍；OpenAPI Protocol schema 更新。
 - `capabilityVersions` 讓 client 可先偵測版本，不必等到改成 `name.vN` 才能協商；peer 註冊／heartbeat 仍未實作。
 
@@ -105,7 +148,15 @@
 
 ## 2026.10.27 12:15 新增 peer 握手與檔案監聽設計契約
 
-**類型**: 文件 · **檔案**: `Docs/peer-protocol.md`、`Docs/file-monitoring.md`、`Docs/architecture.md`、`Docs/onboarding.md`、`TODO.md`
+**類型**: 文件
+
+**檔案**:
+
+- `Docs/peer-protocol.md`
+- `Docs/file-monitoring.md`
+- `Docs/architecture.md`
+- `Docs/onboarding.md`
+- `TODO.md`
 
 ### 問題
 
@@ -115,8 +166,11 @@
 ### 修改
 
 - 先定控制平面與資料平面契約，避免之後被 watcher 或 registry 實作綁死
-- Peer 契約：serviceType、nodeId、instanceId、endpointRevision、版本範圍、帶版本能力、register/heartbeat/lease、peer 認證、split brain、catalog cursor 與失敗模式。
-- 檔案監聽：以 watcher 作提示、reconciliation 作權威；catalog/file identity、debounce、overflow、backpressure、new/changed/deleted/rename 語意、Docker／Windows／Linux 限制與狀態欄位。
+- Peer 契約：serviceType、nodeId、instanceId、endpointRevision、版本範圍、帶版本能力。
+- 握手：register/heartbeat/lease、peer 認證、split brain、catalog cursor 與失敗模式。
+- 檔案監聽：以 watcher 作提示、reconciliation 作權威
+- catalog/file identity、debounce、overflow、backpressure。
+- new/changed/deleted/rename 語意、Docker／Windows／Linux 限制與狀態欄位。
 - 明確標示目前尚未實作；先不動 runtime 行為。
 - 更新文件地圖、架構連結與 TODO。
 
@@ -129,7 +183,22 @@
 
 ## 2026.10.27 11:30 排程可見度、自動補齊開關與 SHA-256 限速
 
-**類型**: 功能 · **檔案**: `internal/library/scanner.go`、`internal/library/reprobe.go`、`internal/library/hash.go`、`internal/library/http.go`、`internal/runtime/config.go`、`internal/runtime/configapi.go`、`internal/runtime/server.go`、`web/admin/src/Settings.tsx`、`web/admin/src/Monitor.tsx`、`web/admin/src/ImportJobs.tsx`、`web/admin/src/Library.tsx`、`pkg/protocol/openapi.json`
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/scanner.go`
+- `internal/library/reprobe.go`
+- `internal/library/hash.go`
+- `internal/library/http.go`
+- `internal/runtime/config.go`
+- `internal/runtime/configapi.go`
+- `internal/runtime/server.go`
+- `web/admin/src/Settings.tsx`
+- `web/admin/src/Monitor.tsx`
+- `web/admin/src/ImportJobs.tsx`
+- `web/admin/src/Library.tsx`
+- `pkg/protocol/openapi.json`
 
 ### 問題
 
@@ -149,14 +218,28 @@
 ### 驗證
 
 - 新增補齊停用／背壓／排程狀態／掃描倒數／限速測試
-- Go 測試、`go vet`、前端建置、`lang:check` 與 OpenAPI 路由檢查通過。測試站重建後自動補齊預設關閉，既有候選保留待手動開啟。`GET /api/v1/schedule` 實測下次掃描倒數、候選 16 部與佇列狀態
+- Go 測試、`go vet`、前端建置、`lang:check` 與 OpenAPI 路由檢查通過。
+- 測試站重建後自動補齊預設關閉，既有候選保留待手動開啟。
+- `GET /api/v1/schedule` 實測下次掃描倒數、候選 16 部與佇列狀態。
 - 工作頁、監看頁與設定頁顯示一致。
 
 ---
 
 ## 2026.10.27 11:10 儲存池 volume GUID、檔案系統與啟停狀態
 
-**類型**: 功能 · **檔案**: `internal/library/volume_*.go`、`internal/library/store.go`、`internal/library/videos.go`、`internal/library/scanner.go`、`internal/library/reprobe.go`、`internal/library/http.go`、`web/admin/src/Library.tsx`、`pkg/protocol/openapi.json`、`web/admin/src/lang/`
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/volume_*.go`
+- `internal/library/store.go`
+- `internal/library/videos.go`
+- `internal/library/scanner.go`
+- `internal/library/reprobe.go`
+- `internal/library/http.go`
+- `web/admin/src/Library.tsx`
+- `pkg/protocol/openapi.json`
+- `web/admin/src/lang/`
 
 ### 問題
 
@@ -167,9 +250,12 @@
 
 - 加入 volume GUID／檔案系統、儲存池啟停與影片來源原因
 - SQLite schema v5 新增 `pools.volume_id`、`volume_relative`、`filesystem`、`enabled`；舊池啟動時自動補齊可讀取的中繼資料。
-- Windows 原生以 `GetVolumePathNameW`／`GetVolumeNameForVolumeMountPointW` 記錄 volume GUID 與相對路徑，執行時優先使用 GUID；Linux 顯示容器／主機看到的檔案系統類型，Docker 內沒有可用的 volume GUID。
+- Windows 原生以 `GetVolumePathNameW`／`GetVolumeNameForVolumeMountPointW` 記錄 volume GUID 與相對路徑，執行時優先使用 GUID
+- Linux 顯示容器／主機看到的檔案系統類型，Docker 內沒有可用的 volume GUID。
 - `PATCH /api/v1/pools/{id}` 與儲存池 UI 可停用／啟用；停用池不掃描、不匯入、不重新探測、不自動補齊，影片索引與描述保留。
-- `Pool` 回傳 `enabled`、`filesystem`、`volumeId`；影片新增 `unavailableReason`（`pool_disabled`、`pool_offline`、`source_changed`、`source_missing`），前端顯示原因並停用播放／重讀，描述仍可編輯。
+- `Pool` 回傳 `enabled`、`filesystem`、`volumeId`
+- 影片新增 `unavailableReason`（`pool_disabled`、`pool_offline`、`source_changed`、`source_missing`）。
+- 前端顯示原因並停用播放／重讀，描述仍可編輯。
 - 掃描器改用實際解析路徑；播放端點對停用、離線、來源遺失／變更回傳不同錯誤。
 - 更新 OpenAPI、i18n 與文件；SMART 健康診斷列為後續選配，不影響目前可用性。
 
@@ -182,7 +268,14 @@
 
 ## 2026.10.27 10:20 自動補齊缺少技術資訊的既有影片
 
-**類型**: 功能 · **檔案**: `internal/library/reprobe.go`、`internal/library/jobs.go`、`internal/library/backfill_test.go`、`internal/runtime/server.go`
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/reprobe.go`
+- `internal/library/jobs.go`
+- `internal/library/backfill_test.go`
+- `internal/runtime/server.go`
 
 ### 問題
 
@@ -206,13 +299,20 @@
 
 ## 2026.10.27 09:35 修正 Swagger UI 深色 Responses 表與範例區
 
-**類型**: 修正 · **檔案**: `web/admin/src/api-docs.css`
+**類型**: 修正
+
+**檔案**:
+
+- `web/admin/src/api-docs.css`
 
 ### 問題
 
 - responses 表頭的 Description 對比不足，範例 JSON 仍是棕色方塊
 
-### 原因 - Swagger UI 的 responses 表頭是 `td.col_header` 而不是 `th`，既有覆寫只涵蓋 `th`；範例區 `pre.microlight` 由元件寫入 inline `background:#333; color:white`，一般主題變數無法覆蓋
+### 原因
+
+- Swagger UI 的 responses 表頭是 `td.col_header` 而不是 `th`，既有覆寫只涵蓋 `th`
+- 範例區 `pre.microlight` 由元件寫入 inline `background:#333; color:white`，一般主題變數無法覆蓋
 
 ### 修改
 
@@ -233,7 +333,13 @@
 
 ## 2026.10.27 08:42 調整頁首語言選單間距、字體與簡體登出文字
 
-**類型**: 修正 · **檔案**: `web/admin/src/style.css`、`web/admin/src/main.tsx`、`web/admin/src/lang/zh_CN.overrides.json`
+**類型**: 修正
+
+**檔案**:
+
+- `web/admin/src/style.css`
+- `web/admin/src/main.tsx`
+- `web/admin/src/lang/zh_CN.overrides.json`
 
 ### 問題
 
@@ -257,7 +363,18 @@
 
 ## 2026.10.27 08:20 管理介面本地化、語言註冊器與缺值檢查
 
-**類型**: 功能 · **檔案**: `web/admin/src/lang/`、`web/admin/src/i18n/`、`web/admin/scripts/lang.mjs`、`web/admin/src/*.tsx`、`web/admin/package.json`、`package.json`、`.github/workflows/release.yml`、`Docs/localization.md`
+**類型**: 功能
+
+**檔案**:
+
+- `web/admin/src/lang/`
+- `web/admin/src/i18n/`
+- `web/admin/scripts/lang.mjs`
+- `web/admin/src/*.tsx`
+- `web/admin/package.json`
+- `package.json`
+- `.github/workflows/release.yml`
+- `Docs/localization.md`
 
 ### 問題
 
@@ -266,7 +383,9 @@
 ### 修改
 
 - 以 zh_TW 為來源，zh_CN 由 OpenCC 台灣片語轉換產生，加入 en、語言註冊器與執行期切換
-- `zh_TW.json` 是唯一手動維護的中文來源；`en.json` 手動維護；`zh_CN.json` 由 `opencc-js` 的 `twp → cn` 產生，轉換後用 `zh_CN.overrides.json` 修正少數用語。
+- `zh_TW.json` 是唯一手動維護的中文來源
+- `en.json` 手動維護
+- `zh_CN.json` 由 `opencc-js` 的 `twp → cn` 產生，轉換後用 `zh_CN.overrides.json` 修正少數用語。
 - `src/i18n/registry.ts` 是語言清單；新增 `ja.json` 後加入一筆即可出現在選單，瀏覽器語言前綴也會自動對應。
 - `I18nProvider` 處理瀏覽器語言、`localStorage` 的 `dvn-locale`、`html lang`、`{name}` 插值與缺鍵回退；日期時間依語言格式化。
 - `npm run lang:build` 產生 `zh_CN.json`；`npm run lang:check` 檢查缺鍵、空值、插值參數、程式使用未定義的 `t()` 鍵與 zh_CN 是否過期，CI 也會執行。
@@ -277,7 +396,11 @@
 
 ## 2026.10.27 07:22 改善背景工作進度動畫與更新頻率
 
-**類型**: 修正 · **檔案**: `web/admin/src/JobProgress.tsx`
+**類型**: 修正
+
+**檔案**:
+
+- `web/admin/src/JobProgress.tsx`
 
 ### 問題
 
@@ -295,7 +418,11 @@
 
 ## 2026.10.27 06:59 加入部署測試最近五組保留與清理流程
 
-**類型**: 維護 · **檔案**: `scripts/cleanup-deployment-tests.mjs`
+**類型**: 維護
+
+**檔案**:
+
+- `scripts/cleanup-deployment-tests.mjs`
 
 ### 問題
 
@@ -313,7 +440,11 @@
 
 ## 2026.10.27 06:41 加入 Swagger UI API 參考與測試頁
 
-**類型**: 功能 · **檔案**: `web/admin/src/ApiDocs.tsx`
+**類型**: 功能
+
+**檔案**:
+
+- `web/admin/src/ApiDocs.tsx`
 
 ### 問題
 
@@ -331,7 +462,11 @@
 
 ## 2026.10.27 06:15 建立 OpenAPI 與協定版本相容性檢查
 
-**類型**: 功能 · **檔案**: `pkg/protocol/http.go`
+**類型**: 功能
+
+**檔案**:
+
+- `pkg/protocol/http.go`
 
 ### 問題
 
@@ -349,7 +484,11 @@
 
 ## 2026.10.27 05:49 新增既有影片重新探測與服務工作監看
 
-**類型**: 功能 · **檔案**: `internal/library/reprobe.go`
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/reprobe.go`
 
 ### 問題
 
@@ -370,7 +509,11 @@
 
 ## 2026.10.27 05:37 加入影片庫分頁、搜尋與內容篩選
 
-**類型**: 功能 · **檔案**: `internal/library/query.go`
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/query.go`
 
 ### 問題
 
@@ -388,7 +531,11 @@
 
 ## 2026.10.27 05:27 加入持久背景匯入與 FFprobe 影片資訊
 
-**類型**: 功能 · **檔案**: `internal/library/jobs.go`
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/jobs.go`
 
 ### 問題
 
@@ -406,7 +553,14 @@
 
 ## 2026.10.27 04:50 將 Node 單元測試移出 scripts
 
-**類型**: 整理 · **檔案**: `test/`、`package.json`、`.github/workflows/release.yml`、`Docs/onboarding.md`
+**類型**: 整理
+
+**檔案**:
+
+- `test/`
+- `package.json`
+- `.github/workflows/release.yml`
+- `Docs/onboarding.md`
 
 ### 問題
 
@@ -416,7 +570,8 @@
 
 - 將 Node 單元測試集中到 `test/unit/`、整合流程移到 `test/integration/`，新增 `npm run test:unit`，CI 改用同一個入口
 - `test/unit/build-inputs.test.mjs`、`test/unit/workspaces.test.mjs` 的 import 改指向 `scripts/`
-- `test/integration/deployment.mjs`、`test/integration/images.mjs` 由 `npm run test:deployment`、`npm run test:images` 執行
+- `test/integration/deployment.mjs` 由 `npm run test:deployment` 執行。
+- `test/integration/images.mjs` 由 `npm run test:images` 執行。
 - Go 測試仍依 Go 慣例留在各套件旁，由 `go test ./...` 執行
 - `test/README.md` 說明兩者的界線與執行方式
 
@@ -424,7 +579,23 @@
 
 ## 2026.10.27 04:40 新增管理員登入、設定覆寫與重新啟動流程
 
-**類型**: 功能 · **檔案**: `internal/auth/`、`internal/runtime/config.go`、`internal/runtime/configapi.go`、`internal/runtime/server.go`、`web/admin/src/api.ts`、`web/admin/src/Login.tsx`、`web/admin/src/Settings.tsx`、`web/admin/src/main.tsx`、`web/admin/src/Library.tsx`、`scripts/dev.mjs`、`test/integration/deployment.mjs`、`test/integration/images.mjs`、Compose 與部署文件
+**類型**: 功能
+
+**檔案**:
+
+- `internal/auth/`
+- `internal/runtime/config.go`
+- `internal/runtime/configapi.go`
+- `internal/runtime/server.go`
+- `web/admin/src/api.ts`
+- `web/admin/src/Login.tsx`
+- `web/admin/src/Settings.tsx`
+- `web/admin/src/main.tsx`
+- `web/admin/src/Library.tsx`
+- `scripts/dev.mjs`
+- `test/integration/deployment.mjs`
+- `test/integration/images.mjs`
+- Compose 與部署文件
 
 ### 問題
 
@@ -436,11 +607,14 @@
 
 - 加入單一管理員 session、資料目錄設定覆寫、設定頁與監督式重新啟動
 - 首次啟動產生隨機管理員密碼並只顯示一次；可用 `DVN_ADMIN_PASSWORD` 覆寫。憑證以 PBKDF2-HMAC-SHA256 保存於資料目錄 `auth.json`。
-- 登入使用 HttpOnly、SameSite=Strict 的 `dvn_session` cookie，不把 token 放進 localStorage；閒置 7 天滑動續期，絕對上限 90 天，登入失敗每個來源 5 次鎖定 30 秒。
+- 登入使用 HttpOnly、SameSite=Strict 的 `dvn_session` cookie，不把 token 放進 localStorage
+- 閒置 7 天滑動續期，絕對上限 90 天，登入失敗每個來源 5 次鎖定 30 秒。
 - 登入後可變更密碼；登出或改密碼會輪替 session secret，使既有 session 全部失效。
 - 管理頁設定寫入資料目錄的 `config.override.json`，主機 JSON 保持唯讀；只保存與基準不同的欄位，可重設回基準。
 - 設定頁顯示來源、覆寫檔、資料／網頁目錄與需重啟狀態；確認後呼叫重啟 API。
-- 重新啟動以 exit code 75 結束，交由 Docker `restart: unless-stopped`、systemd `Restart=on-failure` 或 `npm run dev` 監督流程重新啟動；直接手動執行時會停止。
+- 重新啟動以 exit code 75 結束。
+- 交由 Docker `restart: unless-stopped`、systemd `Restart=on-failure` 或 `npm run dev` 監督流程重新啟動。
+- 直接手動執行時會停止。
 - 修正 Vite proxy 的 `changeOrigin`，讓開發模式的登入 Origin/Host 檢查正常。
 - 部署驗收、image 測試與文件加入登入 cookie 流程。
 
@@ -448,7 +622,11 @@
 
 ## 2026.10.27 04:05 完成 v0.1.0 首次發版本機驗收
 
-**類型**: 驗證 · **檔案**: `Docs/deployment-test-results.md`
+**類型**: 驗證
+
+**檔案**:
+
+- `Docs/deployment-test-results.md`
 
 ### 問題
 
@@ -466,7 +644,14 @@
 
 ## 2026.10.27 03:55 新增接手開發與部署入口文件
 
-**類型**: 文件 · **檔案**: `Docs/onboarding.md`、`README.md`、`Docs/deployment.md`、`testing/README.md`
+**類型**: 文件
+
+**檔案**:
+
+- `Docs/onboarding.md`
+- `README.md`
+- `Docs/deployment.md`
+- `testing/README.md`
 
 ### 問題
 
@@ -483,7 +668,20 @@
 
 ## 2026.10.27 03:45 加入 image 建置時間、來源摘要與測試環境版本檢查
 
-**類型**: 新增 · **檔案**: `scripts/build-inputs.mjs`、`scripts/image.mjs`、`scripts/check-testing.mjs`、`scripts/testing-up.mjs`、`Dockerfile`、`pkg/buildinfo/buildinfo.go`、`web/admin/src/main.tsx`、`compose.yaml`、`testing/compose.yaml`、`testing/README.md`
+**類型**: 新增
+
+**檔案**:
+
+- `scripts/build-inputs.mjs`
+- `scripts/image.mjs`
+- `scripts/check-testing.mjs`
+- `scripts/testing-up.mjs`
+- `Dockerfile`
+- `pkg/buildinfo/buildinfo.go`
+- `web/admin/src/main.tsx`
+- `compose.yaml`
+- `testing/compose.yaml`
+- `testing/README.md`
 
 ### 問題
 
@@ -504,7 +702,14 @@
 
 ## 2026.10.27 03:32 加寬管理介面並以對話框播放與編輯影片
 
-**類型**: 改善 · **檔案**: `web/admin/src/style.css`、`web/admin/src/Library.tsx`、`web/admin/src/main.tsx`、`web/admin/index.html`
+**類型**: 改善
+
+**檔案**:
+
+- `web/admin/src/style.css`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/main.tsx`
+- `web/admin/index.html`
 
 ### 問題
 
@@ -523,7 +728,11 @@
 
 ## 2026.10.27 03:09 修正測試手冊裸網址與表格格式
 
-**類型**: 文件 · **檔案**: `testing/README.md`
+**類型**: 文件
+
+**檔案**:
+
+- `testing/README.md`
 
 ### 問題
 
@@ -538,7 +747,14 @@
 
 ## 2026.10.27 03:07 補齊 Docker 多磁碟掛載操作手冊
 
-**類型**: 文件 · **檔案**: `Docs/docker-volumes.md`、`testing/compose.local.example.yaml`、`compose.override.example.yaml`、`.gitignore`
+**類型**: 文件
+
+**檔案**:
+
+- `Docs/docker-volumes.md`
+- `testing/compose.local.example.yaml`
+- `compose.override.example.yaml`
+- `.gitignore`
 
 ### 問題
 
@@ -557,7 +773,11 @@
 
 ## 2026.10.27 02:58 保存最後成功端口並建立原子設定寫入底層
 
-**類型**: 新增 · **檔案**: `internal/runtime/state.go`
+**類型**: 新增
+
+**檔案**:
+
+- `internal/runtime/state.go`
 
 ### 問題
 
@@ -577,7 +797,11 @@
 
 ## 2026.10.27 02:31 新增儲存池影片自動發現與穩定掃描
 
-**類型**: 新增 · **檔案**: `internal/library/scanner.go`
+**類型**: 新增
+
+**檔案**:
+
+- `internal/library/scanner.go`
 
 ### 問題
 
@@ -596,7 +820,11 @@
 
 ## 2026.10.27 02:14 統一開發設定並建立固定 Docker 測試工作區
 
-**類型**: 新增 · **檔案**: `scripts/workspaces.mjs`
+**類型**: 新增
+
+**檔案**:
+
+- `scripts/workspaces.mjs`
 
 ### 問題
 
@@ -618,7 +846,11 @@
 
 ## 2026.10.27 01:58 將服務入口目錄更名為 apps
 
-**類型**: 修正 · **檔案**: `scripts/dev.mjs`
+**類型**: 修正
+
+**檔案**:
+
+- `scripts/dev.mjs`
 
 ### 問題
 
@@ -633,7 +865,11 @@
 
 ## 2026.10.27 01:53 完成 Compose 部署驗收並簡化操作手冊
 
-**類型**: 改進 · **檔案**: `scripts/test-deployment.mjs`
+**類型**: 改進
+
+**檔案**:
+
+- `scripts/test-deployment.mjs`
 
 ### 問題
 
@@ -655,7 +891,11 @@
 
 ## 2026.10.27 01:42 新增本機 Docker 建置與 Linux 部署基礎
 
-**類型**: 新增 · **檔案**: `Dockerfile`
+**類型**: 新增
+
+**檔案**:
+
+- `Dockerfile`
 
 ### 問題
 
@@ -674,7 +914,11 @@
 
 ## 2026.10.27 01:33 將 DVN 管理面板拆分獨立分頁
 
-**類型**: 改進 · **檔案**: `web/admin/src/navigation.ts`
+**類型**: 改進
+
+**檔案**:
+
+- `web/admin/src/navigation.ts`
 
 ### 問題
 
@@ -690,7 +934,11 @@
 
 ## 2026.10.27 01:33 新增 Tag、原作者及轉載來源與影片資料編輯
 
-**類型**: 新增 · **檔案**: `internal/library/attribution.go`
+**類型**: 新增
+
+**檔案**:
+
+- `internal/library/attribution.go`
 
 ### 問題
 
@@ -706,7 +954,11 @@
 
 ## 2026.10.27 01:23 補齊影片匯入描述與內容標記
 
-**類型**: 新增 · **檔案**: `internal/library/metadata.go`
+**類型**: 新增
+
+**檔案**:
+
+- `internal/library/metadata.go`
 
 ### 問題
 
@@ -722,7 +974,11 @@
 
 ## 2026.10.27 01:21 新增 Video Node 儲存池與影片庫第一階段
 
-**類型**: 新增 · **檔案**: `internal/library/store.go`
+**類型**: 新增
+
+**檔案**:
+
+- `internal/library/store.go`
 
 ### 問題
 
@@ -741,7 +997,11 @@
 
 ## 2026.10.27 01:11 固定三服務執行檔名稱與路徑
 
-**類型**: 修正 · **檔案**: `scripts/dev.mjs`
+**類型**: 修正
+
+**檔案**:
+
+- `scripts/dev.mjs`
 
 ### 問題
 
@@ -756,7 +1016,11 @@
 
 ## 2026.10.27 01:08 調整服務預設端口並防止 Windows 端口共用
 
-**類型**: 修正 · **檔案**: `internal/runtime/listen_windows.go`
+**類型**: 修正
+
+**檔案**:
+
+- `internal/runtime/listen_windows.go`
 
 ### 問題
 
@@ -772,7 +1036,11 @@
 
 ## 2026.10.27 01:02 新增統一開發啟動與動態 API 代理
 
-**類型**: 修正 · **檔案**: `scripts/dev.mjs`
+**類型**: 修正
+
+**檔案**:
+
+- `scripts/dev.mjs`
 
 ### 問題
 
@@ -788,7 +1056,11 @@
 
 ## 2026.10.27 00:58 調整預設監聽以支援多網卡區網存取
 
-**類型**: 修正 · **檔案**: `internal/runtime/config.go`
+**類型**: 修正
+
+**檔案**:
+
+- `internal/runtime/config.go`
 
 ### 問題
 
@@ -803,7 +1075,11 @@
 
 ## 2026.10.27 00:50 建立 DVN Phase 1 三服務與管理介面骨架
 
-**類型**: 新增 · **檔案**: `internal/runtime/server.go`
+**類型**: 新增
+
+**檔案**:
+
+- `internal/runtime/server.go`
 
 ### 問題
 
