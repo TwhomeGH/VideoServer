@@ -2,6 +2,47 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 03:45 Index-only 全盤查找與找到的影片
+
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/discovery.go`
+- `internal/library/discovery_test.go`
+- `internal/library/store.go`
+- `internal/library/scanner.go`
+- `internal/library/http.go`
+- `web/admin/src/Discovered.tsx`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/navigation.ts`
+- `web/admin/src/style.css`
+- `web/admin/src/lang/`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- 全盤掃描仍會自動 hash／匯入所有找到的影片，finder 成本太高
+- 開關介面只有系統目錄排除，沒有「只索引不匯入」模式
+
+### 修改
+
+- 每池新增 `indexOnly`；掃描只寫入 `discovered_media`（schema v9），不建立 import job。
+- 新增「找到的影片」頁，支援搜尋、分頁、選取與批量／單筆手動匯入。
+- `GET /api/v1/discovered` 與 `POST /api/v1/discovered/import`；匯入成功後項目從清單消失。
+- 關閉 index-only 後，既有發現項目仍保留手動匯入，不一次自動 hash；新檔才恢復自動匯入。
+- 掃描完成會把未再看到的 discovery 標記 missing；發現列同時隱藏已在影片庫的路徑。
+- 格式與安全掃描政策沿用既有設定。
+
+### 驗證
+
+- 測試站建立 index-only 檔案後，掃描出現於「找到的影片」，且沒有建立 import job。
+- 手動掃描與頁面搜尋、選取、匯入按鈕正常；390px 無水平溢出。
+- 移除檔案後掃描會標記 missing，頁面回到空狀態；pool 已恢復 index-only=false。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
+---
+
 ## 2026.10.28 03:15 能力描述加入 serviceType 與 contentTypes
 
 **類型**: 改善

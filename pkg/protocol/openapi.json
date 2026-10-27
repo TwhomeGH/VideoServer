@@ -1623,7 +1623,7 @@
       "patch": {
         "operationId": "updatePool",
         "summary": "更新儲存池設定",
-        "description": "可更新啟用狀態或掃描政策；掃描政策關閉系統資料夾排除時，使用者需明確接受全盤掃描。",
+        "description": "可更新啟用狀態、掃描政策或 index-only 模式。",
         "parameters": [
           {
             "name": "id",
@@ -1649,6 +1649,9 @@
                   },
                   "scanExcludeSystem": {
                     "type": "boolean"
+                  },
+                  "indexOnly": {
+                    "type": "boolean"
                   }
                 },
                 "additionalProperties": false,
@@ -1661,6 +1664,11 @@
                   {
                     "required": [
                       "scanExcludeSystem"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "indexOnly"
                     ]
                   }
                 ]
@@ -1961,6 +1969,158 @@
         },
         "tags": [
           "系統"
+        ]
+      }
+    },
+    "/api/v1/discovered": {
+      "get": {
+        "operationId": "listDiscovered",
+        "summary": "列出 index-only 找到的影片",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          },
+          {
+            "name": "poolId",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1
+            }
+          },
+          {
+            "name": "pageSize",
+            "in": "query",
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 200
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "找到的影片",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscoveredPage"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
+    },
+    "/api/v1/discovered/import": {
+      "post": {
+        "operationId": "importDiscovered",
+        "summary": "匯入找到的影片",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "items": {
+                    "type": "array",
+                    "maxItems": 100,
+                    "minItems": 1,
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "poolId": {
+                          "type": "string"
+                        },
+                        "relativePath": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "poolId",
+                        "relativePath"
+                      ],
+                      "additionalProperties": false
+                    }
+                  }
+                },
+                "required": [
+                  "items"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "已排入的匯入工作",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "imported": {
+                      "type": "integer"
+                    },
+                    "jobs": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ImportJob"
+                      }
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
         ]
       }
     }
@@ -2387,6 +2547,9 @@
           },
           "wholeDisk": {
             "type": "boolean"
+          },
+          "indexOnly": {
+            "type": "boolean"
           }
         },
         "required": [
@@ -2396,7 +2559,8 @@
           "online",
           "enabled",
           "scanExcludeSystem",
-          "wholeDisk"
+          "wholeDisk",
+          "indexOnly"
         ]
       },
       "ImportJob": {
@@ -2531,6 +2695,9 @@
           },
           "deleted": {
             "type": "integer"
+          },
+          "discovered": {
+            "type": "integer"
           }
         },
         "required": [
@@ -2544,7 +2711,8 @@
           "offlinePools",
           "errors",
           "changed",
-          "deleted"
+          "deleted",
+          "discovered"
         ]
       },
       "ScanStatus": {
@@ -3350,6 +3518,67 @@
           "quiet",
           "nextRunInSeconds",
           "tier"
+        ]
+      },
+      "DiscoveredMedia": {
+        "type": "object",
+        "properties": {
+          "poolId": {
+            "type": "string"
+          },
+          "poolName": {
+            "type": "string"
+          },
+          "relativePath": {
+            "type": "string"
+          },
+          "size": {
+            "type": "integer"
+          },
+          "modifiedAt": {
+            "type": "integer"
+          },
+          "firstSeen": {
+            "type": "string"
+          },
+          "lastSeen": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "poolId",
+          "poolName",
+          "relativePath",
+          "size",
+          "modifiedAt",
+          "firstSeen",
+          "lastSeen"
+        ]
+      },
+      "DiscoveredPage": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DiscoveredMedia"
+            }
+          },
+          "total": {
+            "type": "integer"
+          },
+          "page": {
+            "type": "integer"
+          },
+          "pageSize": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "items",
+          "total",
+          "page",
+          "pageSize"
         ]
       }
     },

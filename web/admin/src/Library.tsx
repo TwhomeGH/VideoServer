@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from './api';
 import { useI18n } from './i18n';
 import { formatDuration } from './format';
+import { Discovered } from './Discovered';
 import { ScanTierBadge, ScanTierLegend } from './ScanTierBadge';
 import { useLiveVersion } from './live';
 import { Attribution, emptyMetadata, MetadataFields, type VideoMetadata } from './VideoMetadata';
@@ -9,7 +10,7 @@ import type { Page } from './navigation';
 import { ImportJobs, type ImportJob } from './ImportJobs';
 import { VideoFilters, defaultVideoFilters } from './VideoFilters';
 
-type Pool = { id: string; name: string; path: string; online: boolean; enabled: boolean; scanExcludeSystem: boolean; wholeDisk: boolean; filesystem?: string; volumeId?: string; volumeStatus?: string };
+type Pool = { id: string; name: string; path: string; online: boolean; enabled: boolean; scanExcludeSystem: boolean; indexOnly: boolean; wholeDisk: boolean; filesystem?: string; volumeId?: string; volumeStatus?: string };
 type Video = VideoMetadata & {
   id: string; title: string; poolId: string; size: number; fileHash: string;
   available: boolean; unavailableReason?: string; importedAt: string;
@@ -72,7 +73,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
   const [policyConfirm, setPolicyConfirm] = useState<Pool | null>(null);
   const [videoPage, setVideoPage] = useState(1);
   const refreshVersion = useRef(0);
-  const queryString = page === 'monitor' || page === 'api' || page === 'jobs' ? '' : page === 'videos'
+  const queryString = page === 'monitor' || page === 'api' || page === 'jobs' || page === 'discovered' ? '' : page === 'videos'
     ? new URLSearchParams({ ...filters, page: String(videoPage) }).toString() : 'pageSize=1';
   const playerDialog = useRef<HTMLDialogElement>(null);
   const editDialog = useRef<HTMLDialogElement>(null);
@@ -229,6 +230,11 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
                   <p className="muted">{t('library.scanExcludeSystemHint')}</p>
                   {pool.wholeDisk && <p className="muted">{t('library.wholeDiskWarning')}</p>}
                 </dd></div>
+                <div><dt>{t('library.indexOnly')}</dt><dd>
+                  <label className="checkbox-label"><input type="checkbox" checked={pool.indexOnly} disabled={busy}
+                    onChange={() => void submit(async () => { await request<Pool>(`pools/${pool.id}`, { indexOnly: !pool.indexOnly }, 'PATCH'); })} />{t('library.indexOnlyLabel')}</label>
+                  <p className="muted">{t('library.indexOnlyHint')}</p>
+                </dd></div>
               </dl>
               {policyConfirm?.id === pool.id && <div className="confirm-panel"><p>{t('library.scanExcludeSystemConfirm')}</p>
                 <div className="button-row"><button type="button" disabled={busy} onClick={() => { setPolicyConfirm(null); void submit(async () => { await request<Pool>(`pools/${pool.id}`, { scanExcludeSystem: false }, 'PATCH'); }); }}>{t('library.scanExcludeSystemConfirmButton')}</button>
@@ -273,6 +279,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
         </section>
       </form>}
     {page === 'jobs' && <ImportJobs />}
+    {page === 'discovered' && <Discovered />}
     <dialog ref={playerDialog} className="modal" aria-label={t('library.playerAria')} onClose={() => setSelected(null)} onClick={event => { if (event.target === event.currentTarget) setSelected(null); }}>
       {selected && <><div className="modal-heading"><h2>{selected.title}</h2><button onClick={() => setSelected(null)}>{t('library.closePlayer')}</button></div>
         <video key={selected.id} controls autoPlay preload="metadata" src={`/api/v1/videos/${selected.id}/content`} />

@@ -24,6 +24,7 @@ type ScanResult struct {
 	Changed      int       `json:"changed"`
 	Deleted      int       `json:"deleted"`
 	Failed       int       `json:"failed"`
+	Discovered   int       `json:"discovered"`
 	OfflinePools int       `json:"offlinePools"`
 	Errors       []string  `json:"errors"`
 }
@@ -580,6 +581,27 @@ func (s *Scanner) scanPools(ctx context.Context, now time.Time, pools []Pool, on
 				result.Pending++
 				return nil
 			}
+			if pool.IndexOnly {
+				changed, err := s.store.upsertDiscovered(ctx, pool.ID, relative, info.Size(), info.ModTime(), now)
+				if err != nil {
+					result.failure(err)
+				} else if changed {
+					result.Discovered++
+				}
+				delete(next, key)
+				return nil
+			}
+			if !pool.IndexOnly {
+				discovered, err := s.store.hasDiscovered(ctx, pool.ID, relative)
+				if err != nil {
+					result.failure(err)
+					return nil
+				}
+				if discovered {
+					result.Skipped++
+					return nil
+				}
+			}
 			if s.store.queue != nil {
 				_, added, err := s.store.queue.Enqueue(ctx, pool.ID, relative, "", "scan", Metadata{})
 				if err != nil && err != ErrImportExists {
@@ -612,13 +634,18 @@ func (s *Scanner) scanPools(ctx context.Context, now time.Time, pools []Pool, on
 			complete = false
 		}
 		if complete {
+			if err := s.store.markDiscoveredMissing(ctx, pool.ID, seen); err != nil {
+				result.failure(err)
+			}
+		}
+		if complete {
 			for key, video := range catalog {
 				if video.poolID == pool.ID && !seen[key] {
 					result.Deleted++
 				}
 			}
 		}
-		if result.Imported > before.Imported || result.Enqueued > before.Enqueued || result.Pending > before.Pending ||
+		if result.Imported > before.Imported || result.Enqueued > before.Enqueued || result.Pending > before.Pending || result.Discovered > before.Discovered ||
 			result.Changed > before.Changed || result.Deleted > before.Deleted || result.Failed > before.Failed ||
 			len(result.Errors) > len(before.Errors) {
 			active[pool.ID] = true

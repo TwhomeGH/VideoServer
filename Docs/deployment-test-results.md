@@ -81,6 +81,16 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## Index-only 全盤查找驗收
+
+2026-10-28 在 `dvn-testing`（image 來源 `995071294fbf`）驗證：
+
+- 將儲存池切為 `indexOnly=true`，放入測試檔後掃描；項目出現在「找到的影片」。
+- `/api/v1/discovered` 回傳項目，`/api/v1/import-jobs` 沒有對應工作，確認 index-only 不 hash。
+- 頁面顯示導覽、搜尋、選取與匯入按鈕；390px 無水平溢出。
+- 移除檔案並掃描後，discovery 標記 missing，清單回到空狀態。
+- 儲存池已恢復 `indexOnly=false`；Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+
 ## 能力描述 serviceType／contentTypes 驗收
 
 2026-10-28 在 `dvn-testing`（image 來源 `5c642b2c4cb0`）驗證 `/api/v1/protocol`：

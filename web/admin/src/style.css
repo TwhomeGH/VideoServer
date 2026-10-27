@@ -182,6 +182,25 @@ body:has(dialog[open]) { overflow:hidden; }
 .monitor-dashboard>section, .monitor-side>section { margin-bottom:0; }
 .monitor-side { display:grid; gap:24px; align-content:start; }
 .monitor-scans { list-style:none; margin:12px 0 0; padding:0; }
+
+.discovered-toolbar { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin:14px 0 8px; }
+.discovered-toolbar input { max-width:28rem; }
+.discovered-actions { display:flex; gap:8px; flex-wrap:wrap; margin:8px 0 12px; }
+.discovered-actions button, .discovered-row button { padding:6px 10px; font-size:.82rem; }
+.discovered-table { display:grid; border:1px solid var(--line); border-radius:12px; overflow:hidden; }
+.discovered-head, .discovered-row { display:grid; grid-template-columns:32px minmax(0,2fr) 110px 95px 160px 82px; gap:10px; align-items:center; padding:8px 12px; }
+.discovered-head { background:var(--bg); border-bottom:1px solid var(--line); color:var(--muted); font-size:.75rem; }
+.discovered-row { border-bottom:1px solid var(--line); }
+.discovered-row:last-child { border-bottom:0; }
+.discovered-row input[type=checkbox] { width:auto; }
+.discovered-path { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.discovered-row button { justify-self:start; }
+@media(max-width:800px) {
+  .discovered-head { display:none; }
+  .discovered-row { grid-template-columns:auto minmax(0,1fr); }
+  .discovered-row .discovered-path { grid-column:1/-1; order:-1; }
+  .discovered-row button { grid-column:1/-1; justify-self:start; }
+}
 .monitor-scans li { display:grid; grid-template-columns:1fr; gap:4px; padding:10px 0; border-bottom:1px solid var(--line); }
 .monitor-scans li:last-child { border-bottom:0; }
 .monitor-scans strong { overflow-wrap:anywhere; }

@@ -69,6 +69,10 @@ npx --yes @redocly/cli lint pkg/protocol/openapi.json --extends=minimal
 
 新增或修改 API 時，需同步更新規格、能力公告及契約測試。新增可選欄位通常可保留協定 v1；改變欄位語意、移除欄位、改動必要授權／工作流程等破壞相容性的變更，須先安排新協定與遷移策略。
 
+## Index-only 找到的影片
+
+`GET /api/v1/discovered` 列出 index-only 掃描找到、尚未進入影片庫的檔案，支援 `poolId`、`q`、`page`、`pageSize`。`POST /api/v1/discovered/import` 接受 `{ "items": [{ "poolId", "relativePath" }] }`，一次最多 100 筆，會建立手動匯入工作；匯入成功後該項目會從清單消失。這兩個端點都需要登入。
+
 ## SSE 事件串流
 
 登入後可連線 `GET /api/v1/events`，使用同一個 HttpOnly session cookie。端點只推送變更通知，不包含完整資料：

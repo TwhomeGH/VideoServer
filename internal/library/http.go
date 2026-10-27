@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"strconv"
 )
 
 func respond(w http.ResponseWriter, status int, value any) {
@@ -152,12 +153,13 @@ func (s *Store) Register(mux *http.ServeMux) {
 		var request struct {
 			Enabled           *bool `json:"enabled"`
 			ScanExcludeSystem *bool `json:"scanExcludeSystem"`
+			IndexOnly         *bool `json:"indexOnly"`
 		}
 		if !decode(w, r, &request) {
 			return
 		}
-		if request.Enabled == nil && request.ScanExcludeSystem == nil {
-			failure(w, 400, "請提供 enabled 或 scanExcludeSystem")
+		if request.Enabled == nil && request.ScanExcludeSystem == nil && request.IndexOnly == nil {
+			failure(w, 400, "請提供 enabled、scanExcludeSystem 或 indexOnly")
 			return
 		}
 		id := r.PathValue("id")
@@ -181,6 +183,17 @@ func (s *Store) Register(mux *http.ServeMux) {
 					failure(w, 404, "找不到儲存池")
 				} else {
 					failure(w, 500, "無法更新掃描政策")
+				}
+				return
+			}
+		}
+		if request.IndexOnly != nil {
+			pool, err = s.SetPoolIndexOnly(id, *request.IndexOnly)
+			if err != nil {
+				if errors.Is(err, sql.ErrNoRows) {
+					failure(w, 404, "找不到儲存池")
+				} else {
+					failure(w, 500, "無法更新匯入模式")
 				}
 				return
 			}
@@ -283,6 +296,49 @@ func (s *Store) Register(mux *http.ServeMux) {
 		})
 	}
 	if s.queue != nil {
+
+		mux.HandleFunc("GET /api/v1/discovered", func(w http.ResponseWriter, r *http.Request) {
+			page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+			pageSize, _ := strconv.Atoi(r.URL.Query().Get("pageSize"))
+			result, err := s.ListDiscovered(r.Context(), r.URL.Query().Get("poolId"), r.URL.Query().Get("q"), page, pageSize)
+			if err != nil {
+				failure(w, 500, "無法讀取找到的影片")
+				return
+			}
+			respond(w, 200, result)
+		})
+		mux.HandleFunc("POST /api/v1/discovered/import", func(w http.ResponseWriter, r *http.Request) {
+			if s.queue == nil {
+				failure(w, 503, "匯入佇列尚未就緒")
+				return
+			}
+			var request struct {
+				Items []struct {
+					PoolID       string `json:"poolId"`
+					RelativePath string `json:"relativePath"`
+				} `json:"items"`
+			}
+			if !decode(w, r, &request) {
+				return
+			}
+			if len(request.Items) == 0 || len(request.Items) > 100 {
+				failure(w, 400, "一次需匯入 1 到 100 個項目")
+				return
+			}
+			jobs := []ImportJob{}
+			errorsList := []string{}
+			for _, item := range request.Items {
+				job, added, err := s.queue.Enqueue(r.Context(), item.PoolID, item.RelativePath, "", "manual", Metadata{})
+				if err != nil {
+					errorsList = append(errorsList, err.Error())
+					continue
+				}
+				if added {
+					jobs = append(jobs, job)
+				}
+			}
+			respond(w, 200, map[string]any{"imported": len(jobs), "jobs": jobs, "errors": errorsList})
+		})
 		mux.HandleFunc("GET /api/v1/import-jobs", func(w http.ResponseWriter, r *http.Request) {
 			jobs, err := s.queue.Jobs()
 			if err != nil {

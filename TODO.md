@@ -52,7 +52,8 @@
 - [x] 下次掃描／補齊倒數、候選數、自動補齊預設關閉、佇列背壓與 SHA-256 讀取限速。
 - [x] 儲存池安全掃描預設、全盤確認與系統目錄排除。
 - [x] 影片格式 allowlist 依 FFprobe demuxer 驗證；`.ts`／`.mts` 預設關閉並做 MPEG-TS 內容嗅探。
-- [ ] 儲存池自訂 include／exclude globs 與 index-only 全盤查找模式。
+- [x] Index-only 全盤查找模式、找到的影片清單與手動匯入。
+- [ ] 儲存池自訂 include／exclude globs。
 - [ ] 儲存池 SMART 健康診斷（選配；需平台權限與裝置支援，不影響可用性）。
 - [x] 影片庫分頁、標題／簡介搜尋、Tag／分類／儲存池／18+ 篩選與排序。
 - [ ] 刪除與重新索引。
