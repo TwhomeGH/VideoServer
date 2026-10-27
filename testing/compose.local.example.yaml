@@ -10,3 +10,16 @@ services:
         read_only: true
         bind:
           create_host_path: false
+      # 啟用 HTTPS 時另外掛載；憑證與 key 不會提交。
+      # - type: bind
+      #   source: ./certs/tls.crt
+      #   target: /certs/tls.crt
+      #   read_only: true
+      #   bind:
+      #     create_host_path: false
+      # - type: bind
+      #   source: ./certs/tls.key
+      #   target: /certs/tls.key
+      #   read_only: true
+      #   bind:
+      #     create_host_path: false
