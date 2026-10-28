@@ -2,6 +2,42 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 16:00 新增 Docs/development 開發指南
+
+**類型**: 文件
+
+**檔案**:
+
+- `Docs/development/README.md`
+- `Docs/development/schema-migrations.md`
+- `Docs/development/change-playbook.md`
+- `Docs/development/testing.md`
+- `Docs/onboarding.md`
+- `Docs/architecture.md`
+- `README.md`
+
+### 問題
+
+- 開發知識散在 onboarding、architecture、ChangeHistory 與各功能文件
+- `store.go` 的 schema version／migration 規則沒有集中說明
+- 不清楚一個需求該改前端、後端、API、migration 的哪一段
+
+### 修改
+
+- 新增 `Docs/development/`，分成入口、schema migration、變更食譜與測試四份。
+- 入口提供程式心智模型、檔案責任與常見需求對照表。
+- schema 文件說明 `version > N` 降級保護、`version < N` 升級、追加規則與欄位範例。
+- 變更食譜列出前端、API、schema、設定、掃描、WebDAV 的修改順序。
+- 測試文件區分 Go package、JS unit、image／deployment integration 與 testing stack。
+- onboarding、architecture、README 加入開發指南入口。
+
+### 驗證
+
+- 文件連結與路徑檢查；新文件最長行 115 字元。
+- 未改 runtime；既有 Go 測試與 build 不受影響。
+
+---
+
 ## 2026.10.28 08:40 修正 4:3 封面仍被裁切
 
 **類型**: 修正

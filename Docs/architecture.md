@@ -6,12 +6,14 @@
 - React + Vite + TypeScript：共用管理介面，支援 Light / Dark / System。
 - SQLite + database/sql + migrations：Video Node MVP 索引；PostgreSQL 後續擴充。
 - FFmpeg / FFprobe：本機與遠端共用的轉碼執行能力。
-- HTTP JSON + OpenAPI：管理 API、協定版本與能力公告；SSE 事件串流已接入工作、掃描與設定變更，HTTPS 由部署層處理。
+- HTTP JSON + OpenAPI：管理 API、協定版本與能力公告；SSE 事件串流已接入工作、掃描與設定變更；可直接啟用應用程式 TLS，也可由部署層 reverse proxy 處理。
 - Windows / Linux / Docker；Valkey 為選配。
 
 Central 負責搜尋、索引與聯邦協調，不承擔所有影片流量。
 Video Node 自主管理儲存、影片、播放及政策，不依賴 Central 才能啟動。
 Worker 依派工條件轉碼，不能變更影片所有權或放寬政策。
+
+要改程式時的檔案定位、schema migration 與測試順序見 [開發指南](development/README.md)。
 
 未來的 peer 握手與檔案監聽契約分別見 [peer protocol](peer-protocol.md) 與 [file monitoring](file-monitoring.md)；目前尚未實作。
 

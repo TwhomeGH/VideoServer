@@ -4,7 +4,7 @@
 
 **最短答案：**
 
-- 想先看到整套系統跑起來：`npm run testing:up`，開 <http://localhost:18710>。
+- 想先看到整套系統跑起來：`npm run testing:up`，開 <http://localhost:18710>；若本機已啟用 testing TLS，改用 `https://`。
 - 要改程式：`npm --prefix web/admin ci`、`npm run dev`，開 <http://localhost:5173>。
 - 要正式部署：走 [C. 正式部署](#c-正式部署單一-video-node)。
 
@@ -16,6 +16,7 @@
 | 驗證 Docker 打包、磁碟掛載與完整啟動 | [B. Docker 測試環境](#b-docker-測試環境) | 18710／18720／18730 三服務 |
 | 正式部署一個 Video Node | [C. 正式部署](#c-正式部署單一-video-node) | 18610 管理頁面 |
 | 先了解系統邊界與資料模型 | [架構與目前範圍](#架構與目前範圍) | 知道哪些功能已實作、哪些還是骨架 |
+| 要改程式、加欄位或 API | [開發指南](development/README.md) | 知道該改前後端哪裡、怎麼測 |
 
 不確定選哪條時：**只改前端或 Go 邏輯先用 A；要確認「打包成 image 後還能跑」用 B；要對外提供服務才走 C。**
 
@@ -41,7 +42,7 @@
 - NodeID、儲存池、影片描述與 Tag 存在 SQLite；影片原檔**不複製**，只在原目錄建立索引。
 - 已有單一管理員登入、HttpOnly session、管理 API 授權、密碼變更與設定保存／重啟流程；尚未提供多使用者與角色權限。
 - 管理介面提供繁體中文、简体中文與 English，語言選單保存在瀏覽器；Go 錯誤訊息與 OpenAPI 內容尚未多語化。
-- 轉碼、Central 索引協作、遠端 Worker 派工與封面擷取尚未實作。
+- 轉碼、Central 索引協作與遠端 Worker 派工尚未實作；封面擷取、自訂封面與分類管理已接入 Video Node。
 - 管理 API 同時使用登入授權與 Origin 檢查。跨網路部署仍需規劃 HTTPS；公開健康檢查與版本端點不等同管理權限。
 - 更完整的模型與限制見 [架構文件](architecture.md)、[API 與協定](api/README.md)、[TODO](../TODO.md)。
 
@@ -181,6 +182,7 @@ docker compose ps
 | `scripts/` | 開發啟動、image 建置、測試環境檢查與工作區初始化 |
 | `test/` | Node 單元測試；Go 測試依慣例放在各套件旁 |
 | `Docs/` | 操作手冊；行為改變時同步更新 `ChangeHistory.md` |
+| `Docs/development/` | 開發者入口：架構定位、schema migration、變更食譜與測試 |
 
 修改後的檢查順序：
 
@@ -237,6 +239,10 @@ npm run testing:up         # 建置、啟動並檢查測試環境
 | [設定管理](configuration.md) | 端口、資料目錄、掃描間隔、runtime.json |
 | [本地化](localization.md) | 新增語言、zh_CN 產生、缺值檢查 |
 | [架構文件](architecture.md) | 資料模型、服務邊界與後續方向 |
+| [開發指南](development/README.md) | 要改程式時：改哪裡、schema、前後端與測試 |
+| [Schema migration](development/schema-migrations.md) | `store.go` 的版本保護、migration 與欄位新增 |
+| [變更食譜](development/change-playbook.md) | 新 API、欄位、設定、掃描、WebDAV 的改動清單 |
+| [測試](development/testing.md) | 單元、整合、testing stack 與前端驗證 |
 | [Peer 握手設計](peer-protocol.md) | Central／Worker 註冊、能力協商、lease 與 catalog 邊界 |
 | [檔案監聽設計](file-monitoring.md) | watcher＋reconciliation、變更語意與平台限制 |
 | [部署驗收紀錄](deployment-test-results.md) | 已經實測過哪些 Docker 行為 |
@@ -247,7 +253,7 @@ npm run testing:up         # 建置、啟動並檢查測試環境
 
 第一次接手時，建議依序完成：
 
-1. 讀完本文件與 [架構文件](architecture.md)。
+1. 讀完本文件與 [架構文件](architecture.md)，再讀 [開發指南](development/README.md)。
 2. 執行 `npm --prefix web/admin ci`、`npm run dev`，用日誌的首次密碼登入，確認 5173 可以開啟並看到 Video Node。
 3. 執行 `npm run testing:up`，確認 18710 三服務健康，且 `npm run check:testing` 全部相符；首次登入密碼在 video-node 日誌。
 4. 打開 `#settings` 確認設定來源與覆寫路徑，再打開 `#diagnostics` 確認 NodeID、程式建置時間、鏡像建置時間與來源摘要都有值。
