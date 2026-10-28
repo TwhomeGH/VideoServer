@@ -81,6 +81,13 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## 封面排程 Rows.Err 修正
+
+2026-10-29（image 來源 `c0502fd198d1`）：
+
+- `go test ./... -timeout 120s`、`go vet ./...` 通過。
+- testing stack 三容器 healthy，`check:testing` 相符。
+
 ## 掃描分級間隔設定
 
 2026-10-29 在 `dvn-testing`（image 來源 `61085591cd11`）驗證：

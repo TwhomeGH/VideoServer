@@ -87,4 +87,7 @@ func (s *Store) enqueueNextCover(ctx context.Context) {
 		s.EnsureCover(videoID)
 		return
 	}
+	if err := rows.Err(); err != nil {
+		return
+	}
 }
