@@ -32,6 +32,7 @@ type Config struct {
 	HashLimitMiBps             int      `json:"hashLimitMiBps"`
 	RememberLastSuccessfulPort bool     `json:"rememberLastSuccessfulPort"`
 	FFprobePath                string   `json:"ffprobePath"`
+	FFmpegPath                 string   `json:"ffmpegPath"`
 	ProbeTimeoutSeconds        int      `json:"probeTimeoutSeconds"`
 	TLSCertFile                string   `json:"tlsCertFile,omitempty"`
 	TLSKeyFile                 string   `json:"tlsKeyFile,omitempty"`
@@ -61,7 +62,7 @@ func LoadConfig(path string, port int, service ...string) (Config, error) {
 			}
 		}
 	}
-	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, ScanIdleMaxSeconds: 21600, FileStableSeconds: 10, AutoBackfill: false, BackfillIntervalSeconds: 60, BackfillDailyLimit: 50, BackfillDailyGiB: 20, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", ProbeTimeoutSeconds: 60}
+	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, ScanIdleMaxSeconds: 21600, FileStableSeconds: 10, AutoBackfill: false, BackfillIntervalSeconds: 60, BackfillDailyLimit: 50, BackfillDailyGiB: 20, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", FFmpegPath: "ffmpeg", ProbeTimeoutSeconds: 60}
 	if path != "" {
 		file, err := os.Open(path)
 		if err != nil {

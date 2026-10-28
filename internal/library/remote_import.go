@@ -59,11 +59,16 @@ func (s *Store) ImportRemoteVideo(ctx context.Context, poolID, relative, title s
 		return result, err
 	}
 	defer tx.Rollback()
-	if _, err := tx.ExecContext(ctx, `INSERT INTO videos (`+videoColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, result.ID, result.PublicationID, result.ReplicaID, result.PoolID, result.Title, result.FileHash, result.SourceHash, result.Size, result.ImportedAt, result.relativePath, result.modifiedAt, result.Description, result.Category, result.Adult, result.License, result.Provider, result.HashStatus); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO videos (`+videoColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, result.ID, result.PublicationID, result.ReplicaID, result.PoolID, result.Title, result.FileHash, result.SourceHash, result.Size, result.ImportedAt, result.relativePath, result.modifiedAt, result.Description, result.Category, result.Adult, result.License, result.Provider, result.HashStatus, result.CoverUpdatedAt, result.coverMime); err != nil {
 		return result, err
 	}
 	if err := saveAttribution(ctx, tx, result.ID, details); err != nil {
 		return result, err
+	}
+	if strings.TrimSpace(details.Category) != "" {
+		if _, err := tx.ExecContext(ctx, "INSERT OR IGNORE INTO categories(id,name,created_at) VALUES(?,?,?)", identifier(), strings.TrimSpace(details.Category), time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+			return result, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return result, err

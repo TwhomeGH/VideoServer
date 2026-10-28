@@ -210,7 +210,6 @@
   "filters.tag": "Tag",
   "filters.tagPlaceholder": "Exact tag name",
   "filters.category": "Category",
-  "filters.categoryPlaceholder": "Exact category name",
   "filters.pool": "Storage pool",
   "filters.allPools": "All storage pools",
   "filters.adult": "Content flag",
@@ -531,5 +530,19 @@
   "library.tlsEditTitle": "Update WebDAV TLS",
   "library.tlsCurrent": "Current:",
   "library.tlsRemoveCA": "Remove custom CA",
-  "library.tlsEditHint": "Leave the file empty to keep the current CA; enabling skip clears it."
+  "library.tlsEditHint": "Leave the file empty to keep the current CA; enabling skip clears it.",
+  "library.generateCover": "Capture cover",
+  "library.uploadCover": "Upload cover",
+  "library.removeCover": "Remove cover",
+  "filters.allCategories": "All categories",
+  "categories.manage": "Manage categories",
+  "categories.intro": "Categories sync to each video's category field; deleting one clears it from videos using it.",
+  "categories.namePlaceholder": "New category name",
+  "categories.add": "Add category",
+  "categories.rename": "Rename",
+  "categories.delete": "Delete",
+  "categories.count": "{count} videos",
+  "categories.empty": "No categories yet",
+  "categories.deleteConfirm": "Delete category \"{name}\"? Videos using it become uncategorized.",
+  "categories.renameAria": "Rename category {name}"
 }

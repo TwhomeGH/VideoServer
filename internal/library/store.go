@@ -35,6 +35,7 @@ type Store struct {
 	hashLimitBytesPerSecond int64
 	publisher               Publisher
 	videoFormats            *media.VideoFormats
+	ffmpegPath              string
 	dataDirectory           string
 	secretMu                sync.Mutex
 }
@@ -94,14 +95,16 @@ type Video struct {
 	PoolID        string `json:"poolId"`
 	Title         string `json:"title"`
 	Metadata
-	FileHash          string      `json:"fileHash"`
-	SourceHash        string      `json:"sourceHash"`
-	Size              int64       `json:"size"`
-	ImportedAt        string      `json:"importedAt"`
-	Available         bool        `json:"available"`
-	UnavailableReason string      `json:"unavailableReason,omitempty"`
-	Provider          string      `json:"provider"`
-	HashStatus        string      `json:"hashStatus"`
+	FileHash          string `json:"fileHash"`
+	SourceHash        string `json:"sourceHash"`
+	Size              int64  `json:"size"`
+	ImportedAt        string `json:"importedAt"`
+	Available         bool   `json:"available"`
+	UnavailableReason string `json:"unavailableReason,omitempty"`
+	Provider          string `json:"provider"`
+	HashStatus        string `json:"hashStatus"`
+	CoverUpdatedAt    string `json:"coverUpdatedAt,omitempty"`
+	coverMime         string
 	Media             *media.Info `json:"media,omitempty"`
 	relativePath      string
 	modifiedAt        int64
@@ -132,7 +135,7 @@ func Open(directory string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
-	store := &Store{db: db, videoFormats: media.DefaultVideoFormats(), dataDirectory: directory}
+	store := &Store{db: db, videoFormats: media.DefaultVideoFormats(), dataDirectory: directory, ffmpegPath: "ffmpeg"}
 	if err := store.migrate(); err != nil {
 		db.Close()
 		return nil, err
@@ -157,8 +160,8 @@ func (s *Store) migrate() error {
 	if err := tx.QueryRow("SELECT COALESCE(MAX(version),0) FROM schema_version").Scan(&version); err != nil {
 		return err
 	}
-	if version > 14 {
-		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 14", version)
+	if version > 16 {
+		return fmt.Errorf("資料庫版本 %d 高於目前支援的版本 16", version)
 	}
 	if _, err := tx.Exec(`
  CREATE TABLE IF NOT EXISTS schema_version(version INTEGER PRIMARY KEY);
@@ -386,6 +389,59 @@ INSERT INTO schema_version VALUES(9);`); err != nil {
 		}
 		if _, err := tx.Exec("INSERT INTO schema_version VALUES(14)"); err != nil {
 			return err
+		}
+	}
+	if version < 15 {
+		columns := []struct{ name, definition string }{
+			{"cover_updated_at", "TEXT NOT NULL DEFAULT ''"},
+			{"cover_mime", "TEXT NOT NULL DEFAULT ''"},
+		}
+		for _, column := range columns {
+			exists, err := columnExists(tx, "videos", column.name)
+			if err != nil {
+				return err
+			}
+			if !exists {
+				if _, err := tx.Exec("ALTER TABLE videos ADD COLUMN " + column.name + " " + column.definition); err != nil {
+					return err
+				}
+			}
+		}
+		if _, err := tx.Exec("INSERT INTO schema_version VALUES(15)"); err != nil {
+			return err
+		}
+	}
+	if version < 16 {
+		if _, err := tx.Exec(`
+CREATE TABLE IF NOT EXISTS categories(
+ id TEXT PRIMARY KEY,
+ name TEXT NOT NULL UNIQUE COLLATE NOCASE,
+ created_at TEXT NOT NULL);
+INSERT INTO schema_version VALUES(16);`); err != nil {
+			return err
+		}
+		rows, err := tx.Query("SELECT DISTINCT category FROM videos WHERE TRIM(category) <> ''")
+		if err != nil {
+			return err
+		}
+		names := []string{}
+		for rows.Next() {
+			var name string
+			if err := rows.Scan(&name); err != nil {
+				rows.Close()
+				return err
+			}
+			names = append(names, name)
+		}
+		if err := rows.Err(); err != nil {
+			rows.Close()
+			return err
+		}
+		rows.Close()
+		for _, name := range names {
+			if _, err := tx.Exec("INSERT OR IGNORE INTO categories(id,name,created_at) VALUES(?,?,?)", identifier(), name, timestamp()); err != nil {
+				return err
+			}
 		}
 	}
 	if _, err := tx.Exec("INSERT OR IGNORE INTO metadata VALUES('nodeId', ?)", identifier()); err != nil {

@@ -10,8 +10,8 @@ export function defaultVideoFilters(): VideoFilterValues {
 }
 
 /** VideoFilters 提供文字與內容標記篩選；onApply 回傳條件並由父層重設頁碼。 */
-export function VideoFilters({ pools, initialValues, onApply }: {
-  pools: { id: string; name: string; enabled?: boolean }[]; initialValues: VideoFilterValues; onApply: (values: VideoFilterValues) => void;
+export function VideoFilters({ pools, categories, initialValues, onApply }: {
+  pools: { id: string; name: string; enabled?: boolean }[]; categories: { id: string; name: string }[]; initialValues: VideoFilterValues; onApply: (values: VideoFilterValues) => void;
 }) {
   const { t } = useI18n();
   const [values, setValues] = useState(initialValues);
@@ -19,7 +19,7 @@ export function VideoFilters({ pools, initialValues, onApply }: {
   return <form className="video-filters" onSubmit={event => { event.preventDefault(); onApply(values); }}>
     <label>{t('filters.search')}<input maxLength={200} value={values.q} onChange={event => patch('q', event.target.value)} placeholder={t('filters.searchPlaceholder')} /></label>
     <label>{t('filters.tag')}<input maxLength={200} value={values.tag} onChange={event => patch('tag', event.target.value)} placeholder={t('filters.tagPlaceholder')} /></label>
-    <label>{t('filters.category')}<input maxLength={80} value={values.category} onChange={event => patch('category', event.target.value)} placeholder={t('filters.categoryPlaceholder')} /></label>
+    <label>{t('filters.category')}<select value={values.category} onChange={event => patch('category', event.target.value)}><option value="">{t('filters.allCategories')}</option>{categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}</select></label>
     <label>{t('filters.pool')}<select value={values.poolId} onChange={event => patch('poolId', event.target.value)}><option value="">{t('filters.allPools')}</option>{pools.map(pool => <option key={pool.id} value={pool.id}>{pool.name}{pool.enabled === false ? t('library.disabledSuffix') : ''}</option>)}</select></label>
     <label>{t('filters.adult')}<select value={values.adult} onChange={event => patch('adult', event.target.value)}><option value="">{t('filters.all')}</option><option value="true">{t('filters.adultYes')}</option><option value="false">{t('filters.adultNo')}</option></select></label>
     <label>{t('filters.sort')}<select value={values.sort} onChange={event => patch('sort', event.target.value)}><option value="newest">{t('filters.newest')}</option><option value="oldest">{t('filters.oldest')}</option><option value="title">{t('filters.title')}</option></select></label>

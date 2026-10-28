@@ -2416,6 +2416,367 @@
           "影片庫與儲存池"
         ]
       }
+    },
+    "/api/v1/videos/{id}/cover": {
+      "get": {
+        "operationId": "getVideoCover",
+        "summary": "取得影片封面",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "封面圖片",
+            "content": {
+              "image/jpeg": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/png": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              },
+              "image/webp": {
+                "schema": {
+                  "type": "string",
+                  "format": "binary"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "找不到封面"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      },
+      "post": {
+        "operationId": "generateVideoCover",
+        "summary": "用 FFmpeg 擷取封面",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "已更新封面",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Video"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "找不到影片"
+          },
+          "422": {
+            "description": "無法擷取封面"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      },
+      "put": {
+        "operationId": "uploadVideoCover",
+        "summary": "上傳自訂封面",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                },
+                "required": [
+                  "file"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "已更新封面",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Video"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "檔案格式或大小無效"
+          },
+          "422": {
+            "description": "封面格式不支援"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteVideoCover",
+        "summary": "移除封面",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "已移除",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Video"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "找不到影片"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
+    },
+    "/api/v1/categories": {
+      "get": {
+        "operationId": "listCategories",
+        "summary": "列出分類",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "分類清單",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Category"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      },
+      "post": {
+        "operationId": "addCategory",
+        "summary": "新增分類",
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "已新增",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "名稱無效或重複"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
+    },
+    "/api/v1/categories/{id}": {
+      "patch": {
+        "operationId": "renameCategory",
+        "summary": "重新命名分類",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "maxLength": 80
+                  }
+                },
+                "required": [
+                  "name"
+                ]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "已更新",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Category"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "找不到分類"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      },
+      "delete": {
+        "operationId": "deleteCategory",
+        "summary": "刪除分類並清空影片分類",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "confirm",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true"
+              ]
+            }
+          },
+          {
+            "$ref": "#/components/parameters/ProtocolVersion"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "已刪除"
+          },
+          "404": {
+            "description": "找不到分類"
+          }
+        },
+        "tags": [
+          "影片庫與儲存池"
+        ]
+      }
     }
   },
   "components": {
@@ -2788,6 +3149,10 @@
               "pending",
               "failed"
             ]
+          },
+          "coverUpdatedAt": {
+            "type": "string",
+            "format": "date-time"
           }
         },
         "required": [
@@ -3171,6 +3536,12 @@
                 "type": "null"
               }
             ]
+          },
+          "categories": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Category"
+            }
           }
         },
         "required": [
@@ -3179,7 +3550,8 @@
           "videos",
           "pagination",
           "jobs",
-          "scan"
+          "scan",
+          "categories"
         ]
       },
       "Config": {
@@ -3263,6 +3635,9 @@
           },
           "tlsKeyFile": {
             "type": "string"
+          },
+          "ffmpegPath": {
+            "type": "string"
           }
         },
         "required": [
@@ -3282,7 +3657,8 @@
           "hashLimitMiBps",
           "scanIdleMaxSeconds",
           "backfillDailyLimit",
-          "backfillDailyGiB"
+          "backfillDailyGiB",
+          "ffmpegPath"
         ]
       },
       "ConfigInput": {
@@ -3928,6 +4304,25 @@
           "total",
           "page",
           "pageSize"
+        ]
+      },
+      "Category": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "videoCount": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "videoCount"
         ]
       }
     },

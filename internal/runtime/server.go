@@ -177,6 +177,7 @@ func Main(service string, port int) int {
 			logger.Warn("影片格式能力警告", "warning", warning)
 		}
 		store.SetVideoFormats(formats)
+		store.SetFFmpegPath(config.FFmpegPath)
 		queue, err = library.NewImportQueue(store, config.FFprobePath, time.Duration(config.ProbeTimeoutSeconds)*time.Second, logger)
 		if err != nil {
 			logger.Error("初始化匯入佇列失敗", "error", err)

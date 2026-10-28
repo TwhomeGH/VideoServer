@@ -8,9 +8,11 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"os"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 )
 
 func respond(w http.ResponseWriter, status int, value any) {
@@ -151,6 +153,61 @@ func (s *Store) Register(mux *http.ServeMux) {
 		}
 		respond(w, 200, map[string]any{"scan": scan, "backfill": backfill, "jobs": jobs})
 	})
+
+	mux.HandleFunc("GET /api/v1/categories", func(w http.ResponseWriter, r *http.Request) {
+		categories, err := s.Categories(r.Context())
+		if err != nil {
+			failure(w, 500, "無法讀取分類")
+			return
+		}
+		respond(w, 200, categories)
+	})
+	mux.HandleFunc("POST /api/v1/categories", func(w http.ResponseWriter, r *http.Request) {
+		var request struct {
+			Name string `json:"name"`
+		}
+		if !decode(w, r, &request) {
+			return
+		}
+		category, err := s.AddCategory(r.Context(), request.Name)
+		if err != nil {
+			failure(w, 400, err.Error())
+			return
+		}
+		respond(w, 201, category)
+	})
+	mux.HandleFunc("PATCH /api/v1/categories/{id}", func(w http.ResponseWriter, r *http.Request) {
+		var request struct {
+			Name string `json:"name"`
+		}
+		if !decode(w, r, &request) {
+			return
+		}
+		category, err := s.RenameCategory(r.Context(), r.PathValue("id"), request.Name)
+		if errors.Is(err, sql.ErrNoRows) {
+			failure(w, 404, "找不到分類")
+			return
+		}
+		if err != nil {
+			failure(w, 400, err.Error())
+			return
+		}
+		respond(w, 200, category)
+	})
+	mux.HandleFunc("DELETE /api/v1/categories/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("confirm") != "true" {
+			failure(w, 400, "請確認刪除分類")
+			return
+		}
+		if err := s.DeleteCategory(r.Context(), r.PathValue("id")); errors.Is(err, sql.ErrNoRows) {
+			failure(w, 404, "找不到分類")
+			return
+		} else if err != nil {
+			failure(w, 500, "無法刪除分類")
+			return
+		}
+		respond(w, 200, map[string]bool{"deleted": true})
+	})
 	mux.HandleFunc("GET /api/v1/library", func(w http.ResponseWriter, r *http.Request) {
 		values, err := url.ParseQuery(r.URL.RawQuery)
 		if err != nil {
@@ -184,7 +241,12 @@ func (s *Store) Register(mux *http.ServeMux) {
 				return
 			}
 		}
-		respond(w, 200, map[string]any{"nodeId": s.nodeID, "pools": pools, "videos": videoPage.Videos, "pagination": map[string]int{"page": videoPage.Page, "pageSize": videoPage.PageSize, "total": videoPage.Total, "totalVideos": videoPage.TotalVideos}, "scan": scan, "jobs": jobs})
+		categories, err := s.Categories(r.Context())
+		if err != nil {
+			failure(w, 500, "無法讀取分類")
+			return
+		}
+		respond(w, 200, map[string]any{"nodeId": s.nodeID, "pools": pools, "categories": categories, "videos": videoPage.Videos, "pagination": map[string]int{"page": videoPage.Page, "pageSize": videoPage.PageSize, "total": videoPage.Total, "totalVideos": videoPage.TotalVideos}, "scan": scan, "jobs": jobs})
 	})
 	mux.HandleFunc("POST /api/v1/pools", func(w http.ResponseWriter, r *http.Request) {
 		var request struct {
@@ -581,6 +643,83 @@ func (s *Store) Register(mux *http.ServeMux) {
 			respond(w, 202, job)
 		})
 	}
+
+	mux.HandleFunc("GET /api/v1/videos/{id}/cover", func(w http.ResponseWriter, r *http.Request) {
+		path, mimeType, updated, err := s.cover(r.PathValue("id"))
+		if errors.Is(err, sql.ErrNoRows) || errors.Is(err, os.ErrNotExist) {
+			failure(w, 404, "找不到封面")
+			return
+		}
+		if err != nil {
+			failure(w, 500, "無法讀取封面")
+			return
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			failure(w, 404, "找不到封面")
+			return
+		}
+		defer file.Close()
+		modTime, _ := time.Parse(time.RFC3339Nano, updated)
+		w.Header().Set("Content-Type", mimeType)
+		w.Header().Set("Cache-Control", "private, max-age=60")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		http.ServeContent(w, r, r.PathValue("id"), modTime, file)
+	})
+	mux.HandleFunc("POST /api/v1/videos/{id}/cover", func(w http.ResponseWriter, r *http.Request) {
+		var request struct{}
+		if !decode(w, r, &request) {
+			return
+		}
+		video, err := s.GenerateCover(r.Context(), r.PathValue("id"))
+		if errors.Is(err, sql.ErrNoRows) {
+			failure(w, 404, "找不到影片")
+			return
+		}
+		if err != nil {
+			failure(w, 422, err.Error())
+			return
+		}
+		respond(w, 200, video)
+	})
+	mux.HandleFunc("PUT /api/v1/videos/{id}/cover", func(w http.ResponseWriter, r *http.Request) {
+		r.Body = http.MaxBytesReader(w, r.Body, maxCoverBytes+1)
+		if err := r.ParseMultipartForm(maxCoverBytes + 1); err != nil {
+			failure(w, 400, "封面表單格式無效")
+			return
+		}
+		defer r.MultipartForm.RemoveAll()
+		file, _, err := r.FormFile("file")
+		if err != nil {
+			failure(w, 400, "找不到封面檔案")
+			return
+		}
+		defer file.Close()
+		data, err := io.ReadAll(io.LimitReader(file, maxCoverBytes+1))
+		if err != nil || len(data) > maxCoverBytes {
+			failure(w, 400, "封面不可超過 8 MiB")
+			return
+		}
+		mimeType := http.DetectContentType(data)
+		video, err := s.saveCover(r.Context(), r.PathValue("id"), mimeType, data)
+		if err != nil {
+			failure(w, 422, err.Error())
+			return
+		}
+		respond(w, 200, video)
+	})
+	mux.HandleFunc("DELETE /api/v1/videos/{id}/cover", func(w http.ResponseWriter, r *http.Request) {
+		video, err := s.deleteCover(r.Context(), r.PathValue("id"))
+		if errors.Is(err, sql.ErrNoRows) {
+			failure(w, 404, "找不到影片")
+			return
+		}
+		if err != nil {
+			failure(w, 500, "無法移除封面")
+			return
+		}
+		respond(w, 200, video)
+	})
 	mux.HandleFunc("GET /api/v1/videos/{id}/content", s.play)
 }
 

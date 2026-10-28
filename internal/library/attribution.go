@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
+	"time"
 )
 
 func saveAttribution(ctx context.Context, tx *sql.Tx, id string, m Metadata) error {
@@ -90,6 +91,11 @@ func (s *Store) UpdateMetadata(ctx context.Context, id, title string, metadata M
 	}
 	if err := saveAttribution(ctx, tx, id, details); err != nil {
 		return empty, err
+	}
+	if strings.TrimSpace(details.Category) != "" {
+		if _, err := tx.ExecContext(ctx, "INSERT OR IGNORE INTO categories(id,name,created_at) VALUES(?,?,?)", identifier(), strings.TrimSpace(details.Category), time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+			return empty, err
+		}
 	}
 	if err := tx.Commit(); err != nil {
 		return empty, err

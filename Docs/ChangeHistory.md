@@ -2,6 +2,50 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 08:10 影片封面與分類管理
+
+**類型**: 功能
+
+**檔案**:
+
+- `internal/library/cover.go`
+- `internal/library/categories.go`
+- `internal/media/thumbnail.go`
+- `internal/library/http.go`
+- `internal/library/store.go`
+- `internal/library/videos.go`
+- `internal/library/attribution.go`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/CategoryManager.tsx`
+- `web/admin/src/VideoFilters.tsx`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- 影片卡只有佔位圖，沒有封面
+- 分類是影片上的自由文字，沒有集中管理與篩選選單
+
+### 修改
+
+- videos schema v15 新增 `cover_updated_at`／`cover_mime`；封面存 `<dataDirectory>/covers/`。
+- 新增 FFmpeg 封面擷取（本機／遠端 WebDAV、TLS 設定沿用）；失敗時重試 0 秒。
+- 支援自訂封面 JPEG／PNG／WebP 上傳（8 MiB）、讀取與移除；卡片與播放器使用封面。
+- categories schema v16 與既有分類 seed；新增、改名、刪除都同步 `videos.category`。
+- 影片匯入或 metadata 更新會自動建立缺少的分類。
+- 篩選器改為分類下拉選單；影片頁新增分類管理 dialog。
+- API／OpenAPI 與 `ffmpegPath` 設定同步。
+
+### 驗證
+
+- 7.3 MB 本機影片擷取封面成功，回傳 `image/jpeg` 13 KB。
+- 封面 API 回 200、`Cache-Control: private, max-age=60`；卡片顯示封面圖片。
+- 分類新增／改名／刪除 API 通過；改名會更新影片、刪除會清空分類。
+- 分類管理 dialog 可開啟；分類篩選選單有「全部分類」。
+- 390px 無水平溢出；Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：尚未自動為所有影片批次產生封面；遠端封面擷取未做 live 測試；分類篩選仍是單一分類。
+
+---
+
 ## 2026.10.28 07:30 DVN 管理介面 HTTPS ingress
 
 **類型**: 安全性

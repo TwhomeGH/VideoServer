@@ -14,11 +14,11 @@ import (
 	"github.com/TwhomeGH/VideoServer/internal/media"
 )
 
-const videoColumns = `id,publication_id,replica_id,pool_id,title,file_hash,source_hash,size,imported_at,relative_path,modified_at,description,category,adult,license,provider,hash_status`
+const videoColumns = `id,publication_id,replica_id,pool_id,title,file_hash,source_hash,size,imported_at,relative_path,modified_at,description,category,adult,license,provider,hash_status,cover_updated_at,cover_mime`
 
 func scanVideo(row interface{ Scan(...any) error }) (Video, error) {
 	var v Video
-	err := row.Scan(&v.ID, &v.PublicationID, &v.ReplicaID, &v.PoolID, &v.Title, &v.FileHash, &v.SourceHash, &v.Size, &v.ImportedAt, &v.relativePath, &v.modifiedAt, &v.Description, &v.Category, &v.Adult, &v.License, &v.Provider, &v.HashStatus)
+	err := row.Scan(&v.ID, &v.PublicationID, &v.ReplicaID, &v.PoolID, &v.Title, &v.FileHash, &v.SourceHash, &v.Size, &v.ImportedAt, &v.relativePath, &v.modifiedAt, &v.Description, &v.Category, &v.Adult, &v.License, &v.Provider, &v.HashStatus, &v.CoverUpdatedAt, &v.coverMime)
 	return v, err
 }
 
@@ -129,12 +129,17 @@ func (s *Store) importVideo(ctx context.Context, poolID, relative, title string,
 		return v, err
 	}
 	defer tx.Rollback()
-	_, err = tx.ExecContext(ctx, `INSERT INTO videos (`+videoColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, v.ID, v.PublicationID, v.ReplicaID, v.PoolID, v.Title, v.FileHash, v.SourceHash, v.Size, v.ImportedAt, v.relativePath, v.modifiedAt, v.Description, v.Category, v.Adult, v.License, v.Provider, v.HashStatus)
+	_, err = tx.ExecContext(ctx, `INSERT INTO videos (`+videoColumns+`) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`, v.ID, v.PublicationID, v.ReplicaID, v.PoolID, v.Title, v.FileHash, v.SourceHash, v.Size, v.ImportedAt, v.relativePath, v.modifiedAt, v.Description, v.Category, v.Adult, v.License, v.Provider, v.HashStatus, v.CoverUpdatedAt, v.coverMime)
 	if err != nil {
 		return v, err
 	}
 	if err := saveAttribution(ctx, tx, v.ID, details); err != nil {
 		return v, err
+	}
+	if strings.TrimSpace(details.Category) != "" {
+		if _, err := tx.ExecContext(ctx, "INSERT OR IGNORE INTO categories(id,name,created_at) VALUES(?,?,?)", identifier(), strings.TrimSpace(details.Category), time.Now().UTC().Format(time.RFC3339Nano)); err != nil {
+			return v, err
+		}
 	}
 	if options != nil {
 		if options.media != nil {

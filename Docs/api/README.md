@@ -81,6 +81,8 @@ npx --yes @redocly/cli lint pkg/protocol/openapi.json --extends=minimal
 
 `POST /api/v1/videos/{id}/probe` 也支援 WebDAV 影片；FFprobe 直接讀取 Range/HTTP，不需要先下載完整檔案。
 
+`GET/POST/PUT/DELETE /api/v1/videos/{id}/cover` 讀取、FFmpeg 擷取、上傳或移除封面；上傳限制 8 MiB，支援 JPEG／PNG／WebP。`GET/POST /api/v1/categories` 與 `PATCH/DELETE /api/v1/categories/{id}` 管理分類；刪除需 `confirm=true`，會清空影片分類。
+
 ## SSE 事件串流
 
 登入後可連線 `GET /api/v1/events`，使用同一個 HttpOnly session cookie。端點只推送變更通知，不包含完整資料：

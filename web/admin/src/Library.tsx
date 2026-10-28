@@ -9,11 +9,12 @@ import { Attribution, emptyMetadata, MetadataFields, type VideoMetadata } from '
 import type { Page } from './navigation';
 import { ImportJobs, type ImportJob } from './ImportJobs';
 import { VideoFilters, defaultVideoFilters } from './VideoFilters';
+import { CategoryManager, type Category } from './CategoryManager';
 
 type Pool = { id: string; name: string; path: string; online: boolean; enabled: boolean; scanExcludeSystem: boolean; indexOnly: boolean; provider: string; remoteUrl?: string; remoteUser?: string; remoteRoot?: string; tlsSkipVerify: boolean; tlsCaSet: boolean; wholeDisk: boolean; filesystem?: string; volumeId?: string; volumeStatus?: string };
 type Video = VideoMetadata & {
   id: string; title: string; poolId: string; size: number; fileHash: string;
-  available: boolean; unavailableReason?: string; importedAt: string; provider: string; hashStatus: string;
+  available: boolean; unavailableReason?: string; importedAt: string; provider: string; hashStatus: string; coverUpdatedAt?: string;
   description: string; category: string; adult: boolean; license: string;
   media?: { durationSeconds: number; width: number; height: number; videoCodec: string; audioCodec: string; frameRate: number };
 };
@@ -26,7 +27,7 @@ type ScanStatus = {
   nextRunAt?: string; nextRunInSeconds?: number; pools?: PoolScanStatus[];
   last: { completedAt: string; imported: number; enqueued: number; pending: number; changed: number; deleted: number; failed: number; offlinePools: number; errors: string[] } | null;
 };
-type LibraryData = { nodeId: string; pools: Pool[]; videos: Video[]; scan: ScanStatus | null; jobs: ImportJob[];
+type LibraryData = { nodeId: string; pools: Pool[]; categories?: Category[]; videos: Video[]; scan: ScanStatus | null; jobs: ImportJob[];
   pagination: { page: number; pageSize: number; total: number; totalVideos: number } };
 
 function mediaSummary(video: Video, t: (key: string, params?: Record<string, string | number>) => string): string {
@@ -50,6 +51,10 @@ function unavailableVideoLabel(video: Video, poolName: string | undefined, t: (k
 
 async function request<T>(path: string, body?: object, method = 'POST'): Promise<T> {
   return api<T>(path, body ? { method, body: JSON.stringify(body) } : { method: 'GET' });
+}
+
+function coverUrl(video: Video): string {
+  return `/api/v1/videos/${video.id}/cover?v=${encodeURIComponent(video.coverUpdatedAt || '')}`;
 }
 
 /** Library 依 page 顯示管理分頁，切換時保留尚未送出的表單資料。 */
@@ -86,6 +91,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
   const addDialog = useRef<HTMLDialogElement>(null);
   const tlsDialog = useRef<HTMLDialogElement>(null);
   const editDialog = useRef<HTMLDialogElement>(null);
+  const categoryDialog = useRef<HTMLDialogElement>(null);
   const [tlsEdit, setTLSEdit] = useState<Pool | null>(null);
   const [tlsEditCA, setTLSEditCA] = useState<string | null>(null);
   const [tlsEditSkip, setTLSEditSkip] = useState(false);
@@ -161,8 +167,8 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
       <section><h2>{t('overview.startTitle')}</h2><p>{t('overview.startIntro')}</p><div className="quick-links"><a href="#pools">{t('overview.managePools')}</a><a href="#import">{t('overview.import')}</a><a href="#videos">{t('overview.browse')}</a></div></section>
     </>}
     {page === 'videos' && <section><div className="section-heading"><div><h2>{t('library.importedTitle')}</h2><p className="muted">{data ? t('library.filterSummary', { matching: data.pagination.total, total: data.pagination.totalVideos }) : t('library.reading')}</p></div>
-      <button disabled={busy} onClick={() => void submit(async () => {})}>{t('library.refresh')}</button></div>
-      <VideoFilters pools={data?.pools || []} initialValues={filters} onApply={values => { setSelected(null); setEditing(null); setFilters(values); setVideoPage(1); }} />
+      <div className="button-row"><button type="button" disabled={busy} onClick={() => categoryDialog.current?.showModal()}>{t('categories.manage')}</button><button disabled={busy} onClick={() => void submit(async () => {})}>{t('library.refresh')}</button></div></div>
+      <VideoFilters pools={data?.pools || []} categories={data?.categories || []} initialValues={filters} onApply={values => { setSelected(null); setEditing(null); setFilters(values); setVideoPage(1); }} />
       {data?.videos.length === 0 && <div className="empty-state">{data.pagination.totalVideos === 0 ? <>{t('library.empty')}{' '}<a href="#import">{t('library.importFirst')}</a></> : t('library.noMatches')}</div>}
       <div className="video-grid">{data?.videos.map(video => {
         const pool = data.pools.find(item => item.id === video.poolId);
@@ -170,7 +176,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
         const verifyJob = data.jobs.find(job => job.source === 'verify' && job.videoId === video.id && (job.status === 'queued' || job.status === 'running'));
         const verifyPercent = verifyJob ? Math.min(100, Math.round((verifyJob.bytesProcessed / Math.max(1, verifyJob.totalBytes || video.size)) * 100)) : 0;
         return <article key={video.id} className="video-card">
-        <div className="video-cover" aria-hidden="true">▶</div><h3>{video.title}</h3>
+        <div className="video-cover" aria-hidden="true">{video.coverUpdatedAt ? <img loading="lazy" src={coverUrl(video)} alt="" /> : '▶'}</div><h3>{video.title}</h3>
         <p>{video.category || t('library.unclassified')}{video.adult ? `${t('common.dot')}${t('common.adultTag')}` : ''}</p>
         {video.description && <p className="description">{video.description}</p>}
         <p>{video.license ? t('common.license', { license: video.license }) : t('common.licenseMissing')}</p>
@@ -346,11 +352,15 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
     {page === 'discovered' && <Discovered />}
     <dialog ref={playerDialog} className="modal" aria-label={t('library.playerAria')} onClose={() => setSelected(null)} onClick={event => { if (event.target === event.currentTarget) setSelected(null); }}>
       {selected && <><div className="modal-heading"><h2>{selected.title}</h2><button onClick={() => setSelected(null)}>{t('library.closePlayer')}</button></div>
-        <video key={selected.id} controls autoPlay preload="metadata" src={`/api/v1/videos/${selected.id}/content`} />
+        <video key={selected.id} controls autoPlay preload="metadata" src={`/api/v1/videos/${selected.id}/content`} poster={selected.coverUpdatedAt ? coverUrl(selected) : undefined} />
         <p>{selected.category || t('library.unclassified')}{t('common.dot')}{selected.adult ? t('library.adultContent') : t('library.notAdult')}{t('common.dot')}{selected.license ? t('common.license', { license: selected.license }) : t('common.licenseMissing')}</p>
         {selected.description && <p className="description">{selected.description}</p>}
         <Attribution video={selected} />
         <p className="muted">{t('library.playerNote')}</p></>}
+    </dialog>
+    <dialog ref={categoryDialog} className="modal" aria-label={t('categories.manage')} onClose={() => categoryDialog.current?.close()} onClick={event => { if (event.target === event.currentTarget) categoryDialog.current?.close(); }}>
+      <div className="modal-heading"><h2>{t('categories.manage')}</h2><button type="button" onClick={() => categoryDialog.current?.close()}>{t('common.cancel')}</button></div>
+      <CategoryManager categories={data?.categories || []} onChanged={() => void refresh()} />
     </dialog>
     <dialog ref={editDialog} className="modal edit-modal" aria-label={t('library.editAria')} onClose={() => setEditing(null)} onClick={event => { if (event.target === event.currentTarget) setEditing(null); }}>
       {editing && <><div className="modal-heading"><h2>{t('library.editAria')}</h2><button disabled={busy} onClick={() => setEditing(null)}>{t('library.cancelEdit')}</button></div>
@@ -362,7 +372,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
             sourcePending: editDraft.sourcePending, repostNote: editDraft.repostNote, language: editDraft.language,
           }, 'PUT');
           setEditing(null);
-        }); }}><MetadataFields value={editDraft} onChange={setEditDraft} editing /><button disabled={busy}>{t('library.saveData')}</button></form></>}
+        }); }}><div className="cover-editor"><div className="video-cover" aria-hidden="true">{editing.coverUpdatedAt ? <img src={coverUrl(editing)} alt="" /> : '▶'}</div><div className="button-row"><button type="button" disabled={busy || !editing.available} onClick={() => void submit(async () => { const updated = await request<Video>(`videos/${editing.id}/cover`, {}); setEditing(updated); setEditDraft({ ...updated }); })}>{t('library.generateCover')}</button><label className="file-button">{t('library.uploadCover')}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={busy} onChange={event => { const file = event.target.files?.[0]; if (!file) return; void submit(async () => { const form = new FormData(); form.append('file', file); const updated = await api<Video>(`videos/${editing.id}/cover`, { method: 'PUT', body: form }); setEditing(updated); setEditDraft({ ...updated }); }); }} /></label>{editing.coverUpdatedAt && <button type="button" disabled={busy} onClick={() => void submit(async () => { const updated = await api<Video>(`videos/${editing.id}/cover`, { method: 'DELETE' }); setEditing(updated); setEditDraft({ ...updated }); })}>{t('library.removeCover')}</button>}</div></div><MetadataFields value={editDraft} onChange={setEditDraft} editing /><button disabled={busy}>{t('library.saveData')}</button></form></>}
     </dialog>
   </>;
 }

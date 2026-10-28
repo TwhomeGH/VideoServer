@@ -210,7 +210,6 @@
   "filters.tag": "Tag",
   "filters.tagPlaceholder": "完整標記名稱",
   "filters.category": "分類",
-  "filters.categoryPlaceholder": "完整分類名稱",
   "filters.pool": "儲存池",
   "filters.allPools": "所有儲存池",
   "filters.adult": "內容標記",
@@ -531,5 +530,19 @@
   "library.tlsEditTitle": "更新 WebDAV TLS",
   "library.tlsCurrent": "目前：",
   "library.tlsRemoveCA": "移除自訂 CA",
-  "library.tlsEditHint": "不選檔案會保留目前 CA；勾選 skip 會清除 CA。"
+  "library.tlsEditHint": "不選檔案會保留目前 CA；勾選 skip 會清除 CA。",
+  "library.generateCover": "擷取封面",
+  "library.uploadCover": "上傳封面",
+  "library.removeCover": "移除封面",
+  "filters.allCategories": "全部分類",
+  "categories.manage": "分類管理",
+  "categories.intro": "分類會同步到影片的 category 欄位；刪除分類會清空使用中的影片分類。",
+  "categories.namePlaceholder": "新分類名稱",
+  "categories.add": "新增分類",
+  "categories.rename": "重新命名",
+  "categories.delete": "刪除",
+  "categories.count": "{count} 部",
+  "categories.empty": "目前沒有分類",
+  "categories.deleteConfirm": "確定刪除分類「{name}」？使用中的影片會變成未分類。",
+  "categories.renameAria": "重新命名分類 {name}"
 }
