@@ -123,7 +123,7 @@ form button { background:var(--accent); color:var(--bg); }
 .video-card p { color:var(--muted); font-size:.85rem; }
 .video-cover { background:var(--bg); color:var(--accent); width:100%; aspect-ratio:16 / 9; display:grid; place-items:center; border-radius:8px; font-size:2rem; position:relative; overflow:hidden; }
 .video-cover .cover-backdrop { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter:blur(18px) brightness(.55); transform:scale(1.12); display:block; }
-.video-cover .cover-image { position:relative; z-index:1; width:100%; height:100%; object-fit:contain; display:block; }
+.video-cover .cover-image { position:absolute; inset:0; z-index:1; width:100%; height:100%; object-fit:contain; display:block; }
 .cover-editor { display:flex; gap:16px; align-items:center; margin-bottom:16px; flex-wrap:wrap; }
 .cover-editor .video-cover { width:180px; height:auto; flex:0 0 auto; }
 .file-button { display:inline-flex; align-items:center; gap:8px; padding:8px 14px; border:1px solid var(--line); border-radius:8px; cursor:pointer; background:var(--surface); }

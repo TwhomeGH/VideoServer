@@ -2,6 +2,30 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 08:40 修正 4:3 封面仍被裁切
+
+**類型**: 修正
+
+**檔案**:
+
+- `web/admin/src/style.css`
+
+### 問題
+
+- 已設定 `object-fit: contain`，但 `.cover-image` 在 grid 內高度變成 169px，超出 16:9 容器的 136.7px，外層 `overflow:hidden` 仍會裁切。
+
+### 修改
+
+- `.cover-image` 改 absolute + `inset:0`，尺寸完全等於 16:9 容器，contain 才能在容器內留黑邊。
+
+### 驗證
+
+- 480×334（約 1.44:1）封面：image box 與 cover box 都是 `243×136.6875`。
+- `object-fit: contain`、natural 480×334；4:3 內容完整顯示。
+- 390px 無水平溢出；前端建置、`lang:check`、`check:testing` 通過。
+
+---
+
 ## 2026.10.28 08:35 封面不裁切：16:9 外框 + contain
 
 **類型**: 改善
