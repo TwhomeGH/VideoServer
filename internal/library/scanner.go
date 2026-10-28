@@ -128,10 +128,7 @@ func (s *Scanner) Status() ScanStatus {
 	status := s.status
 	status.Pools = make([]PoolScanStatus, 0, len(s.states))
 	for id, state := range s.states {
-		remaining := int(time.Until(state.next).Seconds())
-		if remaining < 0 {
-			remaining = 0
-		}
+		remaining := max(int(time.Until(state.next).Seconds()), 0)
 		status.Pools = append(status.Pools, PoolScanStatus{
 			PoolID: id, Name: state.name, Tier: state.tier, BackoffSeconds: int(state.interval / time.Second),
 			LastActivityAt: state.lastActivity.UTC().Format(time.RFC3339Nano),

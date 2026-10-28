@@ -2,6 +2,29 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.29 04:50 使用 Go max 簡化負數 clamp
+
+**類型**: 整理
+
+**檔案**:
+
+- `internal/library/scanner.go`
+
+### 問題
+
+- 掃描狀態的剩餘秒數用 `if remaining < 0 { remaining = 0 }` 手動 clamp，staticcheck 建議使用 Go 1.21+ 內建 `max`。
+
+### 修改
+
+- 改為 `remaining := max(int(time.Until(state.next).Seconds()), 0)`。
+
+### 驗證
+
+- `go test ./... -timeout 120s`、`go vet ./...` 通過。
+- testing image `fef2c9c2db3d` 重建並健康。
+
+---
+
 ## 2026.10.29 04:45 修正封面排程 Rows.Err 檢查
 
 **類型**: 修正
