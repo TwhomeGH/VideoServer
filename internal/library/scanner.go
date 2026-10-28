@@ -74,6 +74,9 @@ type Scanner struct {
 	store     *Store
 	logger    *slog.Logger
 	interval  time.Duration
+	warm      time.Duration
+	warmSlow  time.Duration
+	cold      time.Duration
 	idleMax   time.Duration
 	stable    time.Duration
 	requests  chan struct{}
@@ -95,7 +98,7 @@ func NewScanner(store *Store, automatic bool, interval, stable time.Duration, lo
 		stable = 0
 	}
 	scanner := &Scanner{
-		store: store, logger: logger, interval: interval, idleMax: 6 * time.Hour,
+		store: store, logger: logger, interval: interval, warm: 5 * time.Minute, warmSlow: 15 * time.Minute, cold: 30 * time.Minute, idleMax: 6 * time.Hour,
 		stable: stable, requests: make(chan struct{}, 1), observed: map[string]observation{},
 		states: map[string]poolScanState{}, forcePool: map[string]bool{},
 		status: ScanStatus{Automatic: automatic, IntervalSeconds: int(interval / time.Second), IdleMaxSeconds: 21600, StableSeconds: int(stable / time.Second)},
@@ -144,6 +147,22 @@ func (s *Scanner) Status() ScanStatus {
 		}
 	}
 	return status
+}
+
+// SetTierIntervals 設定暖、暖後段與冷池間隔；較小值會被提升到熱池間隔。
+func (s *Scanner) SetTierIntervals(warm, warmSlow, cold time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if warm < s.interval {
+		warm = s.interval
+	}
+	if warmSlow < warm {
+		warmSlow = warm
+	}
+	if cold < warmSlow {
+		cold = warmSlow
+	}
+	s.warm, s.warmSlow, s.cold = warm, warmSlow, cold
 }
 
 // Request 要求掃描所有池；已有排程或執行中的掃描時回傳 false。
@@ -319,7 +338,7 @@ func (s *Scanner) runDue(ctx context.Context) {
 				s.logger.Error("更新儲存池活動時間失敗", "poolId", id, "error", err)
 			}
 		}
-		state.tier, state.interval = scanTier(now, lastActivity, s.interval, s.idleMax)
+		state.tier, state.interval = scanTier(now, lastActivity, s.interval, s.warm, s.warmSlow, s.cold, s.idleMax)
 		if byID[id].Provider == "webdav" && state.interval < 5*time.Minute {
 			state.interval = 5 * time.Minute
 		}
@@ -387,21 +406,18 @@ func shouldExcludeSystemPath(relative string) bool {
 	return false
 }
 
-func scanTier(now, lastActivity time.Time, base, idleMax time.Duration) (string, time.Duration) {
+func scanTier(now, lastActivity time.Time, base, warm, slowerWarm, cold, idleMax time.Duration) (string, time.Duration) {
 	if base <= 0 {
 		base = 30 * time.Second
 	}
-	warm := 5 * time.Minute
 	if warm < base {
 		warm = base
 	}
-	cold := 30 * time.Minute
-	if cold < base {
-		cold = base
+	if slowerWarm < warm {
+		slowerWarm = warm
 	}
-	slowerWarm := 15 * time.Minute
-	if slowerWarm < base {
-		slowerWarm = base
+	if cold < slowerWarm {
+		cold = slowerWarm
 	}
 	dormant := idleMax
 	if dormant < cold {

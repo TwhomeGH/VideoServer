@@ -23,6 +23,9 @@ type Config struct {
 	DataDirectory              string   `json:"dataDirectory"`
 	AutoScan                   bool     `json:"autoScan"`
 	ScanIntervalSeconds        int      `json:"scanIntervalSeconds"`
+	ScanWarmSeconds            int      `json:"scanWarmSeconds"`
+	ScanWarmSlowSeconds        int      `json:"scanWarmSlowSeconds"`
+	ScanColdSeconds            int      `json:"scanColdSeconds"`
 	ScanIdleMaxSeconds         int      `json:"scanIdleMaxSeconds"`
 	FileStableSeconds          int      `json:"fileStableSeconds"`
 	AutoBackfill               bool     `json:"autoBackfill"`
@@ -64,7 +67,7 @@ func LoadConfig(path string, port int, service ...string) (Config, error) {
 			}
 		}
 	}
-	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, ScanIdleMaxSeconds: 21600, FileStableSeconds: 10, AutoBackfill: false, AutoCover: false, CoverIntervalSeconds: 60, BackfillIntervalSeconds: 60, BackfillDailyLimit: 50, BackfillDailyGiB: 20, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", FFmpegPath: "ffmpeg", ProbeTimeoutSeconds: 60}
+	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, ScanWarmSeconds: 300, ScanWarmSlowSeconds: 900, ScanColdSeconds: 1800, ScanIdleMaxSeconds: 21600, FileStableSeconds: 10, AutoBackfill: false, AutoCover: false, CoverIntervalSeconds: 60, BackfillIntervalSeconds: 60, BackfillDailyLimit: 50, BackfillDailyGiB: 20, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", FFmpegPath: "ffmpeg", ProbeTimeoutSeconds: 60}
 	if path != "" {
 		file, err := os.Open(path)
 		if err != nil {
@@ -94,6 +97,9 @@ type Override struct {
 	FallbackPorts              *[]int  `json:"fallbackPorts,omitempty"`
 	AutoScan                   *bool   `json:"autoScan,omitempty"`
 	ScanIntervalSeconds        *int    `json:"scanIntervalSeconds,omitempty"`
+	ScanWarmSeconds            *int    `json:"scanWarmSeconds,omitempty"`
+	ScanWarmSlowSeconds        *int    `json:"scanWarmSlowSeconds,omitempty"`
+	ScanColdSeconds            *int    `json:"scanColdSeconds,omitempty"`
 	ScanIdleMaxSeconds         *int    `json:"scanIdleMaxSeconds,omitempty"`
 	FileStableSeconds          *int    `json:"fileStableSeconds,omitempty"`
 	AutoBackfill               *bool   `json:"autoBackfill,omitempty"`
@@ -146,6 +152,15 @@ func (o Override) Apply(base Config) Config {
 	if o.ScanIntervalSeconds != nil {
 		value.ScanIntervalSeconds = *o.ScanIntervalSeconds
 	}
+	if o.ScanWarmSeconds != nil {
+		value.ScanWarmSeconds = *o.ScanWarmSeconds
+	}
+	if o.ScanWarmSlowSeconds != nil {
+		value.ScanWarmSlowSeconds = *o.ScanWarmSlowSeconds
+	}
+	if o.ScanColdSeconds != nil {
+		value.ScanColdSeconds = *o.ScanColdSeconds
+	}
 	if o.ScanIdleMaxSeconds != nil {
 		value.ScanIdleMaxSeconds = *o.ScanIdleMaxSeconds
 	}
@@ -182,7 +197,7 @@ func (o Override) Apply(base Config) Config {
 // Empty 回傳覆寫是否沒有任何欄位。
 func (o Override) Empty() bool {
 	return o.Host == nil && o.PreferredPort == nil && o.FallbackPorts == nil && o.AutoScan == nil &&
-		o.ScanIntervalSeconds == nil && o.ScanIdleMaxSeconds == nil && o.FileStableSeconds == nil && o.AutoBackfill == nil && o.AutoCover == nil && o.CoverIntervalSeconds == nil &&
+		o.ScanIntervalSeconds == nil && o.ScanWarmSeconds == nil && o.ScanWarmSlowSeconds == nil && o.ScanColdSeconds == nil && o.ScanIdleMaxSeconds == nil && o.FileStableSeconds == nil && o.AutoBackfill == nil && o.AutoCover == nil && o.CoverIntervalSeconds == nil &&
 		o.BackfillIntervalSeconds == nil && o.BackfillDailyLimit == nil && o.BackfillDailyGiB == nil && o.HashLimitMiBps == nil && o.RememberLastSuccessfulPort == nil
 }
 
@@ -205,6 +220,15 @@ func BuildOverride(base, next Config) Override {
 	}
 	if next.ScanIntervalSeconds != base.ScanIntervalSeconds {
 		value.ScanIntervalSeconds = &next.ScanIntervalSeconds
+	}
+	if next.ScanWarmSeconds != base.ScanWarmSeconds {
+		value.ScanWarmSeconds = &next.ScanWarmSeconds
+	}
+	if next.ScanWarmSlowSeconds != base.ScanWarmSlowSeconds {
+		value.ScanWarmSlowSeconds = &next.ScanWarmSlowSeconds
+	}
+	if next.ScanColdSeconds != base.ScanColdSeconds {
+		value.ScanColdSeconds = &next.ScanColdSeconds
 	}
 	if next.ScanIdleMaxSeconds != base.ScanIdleMaxSeconds {
 		value.ScanIdleMaxSeconds = &next.ScanIdleMaxSeconds
@@ -261,7 +285,15 @@ func (c Config) Validate() error {
 	if c.Host == "" {
 		return fmt.Errorf("host 不可為空")
 	}
-	if c.ScanIntervalSeconds < 1 || c.ScanIntervalSeconds > 86400 || c.FileStableSeconds < 1 || c.FileStableSeconds > 86400 {
+	for _, value := range []int{c.ScanIntervalSeconds, c.ScanWarmSeconds, c.ScanWarmSlowSeconds, c.ScanColdSeconds, c.ScanIdleMaxSeconds} {
+		if value < 1 || value > 86400 {
+			return fmt.Errorf("掃描間隔必須介於 1 到 86400 秒")
+		}
+	}
+	if c.ScanWarmSeconds < c.ScanIntervalSeconds || c.ScanWarmSlowSeconds < c.ScanWarmSeconds || c.ScanColdSeconds < c.ScanWarmSlowSeconds || c.ScanIdleMaxSeconds < c.ScanColdSeconds {
+		return fmt.Errorf("掃描間隔需依序為熱 ≤ 暖 ≤ 暖後段 ≤ 冷 ≤ 休眠")
+	}
+	if c.FileStableSeconds < 1 || c.FileStableSeconds > 86400 {
 		return fmt.Errorf("掃描間隔與檔案穩定秒數須介於 1 到 86400")
 	}
 	if c.ScanIdleMaxSeconds < 1800 || c.ScanIdleMaxSeconds > 86400 {

@@ -7,13 +7,13 @@ import { useLiveVersion } from './live';
 type Config = {
   host: string; preferredPort: number; fallbackPorts: number[] | null;
   webDirectory: string; dataDirectory: string; autoScan: boolean;
-  scanIntervalSeconds: number; scanIdleMaxSeconds: number; fileStableSeconds: number; rememberLastSuccessfulPort: boolean;
+  scanIntervalSeconds: number; scanWarmSeconds: number; scanWarmSlowSeconds: number; scanColdSeconds: number; scanIdleMaxSeconds: number; fileStableSeconds: number; rememberLastSuccessfulPort: boolean;
   autoBackfill: boolean; backfillIntervalSeconds: number; backfillDailyLimit: number; backfillDailyGiB: number; hashLimitMiBps: number;
   autoCover: boolean; coverIntervalSeconds: number;
 };
 type Overrides = Partial<{
   host: string; preferredPort: number; fallbackPorts: number[];
-  autoScan: boolean; scanIntervalSeconds: number; scanIdleMaxSeconds: number; fileStableSeconds: number; rememberLastSuccessfulPort: boolean;
+  autoScan: boolean; scanIntervalSeconds: number; scanWarmSeconds: number; scanWarmSlowSeconds: number; scanColdSeconds: number; scanIdleMaxSeconds: number; fileStableSeconds: number; rememberLastSuccessfulPort: boolean;
   autoBackfill: boolean; backfillIntervalSeconds: number; backfillDailyLimit: number; backfillDailyGiB: number; hashLimitMiBps: number;
   autoCover: boolean; coverIntervalSeconds: number;
 }>;
@@ -26,7 +26,7 @@ type ConfigView = {
 };
 type FormState = {
   host: string; preferredPort: string; fallbackPorts: string;
-  autoScan: boolean; scanIntervalSeconds: string; scanIdleMaxSeconds: string; fileStableSeconds: string;
+  autoScan: boolean; scanIntervalSeconds: string; scanWarmSeconds: string; scanWarmSlowSeconds: string; scanColdSeconds: string; scanIdleMaxSeconds: string; fileStableSeconds: string;
   rememberLastSuccessfulPort: boolean;
   autoBackfill: boolean; backfillIntervalSeconds: string; backfillDailyLimit: string; backfillDailyGiB: string; hashLimitMiBps: string;
   autoCover: boolean; coverIntervalSeconds: string;
@@ -39,6 +39,9 @@ function formFrom(config: Config): FormState {
     fallbackPorts: (config.fallbackPorts || []).join(', '),
     autoScan: config.autoScan,
     scanIntervalSeconds: String(config.scanIntervalSeconds),
+    scanWarmSeconds: String(config.scanWarmSeconds),
+    scanWarmSlowSeconds: String(config.scanWarmSlowSeconds),
+    scanColdSeconds: String(config.scanColdSeconds),
     fileStableSeconds: String(config.fileStableSeconds),
     scanIdleMaxSeconds: String(config.scanIdleMaxSeconds),
     rememberLastSuccessfulPort: config.rememberLastSuccessfulPort,
@@ -122,9 +125,21 @@ export function Settings({ service }: { service?: string }) {
     if (!Number.isInteger(fileStableSeconds) || fileStableSeconds < 1 || fileStableSeconds > 86400) {
       throw new Error(t('settings.errFileStable'));
     }
+    const scanWarmSeconds = Number(form.scanWarmSeconds);
+    const scanWarmSlowSeconds = Number(form.scanWarmSlowSeconds);
+    const scanColdSeconds = Number(form.scanColdSeconds);
+    if (![scanWarmSeconds, scanWarmSlowSeconds, scanColdSeconds].every(value => Number.isInteger(value) && value >= 1 && value <= 86400)) {
+      throw new Error(t('settings.errScanIntervals'));
+    }
+    if (scanWarmSeconds < scanIntervalSeconds || scanWarmSlowSeconds < scanWarmSeconds || scanColdSeconds < scanWarmSlowSeconds) {
+      throw new Error(t('settings.errScanOrder'));
+    }
     const scanIdleMaxSeconds = Number(form.scanIdleMaxSeconds);
     if (!Number.isInteger(scanIdleMaxSeconds) || scanIdleMaxSeconds < 1800 || scanIdleMaxSeconds > 86400) {
       throw new Error(t('settings.errScanIdleMax'));
+    }
+    if (scanIdleMaxSeconds < scanColdSeconds) {
+      throw new Error(t('settings.errScanOrder'));
     }
     const backfillIntervalSeconds = Number(form.backfillIntervalSeconds);
     if (!Number.isInteger(backfillIntervalSeconds) || backfillIntervalSeconds < 10 || backfillIntervalSeconds > 86400) {
@@ -151,7 +166,7 @@ export function Settings({ service }: { service?: string }) {
     return {
       host, preferredPort, fallbackPorts: unique,
       rememberLastSuccessfulPort: unique.length > 0 && form.rememberLastSuccessfulPort,
-      autoScan: form.autoScan, scanIntervalSeconds, scanIdleMaxSeconds, fileStableSeconds,
+      autoScan: form.autoScan, scanIntervalSeconds, scanWarmSeconds, scanWarmSlowSeconds, scanColdSeconds, scanIdleMaxSeconds, fileStableSeconds,
       autoBackfill: form.autoBackfill, backfillIntervalSeconds, backfillDailyLimit, backfillDailyGiB, hashLimitMiBps,
       autoCover: form.autoCover, coverIntervalSeconds,
     };
@@ -251,6 +266,12 @@ export function Settings({ service }: { service?: string }) {
             <label className="checkbox-label"><input type="checkbox" checked={form.autoScan} onChange={event => patch({ autoScan: event.target.checked })} />{t('settings.autoScan')}</label>
             <DurationField label={t('settings.scanInterval')} seconds={Number(form.scanIntervalSeconds)} min={1} max={86400}
               onChange={seconds => patch({ scanIntervalSeconds: String(seconds) })} />
+            <DurationField label={t('settings.scanWarm')} seconds={Number(form.scanWarmSeconds)} min={1} max={86400}
+              onChange={seconds => patch({ scanWarmSeconds: String(seconds) })} />
+            <DurationField label={t('settings.scanWarmSlow')} seconds={Number(form.scanWarmSlowSeconds)} min={1} max={86400}
+              onChange={seconds => patch({ scanWarmSlowSeconds: String(seconds) })} />
+            <DurationField label={t('settings.scanCold')} seconds={Number(form.scanColdSeconds)} min={1} max={86400}
+              onChange={seconds => patch({ scanColdSeconds: String(seconds) })} />
             <DurationField label={t('settings.scanIdleMax')} seconds={Number(form.scanIdleMaxSeconds)} min={1800} max={86400}
               onChange={seconds => patch({ scanIdleMaxSeconds: String(seconds) })} />
             <p className="muted">{t('settings.scanIdleMaxHint')}</p>

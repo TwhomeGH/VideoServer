@@ -549,5 +549,10 @@
   "settings.autoCover": "Backfill missing covers in the background",
   "settings.autoCoverHint": "Even when this schedule is off, playing a video still generates its cover in the background.",
   "settings.coverInterval": "Cover schedule interval",
-  "settings.errCoverInterval": "Cover schedule interval must be between 10 and 86400 seconds"
+  "settings.errCoverInterval": "Cover schedule interval must be between 10 and 86400 seconds",
+  "settings.scanWarm": "Warm scan interval (1–6 hours)",
+  "settings.scanWarmSlow": "Late warm scan interval (6–24 hours)",
+  "settings.scanCold": "Cold scan interval (1–7 days)",
+  "settings.errScanIntervals": "Warm and cold scan intervals must be between 1 and 86400 seconds",
+  "settings.errScanOrder": "Scan intervals must be ordered hot ≤ warm ≤ late warm ≤ cold"
 }

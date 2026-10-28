@@ -189,6 +189,7 @@ func Main(service string, port int) int {
 		queue.SetBackfillLimits(config.BackfillDailyLimit, config.BackfillDailyGiB)
 		scanner = library.NewScanner(store, config.AutoScan, time.Duration(config.ScanIntervalSeconds)*time.Second, time.Duration(config.FileStableSeconds)*time.Second, logger)
 		scanner.SetIdleMax(time.Duration(config.ScanIdleMaxSeconds) * time.Second)
+		scanner.SetTierIntervals(time.Duration(config.ScanWarmSeconds)*time.Second, time.Duration(config.ScanWarmSlowSeconds)*time.Second, time.Duration(config.ScanColdSeconds)*time.Second)
 		watcher = library.NewWatcher(store, scanner, logger)
 		store.SetPublisher(hub)
 		extensions = append(extensions, store.Register)

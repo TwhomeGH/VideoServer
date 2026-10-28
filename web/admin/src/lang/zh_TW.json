@@ -549,5 +549,10 @@
   "settings.autoCover": "啟用缺少封面的背景排程",
   "settings.autoCoverHint": "排程關閉時，使用者實際播放影片仍會在背景自動產生封面。",
   "settings.coverInterval": "封面排程間隔",
-  "settings.errCoverInterval": "封面排程間隔必須介於 10 到 86400 秒"
+  "settings.errCoverInterval": "封面排程間隔必須介於 10 到 86400 秒",
+  "settings.scanWarm": "暖池掃描間隔（1–6 小時）",
+  "settings.scanWarmSlow": "暖後段掃描間隔（6–24 小時）",
+  "settings.scanCold": "冷池掃描間隔（1–7 天）",
+  "settings.errScanIntervals": "暖池與冷池掃描間隔必須介於 1 到 86400 秒",
+  "settings.errScanOrder": "掃描間隔需依序為熱 ≤ 暖 ≤ 暖後段 ≤ 冷"
 }

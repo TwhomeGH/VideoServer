@@ -2,6 +2,42 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.29 04:25 掃描分級間隔可設定
+
+**類型**: 改善
+
+**檔案**:
+
+- `internal/runtime/config.go`
+- `internal/runtime/configapi.go`
+- `internal/runtime/server.go`
+- `internal/library/scanner.go`
+- `web/admin/src/Settings.tsx`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- 熱池與休眠可調，但暖前段／暖後段／冷池是硬編碼
+- 使用者無法依磁碟或 OpenList 負載調整分級間隔
+
+### 修改
+
+- 新增 `scanWarmSeconds`、`scanWarmSlowSeconds`、`scanColdSeconds`，預設 300／900／1800。
+- `scanTier` 使用設定的分級間隔，不再使用常數。
+- 驗證順序：熱 ≤ 暖 ≤ 暖後段 ≤ 冷 ≤ 休眠；WebDAV 最低 5 分鐘仍保留。
+- Settings 的「自動掃描與檔案穩定」新增三個 DurationField。
+- override／Config API／OpenAPI／測試同步。
+
+### 驗證
+
+- API 顯示預設值 30／300／900／1800／21600。
+- Settings 顯示熱、暖前段、暖後段、冷、休眠五個時間欄位。
+- `TestScanTierUsesConfiguredIntervals` 驗證自訂 10／20／40 分會套用到暖、暖後段、冷。
+- Go 測試、前端建置、`lang:check`、`check:testing` 通過。
+- 限制：目前仍是時間分級，沒有指數退避模式。
+
+---
+
 ## 2026.10.28 16:00 新增 Docs/development 開發指南
 
 **類型**: 文件

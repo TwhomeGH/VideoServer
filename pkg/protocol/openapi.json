@@ -3644,6 +3644,15 @@
           },
           "coverIntervalSeconds": {
             "type": "integer"
+          },
+          "scanWarmSeconds": {
+            "type": "integer"
+          },
+          "scanWarmSlowSeconds": {
+            "type": "integer"
+          },
+          "scanColdSeconds": {
+            "type": "integer"
           }
         },
         "required": [
@@ -3666,7 +3675,10 @@
           "backfillDailyGiB",
           "ffmpegPath",
           "autoCover",
-          "coverIntervalSeconds"
+          "coverIntervalSeconds",
+          "scanWarmSeconds",
+          "scanWarmSlowSeconds",
+          "scanColdSeconds"
         ]
       },
       "ConfigInput": {

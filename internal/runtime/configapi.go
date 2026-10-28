@@ -15,7 +15,7 @@ import (
 
 var editableConfigFields = []string{
 	"host", "preferredPort", "fallbackPorts", "rememberLastSuccessfulPort",
-	"autoScan", "scanIntervalSeconds", "scanIdleMaxSeconds", "fileStableSeconds",
+	"autoScan", "scanIntervalSeconds", "scanWarmSeconds", "scanWarmSlowSeconds", "scanColdSeconds", "scanIdleMaxSeconds", "fileStableSeconds",
 	"autoBackfill", "backfillIntervalSeconds", "backfillDailyLimit", "backfillDailyGiB", "hashLimitMiBps", "autoCover", "coverIntervalSeconds",
 }
 
@@ -70,6 +70,9 @@ type configInput struct {
 	FallbackPorts              *[]int  `json:"fallbackPorts"`
 	AutoScan                   *bool   `json:"autoScan"`
 	ScanIntervalSeconds        *int    `json:"scanIntervalSeconds"`
+	ScanWarmSeconds            *int    `json:"scanWarmSeconds"`
+	ScanWarmSlowSeconds        *int    `json:"scanWarmSlowSeconds"`
+	ScanColdSeconds            *int    `json:"scanColdSeconds"`
 	ScanIdleMaxSeconds         *int    `json:"scanIdleMaxSeconds"`
 	FileStableSeconds          *int    `json:"fileStableSeconds"`
 	AutoBackfill               *bool   `json:"autoBackfill"`
@@ -137,7 +140,7 @@ func (c *ConfigState) handleUpdate(w http.ResponseWriter, r *http.Request) {
 
 func (c *ConfigState) applyInput(input configInput) (Config, error) {
 	if input.Host == nil || input.PreferredPort == nil || input.FallbackPorts == nil || input.AutoScan == nil ||
-		input.ScanIntervalSeconds == nil || input.ScanIdleMaxSeconds == nil || input.FileStableSeconds == nil || input.RememberLastSuccessfulPort == nil ||
+		input.ScanIntervalSeconds == nil || input.ScanWarmSeconds == nil || input.ScanWarmSlowSeconds == nil || input.ScanColdSeconds == nil || input.ScanIdleMaxSeconds == nil || input.FileStableSeconds == nil || input.RememberLastSuccessfulPort == nil ||
 		input.AutoBackfill == nil || input.BackfillIntervalSeconds == nil || input.BackfillDailyLimit == nil || input.BackfillDailyGiB == nil || input.HashLimitMiBps == nil || input.AutoCover == nil || input.CoverIntervalSeconds == nil {
 		return Config{}, errMissingConfigField
 	}
@@ -147,6 +150,9 @@ func (c *ConfigState) applyInput(input configInput) (Config, error) {
 	next.FallbackPorts = append([]int(nil), (*input.FallbackPorts)...)
 	next.AutoScan = *input.AutoScan
 	next.ScanIntervalSeconds = *input.ScanIntervalSeconds
+	next.ScanWarmSeconds = *input.ScanWarmSeconds
+	next.ScanWarmSlowSeconds = *input.ScanWarmSlowSeconds
+	next.ScanColdSeconds = *input.ScanColdSeconds
 	next.ScanIdleMaxSeconds = *input.ScanIdleMaxSeconds
 	next.FileStableSeconds = *input.FileStableSeconds
 	next.AutoBackfill = *input.AutoBackfill

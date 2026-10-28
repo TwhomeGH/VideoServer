@@ -549,5 +549,10 @@
   "settings.autoCover": "激活缺少封面的背景调度",
   "settings.autoCoverHint": "调度关闭时，用户实际播放视频仍会在背景自动产生封面。",
   "settings.coverInterval": "封面调度间隔",
-  "settings.errCoverInterval": "封面调度间隔必须介于 10 到 86400 秒"
+  "settings.errCoverInterval": "封面调度间隔必须介于 10 到 86400 秒",
+  "settings.scanWarm": "暖池扫描间隔（1–6 小时）",
+  "settings.scanWarmSlow": "暖后段扫描间隔（6–24 小时）",
+  "settings.scanCold": "冷池扫描间隔（1–7 天）",
+  "settings.errScanIntervals": "暖池与冷池扫描间隔必须介于 1 到 86400 秒",
+  "settings.errScanOrder": "扫描间隔需依序为热 ≤ 暖 ≤ 暖后段 ≤ 冷"
 }

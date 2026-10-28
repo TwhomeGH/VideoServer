@@ -17,7 +17,7 @@ import (
 )
 
 func TestTLSFilesMustBeConfiguredTogether(t *testing.T) {
-	base := Config{Host: "127.0.0.1", PreferredPort: 8080, DataDirectory: "data", FFprobePath: "ffprobe", ProbeTimeoutSeconds: 60, ScanIntervalSeconds: 30, FileStableSeconds: 10, ScanIdleMaxSeconds: 21600, BackfillIntervalSeconds: 60}
+	base := Config{Host: "127.0.0.1", PreferredPort: 8080, DataDirectory: "data", FFprobePath: "ffprobe", ProbeTimeoutSeconds: 60, ScanIntervalSeconds: 30, ScanWarmSeconds: 300, ScanWarmSlowSeconds: 900, ScanColdSeconds: 1800, FileStableSeconds: 10, ScanIdleMaxSeconds: 21600, BackfillIntervalSeconds: 60}
 	certOnly := base
 	certOnly.TLSCertFile = "cert.pem"
 	if err := certOnly.Validate(); err == nil {
