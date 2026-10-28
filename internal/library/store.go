@@ -36,6 +36,10 @@ type Store struct {
 	publisher               Publisher
 	videoFormats            *media.VideoFormats
 	ffmpegPath              string
+	coverWake               chan string
+	coverMu                 sync.Mutex
+	coverPending            map[string]bool
+	coverFailed             map[string]time.Time
 	dataDirectory           string
 	secretMu                sync.Mutex
 }
@@ -135,7 +139,7 @@ func Open(directory string) (*Store, error) {
 		db.Close()
 		return nil, err
 	}
-	store := &Store{db: db, videoFormats: media.DefaultVideoFormats(), dataDirectory: directory, ffmpegPath: "ffmpeg"}
+	store := &Store{db: db, videoFormats: media.DefaultVideoFormats(), dataDirectory: directory, ffmpegPath: "ffmpeg", coverWake: make(chan string, 64), coverPending: map[string]bool{}, coverFailed: map[string]time.Time{}}
 	if err := store.migrate(); err != nil {
 		db.Close()
 		return nil, err

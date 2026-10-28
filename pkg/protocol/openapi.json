@@ -3638,6 +3638,12 @@
           },
           "ffmpegPath": {
             "type": "string"
+          },
+          "autoCover": {
+            "type": "boolean"
+          },
+          "coverIntervalSeconds": {
+            "type": "integer"
           }
         },
         "required": [
@@ -3658,7 +3664,9 @@
           "scanIdleMaxSeconds",
           "backfillDailyLimit",
           "backfillDailyGiB",
-          "ffmpegPath"
+          "ffmpegPath",
+          "autoCover",
+          "coverIntervalSeconds"
         ]
       },
       "ConfigInput": {

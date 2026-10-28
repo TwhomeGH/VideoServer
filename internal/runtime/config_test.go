@@ -30,6 +30,7 @@ func configBody(value Config) string {
 		"autoBackfill": value.AutoBackfill, "backfillIntervalSeconds": value.BackfillIntervalSeconds,
 		"backfillDailyLimit": value.BackfillDailyLimit, "backfillDailyGiB": value.BackfillDailyGiB,
 		"hashLimitMiBps": value.HashLimitMiBps,
+		"autoCover":      value.AutoCover, "coverIntervalSeconds": value.CoverIntervalSeconds,
 	})
 	return string(body)
 }

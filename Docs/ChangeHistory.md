@@ -2,6 +2,45 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.28 08:25 封面 16:9 與播放／排程自動產生
+
+**類型**: 改善
+
+**檔案**:
+
+- `web/admin/src/style.css`
+- `internal/library/cover_queue.go`
+- `internal/library/http.go`
+- `internal/runtime/config.go`
+- `internal/runtime/configapi.go`
+- `internal/runtime/server.go`
+- `web/admin/src/Settings.tsx`
+- `pkg/protocol/openapi.json`
+
+### 問題
+
+- 封面固定高度 100px，實際比例不一定是 16:9
+- 沒有缺少封面的背景排程
+- 使用者播放影片時不會順便產生封面
+
+### 修改
+
+- 影片卡封面改為 `aspect-ratio:16/9`、`object-fit:cover`；編輯預覽同比例。
+- 新增單一封面 worker：`EnsureCover` 去重、一次只跑一個 FFmpeg、失敗冷卻 10 分鐘。
+- 播放 `GET /videos/{id}/content` 時若沒有封面，非阻塞排入背景產生。
+- 新增 `autoCover`／`coverIntervalSeconds` 設定與 Settings 群組；排程預設關閉，但播放觸發不受影響。
+- 排程每次找一部缺少封面的影片，重啟後才套用設定。
+
+### 驗證
+
+- 實測影片卡比例 243×136.6875，正好 16:9。
+- 刪除封面後發出 Range 播放請求（206），5 秒內封面自動重新產生；`autoCover=false`。
+- 封面 worker／排程與設定通過單元測試。
+- Go 測試、前端建置、`lang:check` 與 `check:testing` 通過。
+- 限制：尚未批次強制重抓全部封面；背景排程要重啟才依新設定啟動。
+
+---
+
 ## 2026.10.28 08:10 影片封面與分類管理
 
 **類型**: 功能

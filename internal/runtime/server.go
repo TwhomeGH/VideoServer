@@ -163,6 +163,7 @@ func Main(service string, port int) int {
 	var scanner *library.Scanner
 	var queue *library.ImportQueue
 	var watcher *library.Watcher
+	var videoStore *library.Store
 	extensions = append(extensions, authManager.Register)
 	extensions = append(extensions, configState.Register)
 	if service == "video-node" {
@@ -172,6 +173,7 @@ func Main(service string, port int) int {
 			return 1
 		}
 		defer store.Close()
+		videoStore = store
 		formats := media.LoadVideoFormats(context.Background(), config.FFprobePath, config.ExtraVideoExtensions)
 		for _, warning := range formats.Warnings() {
 			logger.Warn("影片格式能力警告", "warning", warning)
@@ -239,6 +241,12 @@ func Main(service string, port int) int {
 	}
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+	if videoStore != nil {
+		go videoStore.RunCoverWorker(ctx)
+		if config.AutoCover {
+			go videoStore.RunCoverBackfill(ctx, time.Duration(config.CoverIntervalSeconds)*time.Second)
+		}
+	}
 	monitorDone := make(chan struct{})
 	go func() { defer close(monitorDone); monitor.Run(ctx) }()
 	defer func() { stop(); <-monitorDone }()

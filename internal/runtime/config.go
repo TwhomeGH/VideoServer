@@ -26,6 +26,8 @@ type Config struct {
 	ScanIdleMaxSeconds         int      `json:"scanIdleMaxSeconds"`
 	FileStableSeconds          int      `json:"fileStableSeconds"`
 	AutoBackfill               bool     `json:"autoBackfill"`
+	AutoCover                  bool     `json:"autoCover"`
+	CoverIntervalSeconds       int      `json:"coverIntervalSeconds"`
 	BackfillIntervalSeconds    int      `json:"backfillIntervalSeconds"`
 	BackfillDailyLimit         int      `json:"backfillDailyLimit"`
 	BackfillDailyGiB           int      `json:"backfillDailyGiB"`
@@ -62,7 +64,7 @@ func LoadConfig(path string, port int, service ...string) (Config, error) {
 			}
 		}
 	}
-	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, ScanIdleMaxSeconds: 21600, FileStableSeconds: 10, AutoBackfill: false, BackfillIntervalSeconds: 60, BackfillDailyLimit: 50, BackfillDailyGiB: 20, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", FFmpegPath: "ffmpeg", ProbeTimeoutSeconds: 60}
+	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, ScanIdleMaxSeconds: 21600, FileStableSeconds: 10, AutoBackfill: false, AutoCover: false, CoverIntervalSeconds: 60, BackfillIntervalSeconds: 60, BackfillDailyLimit: 50, BackfillDailyGiB: 20, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", FFmpegPath: "ffmpeg", ProbeTimeoutSeconds: 60}
 	if path != "" {
 		file, err := os.Open(path)
 		if err != nil {
@@ -95,6 +97,8 @@ type Override struct {
 	ScanIdleMaxSeconds         *int    `json:"scanIdleMaxSeconds,omitempty"`
 	FileStableSeconds          *int    `json:"fileStableSeconds,omitempty"`
 	AutoBackfill               *bool   `json:"autoBackfill,omitempty"`
+	AutoCover                  *bool   `json:"autoCover,omitempty"`
+	CoverIntervalSeconds       *int    `json:"coverIntervalSeconds,omitempty"`
 	BackfillIntervalSeconds    *int    `json:"backfillIntervalSeconds,omitempty"`
 	BackfillDailyLimit         *int    `json:"backfillDailyLimit,omitempty"`
 	BackfillDailyGiB           *int    `json:"backfillDailyGiB,omitempty"`
@@ -151,6 +155,12 @@ func (o Override) Apply(base Config) Config {
 	if o.AutoBackfill != nil {
 		value.AutoBackfill = *o.AutoBackfill
 	}
+	if o.AutoCover != nil {
+		value.AutoCover = *o.AutoCover
+	}
+	if o.CoverIntervalSeconds != nil {
+		value.CoverIntervalSeconds = *o.CoverIntervalSeconds
+	}
 	if o.BackfillIntervalSeconds != nil {
 		value.BackfillIntervalSeconds = *o.BackfillIntervalSeconds
 	}
@@ -172,7 +182,7 @@ func (o Override) Apply(base Config) Config {
 // Empty 回傳覆寫是否沒有任何欄位。
 func (o Override) Empty() bool {
 	return o.Host == nil && o.PreferredPort == nil && o.FallbackPorts == nil && o.AutoScan == nil &&
-		o.ScanIntervalSeconds == nil && o.ScanIdleMaxSeconds == nil && o.FileStableSeconds == nil && o.AutoBackfill == nil &&
+		o.ScanIntervalSeconds == nil && o.ScanIdleMaxSeconds == nil && o.FileStableSeconds == nil && o.AutoBackfill == nil && o.AutoCover == nil && o.CoverIntervalSeconds == nil &&
 		o.BackfillIntervalSeconds == nil && o.BackfillDailyLimit == nil && o.BackfillDailyGiB == nil && o.HashLimitMiBps == nil && o.RememberLastSuccessfulPort == nil
 }
 
@@ -204,6 +214,12 @@ func BuildOverride(base, next Config) Override {
 	}
 	if next.AutoBackfill != base.AutoBackfill {
 		value.AutoBackfill = &next.AutoBackfill
+	}
+	if next.AutoCover != base.AutoCover {
+		value.AutoCover = &next.AutoCover
+	}
+	if next.CoverIntervalSeconds != base.CoverIntervalSeconds {
+		value.CoverIntervalSeconds = &next.CoverIntervalSeconds
 	}
 	if next.BackfillIntervalSeconds != base.BackfillIntervalSeconds {
 		value.BackfillIntervalSeconds = &next.BackfillIntervalSeconds
@@ -250,6 +266,9 @@ func (c Config) Validate() error {
 	}
 	if c.ScanIdleMaxSeconds < 1800 || c.ScanIdleMaxSeconds > 86400 {
 		return fmt.Errorf("掃描閒置上限必須介於 10 到 86400")
+	}
+	if c.AutoCover && (c.CoverIntervalSeconds < 10 || c.CoverIntervalSeconds > 86400) {
+		return fmt.Errorf("封面排程間隔必須介於 10 到 86400 秒")
 	}
 	if c.BackfillIntervalSeconds < 10 || c.BackfillIntervalSeconds > 86400 {
 		return fmt.Errorf("自動補齊檢查間隔必須介於 10 到 86400")

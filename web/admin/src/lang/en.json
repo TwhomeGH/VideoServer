@@ -544,5 +544,10 @@
   "categories.count": "{count} videos",
   "categories.empty": "No categories yet",
   "categories.deleteConfirm": "Delete category \"{name}\"? Videos using it become uncategorized.",
-  "categories.renameAria": "Rename category {name}"
+  "categories.renameAria": "Rename category {name}",
+  "settings.coverGroup": "Video covers",
+  "settings.autoCover": "Backfill missing covers in the background",
+  "settings.autoCoverHint": "Even when this schedule is off, playing a video still generates its cover in the background.",
+  "settings.coverInterval": "Cover schedule interval",
+  "settings.errCoverInterval": "Cover schedule interval must be between 10 and 86400 seconds"
 }

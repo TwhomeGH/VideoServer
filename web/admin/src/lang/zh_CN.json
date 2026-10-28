@@ -544,5 +544,10 @@
   "categories.count": "{count} 部",
   "categories.empty": "目前没有分类",
   "categories.deleteConfirm": "确定删除分类「{name}」？使用中的视频会变成未分类。",
-  "categories.renameAria": "重命名分类 {name}"
+  "categories.renameAria": "重命名分类 {name}",
+  "settings.coverGroup": "视频封面",
+  "settings.autoCover": "激活缺少封面的背景调度",
+  "settings.autoCoverHint": "调度关闭时，用户实际播放视频仍会在背景自动产生封面。",
+  "settings.coverInterval": "封面调度间隔",
+  "settings.errCoverInterval": "封面调度间隔必须介于 10 到 86400 秒"
 }

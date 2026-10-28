@@ -544,5 +544,10 @@
   "categories.count": "{count} 部",
   "categories.empty": "目前沒有分類",
   "categories.deleteConfirm": "確定刪除分類「{name}」？使用中的影片會變成未分類。",
-  "categories.renameAria": "重新命名分類 {name}"
+  "categories.renameAria": "重新命名分類 {name}",
+  "settings.coverGroup": "影片封面",
+  "settings.autoCover": "啟用缺少封面的背景排程",
+  "settings.autoCoverHint": "排程關閉時，使用者實際播放影片仍會在背景自動產生封面。",
+  "settings.coverInterval": "封面排程間隔",
+  "settings.errCoverInterval": "封面排程間隔必須介於 10 到 86400 秒"
 }

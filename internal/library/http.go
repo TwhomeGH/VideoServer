@@ -733,6 +733,9 @@ func (s *Store) play(w http.ResponseWriter, r *http.Request) {
 		failure(w, 500, "無法讀取影片索引")
 		return
 	}
+	if video.CoverUpdatedAt == "" {
+		s.EnsureCover(video.ID)
+	}
 	if video.Provider == "webdav" {
 		pool, err := s.poolByID(video.PoolID)
 		if err != nil {

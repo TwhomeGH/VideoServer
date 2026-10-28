@@ -9,11 +9,13 @@ type Config = {
   webDirectory: string; dataDirectory: string; autoScan: boolean;
   scanIntervalSeconds: number; scanIdleMaxSeconds: number; fileStableSeconds: number; rememberLastSuccessfulPort: boolean;
   autoBackfill: boolean; backfillIntervalSeconds: number; backfillDailyLimit: number; backfillDailyGiB: number; hashLimitMiBps: number;
+  autoCover: boolean; coverIntervalSeconds: number;
 };
 type Overrides = Partial<{
   host: string; preferredPort: number; fallbackPorts: number[];
   autoScan: boolean; scanIntervalSeconds: number; scanIdleMaxSeconds: number; fileStableSeconds: number; rememberLastSuccessfulPort: boolean;
   autoBackfill: boolean; backfillIntervalSeconds: number; backfillDailyLimit: number; backfillDailyGiB: number; hashLimitMiBps: number;
+  autoCover: boolean; coverIntervalSeconds: number;
 }>;
 type Network = {
   stateFile: string; rememberEnabled: boolean; previousPort: number; activePort: number; saved: boolean; warning?: string;
@@ -27,6 +29,7 @@ type FormState = {
   autoScan: boolean; scanIntervalSeconds: string; scanIdleMaxSeconds: string; fileStableSeconds: string;
   rememberLastSuccessfulPort: boolean;
   autoBackfill: boolean; backfillIntervalSeconds: string; backfillDailyLimit: string; backfillDailyGiB: string; hashLimitMiBps: string;
+  autoCover: boolean; coverIntervalSeconds: string;
 };
 
 function formFrom(config: Config): FormState {
@@ -44,6 +47,8 @@ function formFrom(config: Config): FormState {
     backfillDailyLimit: String(config.backfillDailyLimit),
     backfillDailyGiB: String(config.backfillDailyGiB),
     hashLimitMiBps: String(config.hashLimitMiBps),
+    autoCover: config.autoCover,
+    coverIntervalSeconds: String(config.coverIntervalSeconds),
   };
 }
 
@@ -125,6 +130,10 @@ export function Settings({ service }: { service?: string }) {
     if (!Number.isInteger(backfillIntervalSeconds) || backfillIntervalSeconds < 10 || backfillIntervalSeconds > 86400) {
       throw new Error(t('settings.errBackfillInterval'));
     }
+    const coverIntervalSeconds = Number(form.coverIntervalSeconds);
+    if (!Number.isInteger(coverIntervalSeconds) || coverIntervalSeconds < 10 || coverIntervalSeconds > 86400) {
+      throw new Error(t('settings.errCoverInterval'));
+    }
     const hashLimitMiBps = Number(form.hashLimitMiBps);
     if (!Number.isInteger(hashLimitMiBps) || hashLimitMiBps < 0 || hashLimitMiBps > 102400) {
       throw new Error(t('settings.errHashLimit'));
@@ -144,6 +153,7 @@ export function Settings({ service }: { service?: string }) {
       rememberLastSuccessfulPort: unique.length > 0 && form.rememberLastSuccessfulPort,
       autoScan: form.autoScan, scanIntervalSeconds, scanIdleMaxSeconds, fileStableSeconds,
       autoBackfill: form.autoBackfill, backfillIntervalSeconds, backfillDailyLimit, backfillDailyGiB, hashLimitMiBps,
+      autoCover: form.autoCover, coverIntervalSeconds,
     };
   }
 
@@ -255,6 +265,12 @@ export function Settings({ service }: { service?: string }) {
             <label>{t('settings.backfillDailyLimit')}<input type="number" min={0} max={100000} value={form.backfillDailyLimit} onChange={event => patch({ backfillDailyLimit: event.target.value })} /></label>
             <label>{t('settings.backfillDailyGiB')}<input type="number" min={0} max={102400} value={form.backfillDailyGiB} onChange={event => patch({ backfillDailyGiB: event.target.value })} /></label>
             <label>{t('settings.hashLimit')}<input type="number" min={0} max={102400} value={form.hashLimitMiBps} onChange={event => patch({ hashLimitMiBps: event.target.value })} /></label>
+          </fieldset>
+          <fieldset className="settings-group"><legend>{t('settings.coverGroup')}</legend>
+            <label className="checkbox-label"><input type="checkbox" checked={form.autoCover} onChange={event => patch({ autoCover: event.target.checked })} />{t('settings.autoCover')}</label>
+            <p className="muted">{t('settings.autoCoverHint')}</p>
+            <DurationField label={t('settings.coverInterval')} seconds={Number(form.coverIntervalSeconds)} min={10} max={86400}
+              onChange={seconds => patch({ coverIntervalSeconds: String(seconds) })} />
           </fieldset>
         </>}
         <div className="button-row"><button disabled={busy}>{busy ? t('settings.saving') : t('settings.save')}</button></div>

@@ -16,7 +16,7 @@ import (
 var editableConfigFields = []string{
 	"host", "preferredPort", "fallbackPorts", "rememberLastSuccessfulPort",
 	"autoScan", "scanIntervalSeconds", "scanIdleMaxSeconds", "fileStableSeconds",
-	"autoBackfill", "backfillIntervalSeconds", "backfillDailyLimit", "backfillDailyGiB", "hashLimitMiBps",
+	"autoBackfill", "backfillIntervalSeconds", "backfillDailyLimit", "backfillDailyGiB", "hashLimitMiBps", "autoCover", "coverIntervalSeconds",
 }
 
 // ConfigState 保存啟動時載入的基準設定、目前生效值與管理頁覆寫。
@@ -73,6 +73,8 @@ type configInput struct {
 	ScanIdleMaxSeconds         *int    `json:"scanIdleMaxSeconds"`
 	FileStableSeconds          *int    `json:"fileStableSeconds"`
 	AutoBackfill               *bool   `json:"autoBackfill"`
+	AutoCover                  *bool   `json:"autoCover"`
+	CoverIntervalSeconds       *int    `json:"coverIntervalSeconds"`
 	BackfillIntervalSeconds    *int    `json:"backfillIntervalSeconds"`
 	BackfillDailyLimit         *int    `json:"backfillDailyLimit"`
 	BackfillDailyGiB           *int    `json:"backfillDailyGiB"`
@@ -136,7 +138,7 @@ func (c *ConfigState) handleUpdate(w http.ResponseWriter, r *http.Request) {
 func (c *ConfigState) applyInput(input configInput) (Config, error) {
 	if input.Host == nil || input.PreferredPort == nil || input.FallbackPorts == nil || input.AutoScan == nil ||
 		input.ScanIntervalSeconds == nil || input.ScanIdleMaxSeconds == nil || input.FileStableSeconds == nil || input.RememberLastSuccessfulPort == nil ||
-		input.AutoBackfill == nil || input.BackfillIntervalSeconds == nil || input.BackfillDailyLimit == nil || input.BackfillDailyGiB == nil || input.HashLimitMiBps == nil {
+		input.AutoBackfill == nil || input.BackfillIntervalSeconds == nil || input.BackfillDailyLimit == nil || input.BackfillDailyGiB == nil || input.HashLimitMiBps == nil || input.AutoCover == nil || input.CoverIntervalSeconds == nil {
 		return Config{}, errMissingConfigField
 	}
 	next := c.base
@@ -152,6 +154,8 @@ func (c *ConfigState) applyInput(input configInput) (Config, error) {
 	next.BackfillDailyLimit = *input.BackfillDailyLimit
 	next.BackfillDailyGiB = *input.BackfillDailyGiB
 	next.HashLimitMiBps = *input.HashLimitMiBps
+	next.AutoCover = *input.AutoCover
+	next.CoverIntervalSeconds = *input.CoverIntervalSeconds
 	next.RememberLastSuccessfulPort = *input.RememberLastSuccessfulPort
 	if len(next.FallbackPorts) == 0 {
 		next.RememberLastSuccessfulPort = false

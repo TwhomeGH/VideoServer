@@ -71,7 +71,7 @@ Docker 預設可能使用 UTC；Compose 已預設 `TZ=Asia/Taipei`，也可用�
 
 ## 管理介面 HTTPS
 
-封面擷取使用 `ffmpegPath`（預設 `ffmpeg`）。封面存於 `<dataDirectory>/covers/`；分類存 `categories` 表，影片仍以 `videos.category` 保存名稱。
+封面擷取使用 `ffmpegPath`（預設 `ffmpeg`）。封面存於 `<dataDirectory>/covers/`；分類存 `categories` 表，影片仍以 `videos.category` 保存名稱。`autoCover` 控制缺少封面的背景排程（預設關閉），`coverIntervalSeconds` 預設 60；即使排程關閉，實際播放影片仍會觸發一次背景封面產生。這些設定需重新啟動才套用。
 
 `tlsCertFile` 與 `tlsKeyFile` 必須成對設定，且只能放在基準設定檔；兩個路徑存在時，服務以 TLS 1.2+ 啟動 HTTPS，並只在 TLS 回應加上 HSTS。憑證或私鑰載入失敗時程序會直接結束。這兩個欄位不在管理頁可編輯清單，憑證變更後需重啟。HTTP 與 HTTPS 不共用同一端口；啟用 TLS 後請用 `https://` 開啟管理頁，Docker healthcheck 會先試 HTTPS 再退回 HTTP。
 
