@@ -14,7 +14,8 @@
     "lang:build": "npm --prefix web/admin run lang:build",
     "lang:check": "npm --prefix web/admin run lang:check",
     "setup:dev": "node scripts/setup.mjs development",
-    "setup:test": "node scripts/setup.mjs testing"
+    "setup:test": "node scripts/setup.mjs testing",
+    "build:admin": "npm --prefix web/admin run build"
   },
   "devDependencies": {
     "trash": "10.1.1"

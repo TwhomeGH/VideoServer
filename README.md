@@ -37,7 +37,7 @@ npm run dev:all
 ## 建置與驗證
 
 ```sh
-npm --prefix web/admin run build
+npm run build:admin
 node scripts/build.mjs video-node
 node scripts/build.mjs central
 node scripts/build.mjs transcode-worker

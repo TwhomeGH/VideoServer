@@ -70,7 +70,7 @@ npm run dev
 ```sh
 go test ./...
 go vet ./...
-npm --prefix web/admin run build
+npm run build:admin
 ```
 
 詳細設定、端口記憶與 runtime.json 見 [設定管理](configuration.md)。
@@ -189,7 +189,7 @@ docker compose ps
 ```sh
 go test ./...
 go vet ./...
-npm --prefix web/admin run build
+npm run build:admin
 npm run test:unit
 npm run lang:check
 npm run testing:up        # 有動到 Docker、靜態頁或部署路徑時
@@ -257,7 +257,7 @@ npm run testing:up         # 建置、啟動並檢查測試環境
 2. 執行 `npm --prefix web/admin ci`、`npm run dev`，用日誌的首次密碼登入，確認 5173 可以開啟並看到 Video Node。
 3. 執行 `npm run testing:up`，確認 18710 三服務健康，且 `npm run check:testing` 全部相符；首次登入密碼在 video-node 日誌。
 4. 打開 `#settings` 確認設定來源與覆寫路徑，再打開 `#diagnostics` 確認 NodeID、程式建置時間、鏡像建置時間與來源摘要都有值。
-5. 執行 `go test ./...`、`go vet ./...`、`npm --prefix web/admin run build`。
+5. 執行 `go test ./...`、`go vet ./...`、`npm run build:admin`。
 6. 確認你知道三種環境的資料位置，以及哪些 volume 不能刪。
 7. 讀 [TODO](../TODO.md) 與 [ChangeHistory](ChangeHistory.md) 最近幾筆，了解目前刻意留下的限制。
 

@@ -7,7 +7,7 @@
 - `web/admin/src/` 的元件／CSS。
 - 文案先改 `web/admin/src/lang/zh_TW.json`；需要英文再改 `en.json`。
 - 執行 `npm run lang:build` 重新產生 `zh_CN.json`，再跑 `lang:check`。
-- 測試：`npm --prefix web/admin run build`、`lang:check`；有互動時用瀏覽器實測 390px 與桌面寬度。
+- 測試：`npm run build:admin`、`lang:check`；有互動時用瀏覽器實測 390px 與桌面寬度。
 
 ## 2. 新增／修改 API（不改資料表）
 
@@ -74,7 +74,7 @@
 - `go test ./... -timeout 120s`
 - `go vet ./...`
 - `npm run lang:build && npm run lang:check`
-- `npm --prefix web/admin run build`
+- `npm run build:admin`
 - `npm run test:unit`（有腳本／工具變更時）
 - `npm run check:testing`（需要確認目前 image）
 - `npm run testing:up`（需要端到端與容器驗證時）

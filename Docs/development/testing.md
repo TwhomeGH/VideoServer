@@ -8,7 +8,7 @@
 go test ./... -timeout 120s
 go vet ./...
 npm run lang:check
-npm --prefix web/admin run build
+npm run build:admin
 ```
 
 前端 build 會先跑 `lang:check`；Go 測試不會檢查前端型別。
