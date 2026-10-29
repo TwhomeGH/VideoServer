@@ -534,6 +534,9 @@
   "library.generateCover": "Capture cover",
   "library.uploadCover": "Upload cover",
   "library.removeCover": "Remove cover",
+  "library.copyId": "Copy ID",
+  "library.copiedId": "Copied",
+  "library.copyFailed": "Copy failed",
   "filters.allCategories": "All categories",
   "categories.manage": "Manage categories",
   "categories.intro": "Categories sync to each video's category field; deleting one clears it from videos using it.",
@@ -554,5 +557,7 @@
   "settings.scanWarmSlow": "Late warm scan interval (6–24 hours)",
   "settings.scanCold": "Cold scan interval (1–7 days)",
   "settings.errScanIntervals": "Warm and cold scan intervals must be between 1 and 86400 seconds",
-  "settings.errScanOrder": "Scan intervals must be ordered hot ≤ warm ≤ late warm ≤ cold"
+  "settings.errScanOrder": "Scan intervals must be ordered hot ≤ warm ≤ late warm ≤ cold",
+  "login.retryHint": "Check the password and try again; if it keeps failing, wait a moment before retrying.",
+  "login.devHint": "Development: see the “[dev] 管理密碼” line from npm run dev, or local/development/dev-password.txt."
 }

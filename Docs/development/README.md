@@ -46,6 +46,10 @@ internal/runtime/server.go
 
 三者互不相干。加資料表只會動 schema；不要把它跟 `buildinfo` 或 protocol 混在一起。
 
+## 想照著做一遍
+
+請從 [`tutorial/`](tutorial/README.md) 開始；目前第一題是複製影片 ID 的純前端練習。
+
 ## 開發流程
 
 1. 先判斷是「只改 UI」、「API/資料」還是「schema」。
@@ -63,3 +67,4 @@ internal/runtime/server.go
 - 測試：[`testing.md`](testing.md)
 - Schema：[`schema-migrations.md`](schema-migrations.md)
 - 變更食譜：[`change-playbook.md`](change-playbook.md)
+- 引導練習：[`tutorial/`](tutorial/README.md)

@@ -35,6 +35,8 @@ export function Login({ service, version, onAuthenticated }: {
       <label>{t('login.password')}<input type="password" autoFocus autoComplete="current-password" required
         value={password} onChange={event => setPassword(event.target.value)} /></label>
       {error && <p role="alert">{error}</p>}
+      {error && <p className="muted">{t('login.retryHint')}</p>}
+      {import.meta.env.DEV && <p className="muted">{t('login.devHint')}</p>}
       <button disabled={busy}>{busy ? t('login.submitting') : t('login.submit')}</button>
     </form>
     {(service || version) && <p className="muted login-meta">{service}{service && version ? t('common.dot') : ''}{version}</p>}

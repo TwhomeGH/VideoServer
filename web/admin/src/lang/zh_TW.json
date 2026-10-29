@@ -534,6 +534,9 @@
   "library.generateCover": "擷取封面",
   "library.uploadCover": "上傳封面",
   "library.removeCover": "移除封面",
+  "library.copyId": "複製 ID",
+  "library.copiedId": "已複製",
+  "library.copyFailed": "複製失敗",
   "filters.allCategories": "全部分類",
   "categories.manage": "分類管理",
   "categories.intro": "分類會同步到影片的 category 欄位；刪除分類會清空使用中的影片分類。",
@@ -554,5 +557,7 @@
   "settings.scanWarmSlow": "暖後段掃描間隔（6–24 小時）",
   "settings.scanCold": "冷池掃描間隔（1–7 天）",
   "settings.errScanIntervals": "暖池與冷池掃描間隔必須介於 1 到 86400 秒",
-  "settings.errScanOrder": "掃描間隔需依序為熱 ≤ 暖 ≤ 暖後段 ≤ 冷"
+  "settings.errScanOrder": "掃描間隔需依序為熱 ≤ 暖 ≤ 暖後段 ≤ 冷",
+  "login.retryHint": "請確認密碼後再試；若持續失敗，請稍後再試。",
+  "login.devHint": "開發模式：請看 npm run dev 輸出的「[dev] 管理密碼」，或 local/development/dev-password.txt。"
 }

@@ -2,6 +2,41 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.29 05:30 開發密碼與 Level 1 tutorial
+
+**類型**: 文件／開發體驗
+
+**檔案**:
+
+- `scripts/dev.mjs`
+- `web/admin/src/Login.tsx`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/lang/zh_TW.json`
+- `web/admin/src/lang/en.json`
+- `Docs/development/tutorial/README.md`
+- `Docs/development/tutorial/01-frontend-copy-id.md`
+
+### 問題
+
+- dev 的 `auth.json` 可能沿用舊密碼，臨時密碼只出現在很早期的日誌
+- 登入失敗只有「密碼錯誤」，沒有再試或開發提示
+- 缺少從零開始的前端引導練習
+
+### 修改
+
+- `npm run dev` 自動建立／沿用 `local/development/dev-password.txt`，印出 `[dev] 管理密碼`。
+- 登入頁在開發模式提示密碼檔案位置；密碼錯誤時提示再試。
+- 新增 Level 1 tutorial：複製影片 ID 的 state、clipboard、i18n 與按鈕。
+- 新增 `Docs/development/tutorial/` 索引與後續題目規劃。
+
+### 驗證
+
+- `npm run lang:build`、`lang:check`、`npm run build:admin` 通過。
+- 複製成功／失敗、完整 ID、2 秒提示與 390px 已在 testing image 手動驗收。
+- 尚未重建 testing image；tutorial 完成後統一重建。
+
+---
+
 ## 2026.10.29 04:50 使用 Go max 簡化負數 clamp
 
 **類型**: 整理

@@ -534,6 +534,9 @@
   "library.generateCover": "截取封面",
   "library.uploadCover": "上传封面",
   "library.removeCover": "移除封面",
+  "library.copyId": "拷贝 ID",
+  "library.copiedId": "已拷贝",
+  "library.copyFailed": "拷贝失败",
   "filters.allCategories": "全部分类",
   "categories.manage": "分类管理",
   "categories.intro": "分类会同步到视频的 category 字段；删除分类会清空使用中的视频分类。",
@@ -554,5 +557,7 @@
   "settings.scanWarmSlow": "暖后段扫描间隔（6–24 小时）",
   "settings.scanCold": "冷池扫描间隔（1–7 天）",
   "settings.errScanIntervals": "暖池与冷池扫描间隔必须介于 1 到 86400 秒",
-  "settings.errScanOrder": "扫描间隔需依序为热 ≤ 暖 ≤ 暖后段 ≤ 冷"
+  "settings.errScanOrder": "扫描间隔需依序为热 ≤ 暖 ≤ 暖后段 ≤ 冷",
+  "login.retryHint": "请确认密码后再试；若持续失败，请稍后再试。",
+  "login.devHint": "开发模式：请看 npm run dev 输出的「[dev] 管理密码」，或 local/development/dev-password.txt。"
 }

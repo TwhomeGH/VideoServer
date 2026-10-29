@@ -1,5 +1,6 @@
 import { spawn } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { randomBytes } from 'node:crypto';
 import { createInterface } from 'node:readline';
 import { fileURLToPath } from 'node:url';
 import { createServer } from '../web/admin/node_modules/vite/dist/node/index.js';
@@ -140,8 +141,33 @@ async function startFrontend(target) {
   vite.printUrls();
 }
 
+/** prepareDevPassword 建立可重複使用的開發密碼，避免每次重開都要翻日誌。 */
+function prepareDevPassword() {
+  if (process.env.DVN_ADMIN_PASSWORD) {
+    console.log('[dev] 使用環境變數 DVN_ADMIN_PASSWORD。');
+    return;
+  }
+  const directory = 'local/development';
+  const file = `${directory}/dev-password.txt`;
+  mkdirSync(directory, { recursive: true });
+  let password = existsSync(file) ? readFileSync(file, 'utf8').trim() : '';
+  if (password.length < 12) {
+    password = randomBytes(18).toString('base64url');
+    writeFileSync(file, `${password}\n`, { mode: 0o600 });
+    try {
+      chmodSync(file, 0o600);
+    } catch {
+      // Windows 可能忽略 POSIX 權限。
+    }
+  }
+  process.env.DVN_ADMIN_PASSWORD = password;
+  console.log(`[dev] 管理密碼：${password}`);
+  console.log(`[dev] 已存入 ${file}；此檔案不提交。`);
+}
+
 try {
   workspace = ensureWorkspace('development');
+  prepareDevPassword();
   console.log(`[dev] 工作區：${workspace.directory}；設定路徑與資料目錄可在「服務資訊」查看。`);
   mkdirSync('bin', { recursive: true });
   const onVideoTarget = target => {

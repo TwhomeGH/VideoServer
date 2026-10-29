@@ -84,6 +84,13 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
   const [filters, setFilters] = useState(defaultVideoFilters);
   const [policyConfirm, setPolicyConfirm] = useState<Pool | null>(null);
   const [videoPage, setVideoPage] = useState(1);
+
+  /** 目前顯示「已複製」提示的影片 ID。 */
+  const [copiedId, setCopiedId] = useState('');
+
+  /** 目前顯示「複製失敗」提示的影片 ID。 */
+  const [copyFailedId, setCopyFailedId] = useState('');
+  
   const refreshVersion = useRef(0);
   const queryString = page === 'monitor' || page === 'api' || page === 'jobs' || page === 'discovered' ? '' : page === 'videos'
     ? new URLSearchParams({ ...filters, page: String(videoPage) }).toString() : 'pageSize=1';
@@ -106,6 +113,23 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
     setLoadError('');
     setSelected(current => current ? result.videos.find(video => video.id === current.id) || current : null);
     setPoolId(current => current || result.pools[0]?.id || '');
+  }
+
+  async function copyVideoId(video: Video) {
+    try {
+      await navigator.clipboard.writeText(video.id);
+      setCopiedId(video.id);
+      setCopyFailedId('');
+      window.setTimeout(() => {
+        setCopiedId(current => current === video.id ? '' : current);
+      }, 2000);
+    } catch {
+      setCopiedId('');
+      setCopyFailedId(video.id);
+      window.setTimeout(() => {
+        setCopyFailedId(current => current === video.id ? '' : current);
+      }, 2000);
+    }
   }
 
   useEffect(() => {
@@ -186,7 +210,18 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
         {video.provider === 'webdav' && <p className="muted">{t('library.webdavSource')}{t('common.dot')}{video.hashStatus === 'verified' ? t('library.verified') : t('library.unverified')}</p>}
         {verifyJob && <p className="muted">{t('library.verifyProgress', { percent: verifyPercent })}</p>}
         <button disabled={!video.available} title={!video.available ? availability : undefined} onClick={() => setSelected(video)}>{t('library.play')}</button>
+        
         <button disabled={busy} onClick={() => { setEditing(video); setEditDraft({ ...video }); }}>{t('library.edit')}</button>
+
+        {/* 複製完整影片 ID，方便支援與排查 */}
+        <button type="button" onClick={() => void copyVideoId(video)}>
+          {copyFailedId === video.id
+            ? t('library.copyFailed')
+            : copiedId === video.id
+              ? t('library.copiedId')
+              : t('library.copyId')}
+        </button>
+
         {verifyJob
           ? <button disabled={busy} onClick={() => void submit(async () => { await request(`videos/${video.id}/verify/cancel`, {}); })}>{t('library.cancelVerify')}</button>
           : video.provider === 'webdav' && video.hashStatus !== 'verified' && <button disabled={busy} onClick={() => void submit(async () => { await request(`videos/${video.id}/verify`, {}); })}>{t('library.verifyHash')}</button>}
