@@ -15,8 +15,8 @@
 本文描述的功能在 `3b9e35b` 完成。想自己從零練習時，不要 reset main，改用 worktree 開一份乾淨基準：
 
 ```powershell
-git worktree add -b tutorial/01-copy-id ..\VideoServer-tutorial-01 3b9e35b^
-cd ..\VideoServer-tutorial-01
+git worktree add -b tutorial/01-copy-id ../VideoServer-tutorial-01 3b9e35b^
+cd ../VideoServer-tutorial-01
 npm --prefix web/admin ci
 
 # 這個 baseline 還沒有後來的 dev 密碼 helper，先指定練習用密碼
@@ -40,7 +40,7 @@ DVN_ADMIN_PASSWORD=tutorial-password-123 npm run dev
 
 ```powershell
 cd F:\VideoServer
-git worktree remove ..\VideoServer-tutorial-01
+git worktree remove ../VideoServer-tutorial-01
 ```
 
 worktree 的通用用法與注意事項見 [`git-worktree.md`](../git-worktree.md)。
