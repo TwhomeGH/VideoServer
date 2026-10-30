@@ -29,6 +29,8 @@
 
 ## 使用方式
 
+想先了解 worktree 是什麼、如何建立與清理，見 [`git-worktree.md`](../git-worktree.md)。
+
 1. 從 `npm run dev` 開始，不要只啟動 Vite。
 2. 一次只做一題；每題都有「檢查點」。
 3. 做完先跑題目給的驗證指令，再進下一題。

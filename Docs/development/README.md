@@ -68,3 +68,4 @@ internal/runtime/server.go
 - Schema：[`schema-migrations.md`](schema-migrations.md)
 - 變更食譜：[`change-playbook.md`](change-playbook.md)
 - 引導練習：[`tutorial/`](tutorial/README.md)
+- Git worktree：[`git-worktree.md`](git-worktree.md)
