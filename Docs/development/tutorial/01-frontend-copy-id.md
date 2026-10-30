@@ -4,11 +4,12 @@
 > 這個功能**已經正式實作並合併**（commit `3b9e35b`）；本文是實作回顧與模板，不是待辦清單。
 > 請把它當成「state → handler → UI → i18n → build」的參考，理解後再套用到其他元件，而不是重複新增同一個按鈕。
 
+---
+
 > [!WARNING]
 > 請在自己的分支或工作區操作，不要直接修改已部署的 main。
 > 若功能已存在，先讀懂現有程式再比較差異；不要重複加入按鈕、state 或翻譯 key。
 > dev 與 Docker testing 的資料是分開的，tutorial 不會自動讀取 Docker 的影片。
-
 
 ## 練習模式：從上一個 commit 開始
 
@@ -35,11 +36,12 @@ DVN_ADMIN_PASSWORD=tutorial-password-123 npm run dev
 
 - baseline 是 `c2a03ad`（= `3b9e35b^`），不含複製 ID 功能。
 - 這個 baseline 還沒有 `[dev] 管理密碼`；用上面的 `DVN_ADMIN_PASSWORD` 登入。
-- 練習期間只改 worktree，不影響目前的 `F:\VideoServer`。
-- 完成後可移除：
+- 練習期間只改 worktree，不影響你原本的專案目錄。
+- 完成後先離開 tutorial worktree，回到原本的專案根目錄再移除：
 
 ```powershell
-cd F:\VideoServer
+# 換成你的 VideoServer 專案路徑
+cd <你的 VideoServer 路徑>
 git worktree remove ../VideoServer-tutorial-01
 ```
 
@@ -55,7 +57,6 @@ worktree 的通用用法與注意事項見 [`git-worktree.md`](../git-worktree.m
 按鈕暫時顯示「已複製」；失敗顯示「複製失敗」。
 
 這題只改前端與翻譯檔，不動 API、SQLite、Dockerfile。
-
 
 ## 當作其他元件的模板
 

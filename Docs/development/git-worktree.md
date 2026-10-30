@@ -73,8 +73,9 @@ DVN_ADMIN_PASSWORD=tutorial-password-123 npm run dev
 ## 清理
 
 ```sh
-cd F:\VideoServer
-git worktree remove ..\VideoServer-tutorial-01
+# 先回到原本的專案根目錄（不是 tutorial worktree）
+cd <你的 VideoServer 專案路徑>
+git worktree remove ../VideoServer-tutorial-01
 git branch -D tutorial/01-copy-id   # 只有確定不要保留分支時才刪
 git worktree prune
 ```
