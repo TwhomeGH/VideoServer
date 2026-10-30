@@ -10,6 +10,43 @@
 > dev 與 Docker testing 的資料是分開的，tutorial 不會自動讀取 Docker 的影片。
 
 
+## 練習模式：從上一個 commit 開始
+
+本文描述的功能在 `3b9e35b` 完成。想自己從零練習時，不要 reset main，改用 worktree 開一份乾淨基準：
+
+```powershell
+git worktree add ..\VideoServer-tutorial-01 3b9e35b^
+cd ..\VideoServer-tutorial-01
+npm --prefix web/admin ci
+
+# 這個 baseline 還沒有後來的 dev 密碼 helper，先指定練習用密碼
+$env:DVN_ADMIN_PASSWORD = 'tutorial-password-123'
+npm run dev
+```
+
+Linux／macOS：
+
+```sh
+git worktree add ../VideoServer-tutorial-01 3b9e35b^
+cd ../VideoServer-tutorial-01
+npm --prefix web/admin ci
+DVN_ADMIN_PASSWORD=tutorial-password-123 npm run dev
+```
+
+- baseline 是 `c2a03ad`（= `3b9e35b^`），不含複製 ID 功能。
+- 這個 baseline 還沒有 `[dev] 管理密碼`；用上面的 `DVN_ADMIN_PASSWORD` 登入。
+- 練習期間只改 worktree，不影響目前的 `F:\VideoServer`。
+- 完成後可移除：
+
+```powershell
+cd F:\VideoServer
+git worktree remove ..\VideoServer-tutorial-01
+```
+
+若找不到 commit，先 `git log --oneline` 找到 `c2a03ad`。**不要用 `git reset --hard` 清掉目前工作區。**
+
+只看流程、不自己重做時，直接讀本文即可；想挑戰時先只看步驟，卡住再對照程式碼。
+
 ## 目標
 
 在每張影片卡的操作區加一個「複製 ID」按鈕。點擊後把完整 `video.id` 寫入剪貼簿，

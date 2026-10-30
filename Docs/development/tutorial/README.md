@@ -22,6 +22,11 @@
 | 03 有無封面篩選 | API + 前端 | 規劃中 |
 | 04 影片收藏 | schema + API + 前端 | 規劃中 |
 
+## 練習模式
+
+已完成的題目會標示 baseline commit。建議用 `git worktree` 開一份舊 commit 的副本練習，不要 reset main。
+範例見 [01 的練習模式](01-frontend-copy-id.md#練習模式從上一個-commit-開始)。
+
 ## 使用方式
 
 1. 從 `npm run dev` 開始，不要只啟動 Vite。
