@@ -30,22 +30,22 @@ docker compose ps
 
 這會開啟三服務。只測影片節點時可省略 `--profile all`。
 
-第一次開啟會要求管理登入。首次管理員密碼會顯示在 video-node 日誌的「已建立管理員密碼」訊息；也可在啟動前設定 `DVN_ADMIN_PASSWORD`，該值會成為管理密碼並覆寫先前由網頁設定的值。`testing:up` 在未設定時會提示到哪裡找密碼。
+第一次開啟會要求管理登入。首次管理員密碼會寫入 video-node 的 `/data/initial-password.txt`，登入後刪除；也可在啟動前設定 `DVN_ADMIN_PASSWORD`，該值會成為管理密碼並覆寫先前由網頁設定的值。
 
 登入後可在「設定」頁變更密碼、編輯可調整的設定，並按確認重新啟動。設定會寫入資料卷的 `/data/config.override.json`，`testing/local/config/` 的 JSON 仍是唯讀基準；儲存後需重新啟動才套用。管理憑證 `auth.json` 與設定覆寫都在 `dvn-testing_node-data` 資料卷，刪除 volume 會失去登入憑證。
 
 ## 忘記管理員密碼
 
-密碼不會以明文保存：`/data/auth.json` 只有雜湊與 session 金鑰。第一次啟動的隨機密碼只在日誌顯示一次，之後重啟不會再印。若沒有記下，請用下列其中一種方式重設：
+密碼不會以明文保存：`/data/auth.json` 只有雜湊與 session 金鑰。第一次啟動的隨機密碼在 `/data/initial-password.txt`，登入後會刪除。若沒有記下，請用下列其中一種方式重設：
 
 1. 在 `testing/.env` 或啟動 shell 設定 `DVN_ADMIN_PASSWORD`，再執行 `npm run testing:up`。非空值會在啟動時更新憑證。
 2. 保留 NodeID 與影片，只重設管理憑證：
    ```sh
    docker compose -f testing/compose.yaml exec -T video-node rm /data/auth.json
    docker compose -f testing/compose.yaml restart video-node
-   docker compose -f testing/compose.yaml logs video-node | Select-String "已建立管理員密碼"
+   docker compose -f testing/compose.yaml exec -T video-node cat /data/initial-password.txt
    ```
-   新的一次性密碼會出現在日誌。不要刪除整個 `dvn-testing_node-data` volume，否則會失去 NodeID、索引與設定覆寫。
+   新的一次性密碼會寫入 `/data/initial-password.txt`。不要刪除整個 `dvn-testing_node-data` volume，否則會失去 NodeID、索引與設定覆寫。
 
 若啟動時已設定 `DVN_ADMIN_PASSWORD`，刪除 `auth.json` 後仍會使用該環境變數，不會產生隨機密碼。
 

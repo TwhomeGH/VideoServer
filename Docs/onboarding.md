@@ -95,7 +95,7 @@ npm run testing:up
 - Video Node：<http://localhost:18710>（區網用主機 IP，例如 <http://192.168.0.102:18710>）
 - Central：<http://localhost:18720>
 - Worker：<http://localhost:18730>
-- 第一次開啟會要求管理登入。首次密碼會顯示在 video-node 日誌的「已建立管理員密碼」訊息；也可在啟動前設定 `DVN_ADMIN_PASSWORD`。`testing:up` 會提示到哪裡找。
+- 第一次開啟會要求管理登入。首次管理員密碼在資料目錄的 `initial-password.txt`，登入後會刪除；也可在啟動前設定 `DVN_ADMIN_PASSWORD`。
 - 資料在 `testing/local/` 與 Docker volume `dvn-testing_node-data`，與本機開發、根目錄正式部署分開；`auth.json` 與 `config.override.json` 也在資料卷。
 - 登入後「設定」頁可變更密碼、編輯設定與確認重新啟動；儲存設定會寫入資料卷的 `config.override.json`，主機 JSON 不會被修改。
 
@@ -148,7 +148,7 @@ docker compose ps
 
 # 4. 開管理頁
 # http://localhost:18610
-# 首次登入密碼在 docker compose logs video-node；或用 .env 的 DVN_ADMIN_PASSWORD
+# 首次登入密碼在 /data/initial-password.txt；或用 .env 的 DVN_ADMIN_PASSWORD
 ```
 
 登入後「設定」頁可變更密碼、編輯可調整的設定並確認重新啟動。設定會寫入資料卷的 `/data/config.override.json`，`deployments/docker/` 的主機 JSON 仍是唯讀基準；儲存後要重新啟動才會套用。
@@ -221,7 +221,7 @@ npm run testing:up         # 建置、啟動並檢查測試環境
 | Docker 測試 | `testing/local/config/` | volume `dvn-testing_node-data` | `testing/local/media/` 或 `testing/compose.local.yaml` 的額外掛載 |
 | 正式部署 | `deployments/docker/`、`.env` | volume `dvn_node-data` | `.env` 指定的主機目錄 |
 
-各環境的資料目錄也包含 `auth.json` 與 `config.override.json`。刪除資料卷或資料目錄會失去管理密碼與設定覆寫；管理密碼會重新產生，需到日誌查看新的一次性密碼。
+各環境的資料目錄也包含 `auth.json` 與 `config.override.json`。刪除資料卷或資料目錄會失去管理密碼與設定覆寫；管理密碼會重新產生，新的一次性密碼會寫入資料目錄的 `initial-password.txt`。
 備份時先停止對應服務，再完整備份設定與資料卷；不要只複製 SQLite 主檔而漏掉 WAL 檔。
 
 ## 管理介面 HTTPS
@@ -254,8 +254,8 @@ npm run testing:up         # 建置、啟動並檢查測試環境
 第一次接手時，建議依序完成：
 
 1. 讀完本文件與 [架構文件](architecture.md)，再讀 [開發指南](development/README.md)。
-2. 執行 `npm --prefix web/admin ci`、`npm run dev`，用日誌的首次密碼登入，確認 5173 可以開啟並看到 Video Node。
-3. 執行 `npm run testing:up`，確認 18710 三服務健康，且 `npm run check:testing` 全部相符；首次登入密碼在 video-node 日誌。
+2. 執行 `npm --prefix web/admin ci`、`npm run dev`，用 `initial-password.txt` 的首次密碼登入，確認 5173 可以開啟並看到 Video Node。
+3. 執行 `npm run testing:up`，確認 18710 三服務健康，且 `npm run check:testing` 全部相符；首次登入密碼在 video-node 的 `/data/initial-password.txt`。
 4. 打開 `#settings` 確認設定來源與覆寫路徑，再打開 `#diagnostics` 確認 NodeID、程式建置時間、鏡像建置時間與來源摘要都有值。
 5. 執行 `go test ./...`、`go vet ./...`、`npm run build:admin`。
 6. 確認你知道三種環境的資料位置，以及哪些 volume 不能刪。
@@ -266,7 +266,7 @@ npm run testing:up         # 建置、啟動並檢查測試環境
 | 現象 | 先檢查 |
 | --- | --- |
 | 不知道 image 是不是舊的 | `npm run check:testing`；來源摘要不同就重建 |
-| 忘記管理員密碼 | 看首次啟動日誌或 `DVN_ADMIN_PASSWORD`；必要時只移除資料目錄的 `auth.json` 再啟動，不要刪 volume |
+| 忘記管理員密碼 | 看 `initial-password.txt` 或 `DVN_ADMIN_PASSWORD`；必要時只移除資料目錄的 `auth.json` 再啟動，不要刪 volume |
 | 服務資訊的鏡像建置時間是「未提供」 | 用 `npm run image -- all` 或 `npm run testing:up` 重建 |
 | Docker 無法連線 | Docker Desktop 是否啟動、是否使用 Linux containers |
 | 端口被占用 | 測試環境改 `testing/.env`，正式部署改根目錄 `.env` |

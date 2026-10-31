@@ -77,15 +77,15 @@ Docker 預設可能使用 UTC；Compose 已預設 `TZ=Asia/Taipei`，也可用�
 
 ## 管理授權與 session
 
-第一次啟動且沒有 `DVN_ADMIN_PASSWORD` 時，服務產生隨機管理員密碼，只在日誌顯示一次；之後可在「設定」頁用目前密碼變更。設定 `DVN_ADMIN_PASSWORD` 時，該值是啟動時的管理密碼；若與已保存的不同，會更新憑證並讓既有 session 失效。憑證保存在 `<dataDirectory>/auth.json`，使用 PBKDF2-HMAC-SHA256 雜湊與隨機 session secret，檔案權限為 0600。
+第一次啟動且沒有 `DVN_ADMIN_PASSWORD` 時，服務產生隨機管理員密碼，寫入 `<dataDirectory>/initial-password.txt`（權限 0600），日誌只顯示檔案路徑；首次成功登入或變更密碼後會刪除該檔。之後可在「設定」頁用目前密碼變更。設定 `DVN_ADMIN_PASSWORD` 時，該值是啟動時的管理密碼；若與已保存的不同，會更新憑證並讓既有 session 失效。憑證保存在 `<dataDirectory>/auth.json`，使用 PBKDF2-HMAC-SHA256 雜湊與隨機 session secret，檔案權限為 0600。
 
 登入成功後只設定 `dvn_session` cookie：HttpOnly、SameSite=Strict，JavaScript 無法讀取，不會在 localStorage 保存 token。使用中的 API 請求會在閒置期限剩餘一半時自動續期；閒置期限 7 天，絕對上限 90 天，超過任一期限需重新登入。登出或變更密碼會輪替 session secret，讓所有裝置的既有 session 失效。登入失敗每個來源連續 5 次會暫停 30 秒。
 
 `GET /api/v1/status`、`GET /healthz`、`/api/v1/auth/session` 與 `/api/v1/auth/login` 保持公開；其他 `/api/v1/*` 需要有效 cookie。API 用戶端請先 `POST /api/v1/auth/login` 並保存回傳的 cookie。瀏覽器 cookie 以主機名稱區分、不以端口區分；同一主機名稱下同時跑多個實例時，切換實例可能需要重新登入，開發與測試可用不同主機名稱區隔。
 
-密碼不會以明文保存，`auth.json` 只有 PBKDF2 雜湊與 session 金鑰。首次隨機密碼只在日誌出現一次；忘記時可設定非空的 `DVN_ADMIN_PASSWORD` 後重啟，或停止服務、備份資料目錄後移除 `auth.json` 再啟動，讓服務重新產生一次性密碼。移除 `auth.json` 不會刪除 NodeID、儲存池或影片索引，但會讓既有 session 失效；不要直接刪除整個資料目錄或 volume。
+密碼不會以明文保存，`auth.json` 只有 PBKDF2 雜湊與 session 金鑰。首次隨機密碼在 `<dataDirectory>/initial-password.txt`，登入後會刪除；忘記時可設定非空的 `DVN_ADMIN_PASSWORD` 後重啟，或停止服務、備份資料目錄後移除 `auth.json` 再啟動，讓服務重新產生一次性密碼檔。移除 `auth.json` 不會刪除 NodeID、儲存池或影片索引，但會讓既有 session 失效；不要直接刪除整個資料目錄或 volume。
 
-HTTPS/TLS 尚未內建；直接以 HTTP 提供時 cookie 不會標記 Secure。若在前面放 TLS 反向代理，請確認瀏覽器實際使用 HTTPS。
+可直接設定 `tlsCertFile`／`tlsKeyFile` 啟用 HTTPS；TLS 請求的 cookie 會標記 Secure。若前面另有 TLS 反向代理，請確認瀏覽器實際使用 HTTPS。
 
 ## 新增影片自動掃描
 

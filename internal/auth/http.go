@@ -77,6 +77,7 @@ func (m *Manager) handleLogin(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "無法建立登入狀態"})
 		return
 	}
+	m.clearInitialPassword()
 	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": true})
 }
 
@@ -109,6 +110,7 @@ func (m *Manager) handlePassword(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": "密碼已更新，但無法建立登入狀態"})
 		return
 	}
+	m.clearInitialPassword()
 	writeJSON(w, http.StatusOK, map[string]bool{"authenticated": true})
 }
 

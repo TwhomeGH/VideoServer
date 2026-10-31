@@ -2,6 +2,41 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.31 21:30 初始管理密碼改寫入 0600 檔案
+
+**類型**: 安全性
+
+**檔案**:
+
+- `internal/auth/initial_password.go`
+- `internal/auth/auth.go`
+- `internal/auth/http.go`
+- `internal/runtime/server.go`
+- `Docs/configuration.md`
+- `Docs/deployment.md`
+- `Docs/onboarding.md`
+- `testing/README.md`
+
+### 問題
+
+- 首次啟動的隨機管理密碼直接寫入日誌，CodeQL 標記 clear-text logging of sensitive information。
+- 日誌若被收集或轉存，初始密碼會外洩。
+
+### 修改
+
+- 一次性密碼改寫入 `<dataDirectory>/initial-password.txt`，權限 0600。
+- 日誌只輸出檔案路徑，不再輸出密碼。
+- 首次成功登入或變更密碼後自動刪除該檔。
+- 文件改為引導查看 `initial-password.txt`，Docker 用 `docker compose exec ... cat`。
+
+### 驗證
+
+- `internal/auth` 測試涵蓋檔案內容與清除。
+- Go 測試、`go vet` 通過。
+- 未變更既有 `DVN_ADMIN_PASSWORD` 行為。
+
+---
+
 ## 2026.10.31 21:00 全域通知與 Learn 2
 
 **類型**: 功能／教學

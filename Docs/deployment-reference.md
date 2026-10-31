@@ -53,7 +53,7 @@ docker compose --profile all up -d --no-build --pull never
 Video Node 在 `http://主機IP:18610`，Central 為 18620，Worker 為 18630。容器直接提供打包網頁，無需 5173。
 容器內端口固定且不遞補；外部占用時修改 `.env` 的 DVN_NODE_PORT 等，再執行 up。Docker 不會因容器內自行換端口就調整映射。
 預設對所有 IPv4 介面綁定；可用 DVN_BIND_ADDRESS 指定單一介面。管理 API 使用單一管理員登入，仍只適合可信任網路；尚無多使用者、角色權限或內建 HTTPS。
-首次啟動的管理員密碼在服務日誌；也可用 `DVN_ADMIN_PASSWORD` 指定，該值會在啟動時覆寫網頁設定的密碼。登入 cookie 是 HttpOnly、SameSite=Strict，閒置 7 天滑動續期、最長 90 天；登出或改密碼會讓所有 session 失效。
+首次啟動的管理員密碼在資料目錄的 `initial-password.txt`；也可用 `DVN_ADMIN_PASSWORD` 指定，該值會在啟動時覆寫網頁設定的密碼。登入 cookie 是 HttpOnly、SameSite=Strict，閒置 7 天滑動續期、最長 90 天；登出或改密碼會讓所有 session 失效。
 
 容器內註冊儲存池要填 `/media`，不是 Windows / Linux 主機路徑。現階段唯讀掛載即可索引與播放；日後轉碼輸出會另外規劃可寫掛載。NAS 必須先在主機掛載，再提供容器讀取權限。
 Compose 已將三服務的設定檔以唯讀方式掛至 `/app/config.json`。預設來源是 `deployments/docker/服務名.json`；可由 DVN_NODE_CONFIG、DVN_CENTRAL_CONFIG、DVN_WORKER_CONFIG 指定其他主機檔案。修改 JSON 後重啟服務，不需重建 image；修改掛載路徑後重新執行 compose up。

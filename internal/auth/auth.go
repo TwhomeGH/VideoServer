@@ -61,16 +61,17 @@ type stored struct {
 
 // Manager 保存目前管理員憑證與 session 簽章金鑰。
 type Manager struct {
-	mu         sync.RWMutex
-	path       string
-	salt       []byte
-	hash       []byte
-	iterations int
-	secret     []byte
-	createdAt  time.Time
-	updatedAt  time.Time
-	limiter    *limiter
-	now        func() time.Time
+	mu                  sync.RWMutex
+	path                string
+	salt                []byte
+	hash                []byte
+	iterations          int
+	secret              []byte
+	createdAt           time.Time
+	updatedAt           time.Time
+	limiter             *limiter
+	now                 func() time.Time
+	initialPasswordPath string
 }
 
 // limiter 針對登入失敗來源進行短期鎖定，避免無限猜測密碼。
@@ -97,6 +98,7 @@ func Open(dataDir, envPassword string) (manager *Manager, initialPassword string
 		if err != nil {
 			return nil, "", err
 		}
+		manager.initialPasswordPath = filepath.Join(dataDir, initialPasswordFile)
 		if envPassword != "" {
 			if err := validatePassword(envPassword); err != nil {
 				return nil, "", fmt.Errorf("DVN_ADMIN_PASSWORD 無效：%w", err)
@@ -124,7 +126,7 @@ func Open(dataDir, envPassword string) (manager *Manager, initialPassword string
 	if err := validatePassword(password); err != nil {
 		return nil, "", fmt.Errorf("管理密碼無效：%w", err)
 	}
-	manager = &Manager{path: path, limiter: newLimiter(), now: time.Now}
+	manager = &Manager{path: path, limiter: newLimiter(), now: time.Now, initialPasswordPath: filepath.Join(dataDir, initialPasswordFile)}
 	if err := manager.replacePassword(password); err != nil {
 		return nil, "", err
 	}
@@ -208,7 +210,7 @@ func (m *Manager) save() error {
 	m.mu.RLock()
 	value := stored{
 		Version: fileVersion,
-		Salt: base64.RawStdEncoding.EncodeToString(m.salt), Hash: base64.RawStdEncoding.EncodeToString(m.hash),
+		Salt:    base64.RawStdEncoding.EncodeToString(m.salt), Hash: base64.RawStdEncoding.EncodeToString(m.hash),
 		Iterations: m.iterations, SessionSecret: base64.RawStdEncoding.EncodeToString(m.secret),
 		CreatedAt: m.createdAt.Format(time.RFC3339), UpdatedAt: m.updatedAt.Format(time.RFC3339),
 	}

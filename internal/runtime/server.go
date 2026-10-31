@@ -129,8 +129,12 @@ func Main(service string, port int) int {
 		return 1
 	}
 	if initialPassword != "" {
-		logger.Warn("已建立管理員密碼，登入後請立即變更；此密碼不會再次顯示",
-			"password", initialPassword, "authFile", filepath.Join(baseConfig.DataDirectory, "auth.json"))
+		passwordFile, err := auth.WriteInitialPassword(baseConfig.DataDirectory, initialPassword)
+		if err != nil {
+			logger.Error("無法寫入一次性管理密碼檔", "error", err)
+			return 1
+		}
+		logger.Warn("已建立管理員密碼；請查看一次性密碼檔，登入後會自動刪除", "passwordFile", passwordFile)
 	}
 	network := NetworkRuntime{StateFile: filepath.Join(config.DataDirectory, "runtime.json"), RememberEnabled: config.RememberLastSuccessfulPort}
 	state, stateErr := LoadRuntimeState(network.StateFile, service)

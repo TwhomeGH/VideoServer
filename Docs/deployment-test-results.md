@@ -81,6 +81,15 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## 初始密碼檔案化
+
+2026-10-31 驗證：
+
+- 首次啟動不再把密碼寫入日誌，改寫入 `<dataDirectory>/initial-password.txt`。
+- 成功登入後檔案會刪除。
+- `DVN_ADMIN_PASSWORD` 行為不變。
+- `internal/auth` 測試與 `go vet` 通過。
+
 ## 全域通知 Learn 2
 
 2026-10-31 在 `dvn-testing`（image 來源 `45e4554566b0`）驗證：
