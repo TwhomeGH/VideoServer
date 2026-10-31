@@ -70,6 +70,7 @@ func (s *Store) supportedLocalVideo(path string) bool {
 	if extension != ".ts" && extension != ".mts" && extension != ".m2ts" {
 		return true
 	}
+	// codeql[go/path-injection] 呼叫端已用 resolve 限制在 pool root；本函式只對已驗證的本機路徑做內容嗅探。
 	file, err := os.Open(path)
 	if err != nil {
 		return false
@@ -546,6 +547,7 @@ func (s *Store) AddPool(name, path string) (Pool, error) {
 	if err != nil {
 		return pool, err
 	}
+	// codeql[go/path-injection] AddPool 是已授權管理員能力：可註冊伺服器上的任意絕對目錄。
 	info, err := os.Stat(path)
 	if err != nil {
 		return pool, err

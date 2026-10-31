@@ -119,6 +119,7 @@ func (q *ImportQueue) Enqueue(ctx context.Context, poolID, relative, title, sour
 	if !q.store.supportedLocalVideo(path) {
 		return empty, false, fmt.Errorf("不支援的影片副檔名")
 	}
+	// codeql[go/path-injection] resolve 已拒絕絕對路徑、.. 與 symlink escape，並確認 path 位於 pool root。
 	info, err := os.Stat(path)
 	if err != nil {
 		return empty, false, err
