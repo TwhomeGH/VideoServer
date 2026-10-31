@@ -625,7 +625,7 @@ func (s *Scanner) scanPools(ctx context.Context, now time.Time, pools []Pool, on
 			if pool.ScanExcludeSystem && shouldExcludeSystemPath(relative) {
 				return nil
 			}
-			if !s.store.supportedVideo(path) {
+			if !s.store.supportedLocalVideo(path) {
 				return nil
 			}
 			info, err := entry.Info()

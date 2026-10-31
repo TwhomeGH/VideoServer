@@ -3,7 +3,7 @@ package media
 import (
 	"context"
 	"fmt"
-	"os"
+	"io"
 	"os/exec"
 	"path/filepath"
 	"strings"
@@ -92,21 +92,14 @@ func (f *VideoFormats) Extensions() []string {
 	return result
 }
 
-// Supports 判斷路徑是否是可掃描的影片；不明的 .ts／.mts 會再做 MPEG-TS 封包檢查。
+// Supports 只檢查是否允許該副檔名；本機檔案再由呼叫端做 MPEG-TS 內容嗅探。
 func (f *VideoFormats) Supports(path string) bool {
 	if f == nil || len(f.extensions) == 0 {
 		return false
 	}
 	extension := normalizeExtension(filepath.Ext(path))
-	if _, ok := f.extensions[extension]; !ok {
-		return false
-	}
-	switch extension {
-	case ".ts", ".mts", ".m2ts":
-		return looksLikeTransportStream(path, extension == ".m2ts" || extension == ".mts")
-	default:
-		return true
-	}
+	_, ok := f.extensions[extension]
+	return ok
 }
 
 func normalizeExtension(value string) string {
@@ -153,16 +146,14 @@ func parseDemuxers(output string) map[string]bool {
 	return result
 }
 
-// looksLikeTransportStream 要求多個連續同步位元組，避免把 TypeScript 原始碼當成 MPEG-TS。
-func looksLikeTransportStream(path string, m2ts bool) bool {
-	file, err := os.Open(path)
-	if err != nil {
+// LooksLikeTransportStream 要求多個連續同步位元組，避免把 TypeScript 原始碼當成 MPEG-TS。
+func LooksLikeTransportStream(reader io.Reader, m2ts bool) bool {
+	if reader == nil {
 		return false
 	}
-	defer file.Close()
 	buffer := make([]byte, 2048)
-	n, err := file.Read(buffer)
-	if err != nil && n == 0 {
+	n, err := reader.Read(buffer)
+	if n == 0 || (err != nil && n == 0) {
 		return false
 	}
 	offset, stride := 0, 188

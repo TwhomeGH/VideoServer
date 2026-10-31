@@ -116,7 +116,7 @@ func (q *ImportQueue) Enqueue(ctx context.Context, poolID, relative, title, sour
 	if err != nil {
 		return empty, false, err
 	}
-	if !q.store.supportedVideo(path) {
+	if !q.store.supportedLocalVideo(path) {
 		return empty, false, fmt.Errorf("不支援的影片副檔名")
 	}
 	info, err := os.Stat(path)

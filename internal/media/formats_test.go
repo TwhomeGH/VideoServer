@@ -1,8 +1,7 @@
 package media
 
 import (
-	"os"
-	"path/filepath"
+	"bytes"
 	"testing"
 )
 
@@ -15,38 +14,34 @@ func TestParseDemuxers(t *testing.T) {
 	}
 }
 
-func TestVideoFormatTransportStreamSniff(t *testing.T) {
-	dir := t.TempDir()
-	tsPath := filepath.Join(dir, "segment.ts")
+func TestTransportStreamSniff(t *testing.T) {
 	tsData := make([]byte, 2048)
 	for _, offset := range []int{0, 188, 376} {
 		tsData[offset] = 0x47
 	}
-	if err := os.WriteFile(tsPath, tsData, 0600); err != nil {
-		t.Fatal(err)
-	}
-	formats := &VideoFormats{extensions: map[string]struct{}{".ts": {}}}
-	if !formats.Supports(tsPath) {
+	if !LooksLikeTransportStream(bytes.NewReader(tsData), false) {
 		t.Fatal("valid MPEG-TS was rejected")
 	}
-	if err := os.WriteFile(tsPath, []byte("import type { X } from './x';\n"), 0600); err != nil {
-		t.Fatal(err)
-	}
-	if formats.Supports(tsPath) {
+	if LooksLikeTransportStream(bytes.NewReader([]byte("import type { X } from './x';\n")), false) {
 		t.Fatal("TypeScript source was accepted as MPEG-TS")
 	}
 
-	m2tsPath := filepath.Join(dir, "clip.mts")
 	m2tsData := make([]byte, 2048)
 	for _, offset := range []int{4, 196, 388} {
 		m2tsData[offset] = 0x47
 	}
-	if err := os.WriteFile(m2tsPath, m2tsData, 0600); err != nil {
-		t.Fatal(err)
-	}
-	formats.extensions[".mts"] = struct{}{}
-	if !formats.Supports(m2tsPath) {
+	if !LooksLikeTransportStream(bytes.NewReader(m2tsData), true) {
 		t.Fatal("valid M2TS was rejected")
+	}
+}
+
+func TestSupportsOnlyChecksExtension(t *testing.T) {
+	formats := &VideoFormats{extensions: map[string]struct{}{".ts": {}}}
+	if !formats.Supports("segment.ts") {
+		t.Fatal("enabled .ts extension was rejected")
+	}
+	if formats.Supports("segment.mp4") {
+		t.Fatal("disabled .mp4 extension was accepted")
 	}
 }
 

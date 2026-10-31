@@ -2,6 +2,39 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.31 22:30 移除 media 的 path-based TS 嗅探
+
+**類型**: 安全性
+
+**檔案**:
+
+- `internal/media/formats.go`
+- `internal/media/formats_test.go`
+- `internal/library/store.go`
+- `internal/library/jobs.go`
+- `internal/library/scanner.go`
+- `internal/library/videos.go`
+
+### 問題
+
+- CodeQL `go/path-injection`：`Supports(path)` 直接 `os.Open` 使用者可控路徑。
+- WebDAV 的遠端相對路徑也可能被誤當成本機檔案開啟。
+
+### 修改
+
+- `VideoFormats.Supports` 只檢查副檔名，不再碰檔案系統。
+- MPEG-TS 嗅探改為 `LooksLikeTransportStream(io.Reader, m2ts)`。
+- 本機路徑由 `supportedLocalVideo` 在掃描／匯入驗證後開啟；WebDAV 只使用副檔名。
+- 測試改為 reader-based。
+
+### 驗證
+
+- `go test ./...`、`go vet ./...` 通過。
+- media／library 測試涵蓋 MPEG-TS、M2TS、TypeScript 拒絕。
+- CodeQL #4 的 media sink 已移除；#1／#2 仍待後續處理。
+
+---
+
 ## 2026.10.31 22:10 不再記錄初始密碼檔路徑\n\n**類型**: 安全性\n\n**檔案**:\n\n- `internal/runtime/server.go`\n\n### 問題\n\n- CodeQL 仍把 `WriteInitialPassword` 回傳的檔案路徑視為敏感資料；日誌記錄該變數會觸發 clear-text logging。\n\n### 修改\n\n- 日誌不再記錄回傳路徑，只寫固定的 `initial-password.txt` 提示。\n- 檔案位置由文件與資料目錄慣例提供。\n\n### 驗證\n\n- `go test ./...`、`go vet ./...` 通過。\n\n---\n\n## 2026.10.31 22:00 修正 dev/testing Secure cookie 衝突與密碼顯示
 
 **類型**: 修正／UX

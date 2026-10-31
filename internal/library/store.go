@@ -61,6 +61,23 @@ func (s *Store) supportedVideo(path string) bool {
 	return s.videoFormats.Supports(path)
 }
 
+// supportedLocalVideo 在本機路徑上補做 MPEG-TS 內容嗅探；WebDAV 僅使用副檔名判斷。
+func (s *Store) supportedLocalVideo(path string) bool {
+	if !s.supportedVideo(path) {
+		return false
+	}
+	extension := strings.ToLower(filepath.Ext(path))
+	if extension != ".ts" && extension != ".mts" && extension != ".m2ts" {
+		return true
+	}
+	file, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer file.Close()
+	return media.LooksLikeTransportStream(file, extension == ".mts" || extension == ".m2ts")
+}
+
 func (s *Store) publish(eventType string) {
 	if s.publisher != nil {
 		s.publisher.Publish(eventType)
