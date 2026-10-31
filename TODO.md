@@ -81,3 +81,5 @@
 - [ ] Phase 4：Central 節點註冊、影片索引、搜尋、Endpoint 更新與來源選擇。
 - [ ] Phase 5：多副本、聯邦同步、來源故障切換及跨節點診斷。
 - [ ] Phase 6：廣告、公開 Worker 市集、付費條件及推薦統計。
+- [ ] 外部播放器相容連結：短效 signed playback URL、VLC `x-callback-url` deep link、唯讀 WebDAV gateway；不可把 session cookie 或管理密碼放進 URL。
+- [ ] iOS 相容播放：MKV／不相容編碼的 MP4 remux／HLS 轉碼與外部播放器 fallback。
