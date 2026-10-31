@@ -18,7 +18,7 @@
 | 題目 | 類型 | 狀態 |
 | --- | --- | --- |
 | [01 複製影片 ID](01-frontend-copy-id.md) | 純前端、i18n | 完成 |
-| 02 全域通知元件 | 前端架構、Context | 下一個 |
+| [02 全域通知元件](02-global-notifications.md) | 前端架構、Context | 完成 |
 | 03 有無封面篩選 | API + 前端 | 規劃中 |
 | 04 影片收藏 | schema + API + 前端 | 規劃中 |
 

@@ -559,5 +559,6 @@
   "settings.errScanIntervals": "暖池與冷池掃描間隔必須介於 1 到 86400 秒",
   "settings.errScanOrder": "掃描間隔需依序為熱 ≤ 暖 ≤ 暖後段 ≤ 冷",
   "login.retryHint": "請確認密碼後再試；若持續失敗，請稍後再試。",
-  "login.devHint": "開發模式：請看 npm run dev 輸出的「[dev] 管理密碼」，或 local/development/dev-password.txt。"
+  "login.devHint": "開發模式：請看 npm run dev 輸出的「[dev] 管理密碼」，或 local/development/dev-password.txt。",
+  "notifications.dismiss": "關閉通知"
 }

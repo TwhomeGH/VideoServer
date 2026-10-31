@@ -559,5 +559,6 @@
   "settings.errScanIntervals": "Warm and cold scan intervals must be between 1 and 86400 seconds",
   "settings.errScanOrder": "Scan intervals must be ordered hot ≤ warm ≤ late warm ≤ cold",
   "login.retryHint": "Check the password and try again; if it keeps failing, wait a moment before retrying.",
-  "login.devHint": "Development: see the “[dev] 管理密碼” line from npm run dev, or local/development/dev-password.txt."
+  "login.devHint": "Development: see the “[dev] 管理密碼” line from npm run dev, or local/development/dev-password.txt.",
+  "notifications.dismiss":"Dissmiss notification"
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useNotify } from './notifications';
 import { api } from './api';
 import { useI18n } from './i18n';
 import { formatDuration } from './format';
@@ -60,6 +61,8 @@ function coverUrl(video: Video): string {
 /** Library 依 page 顯示管理分頁，切換時保留尚未送出的表單資料。 */
 export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: string) => void }) {
   const { t, locale } = useI18n();
+  /** 全域通知服務API */
+  const notify = useNotify();
   const liveScan = useLiveVersion('scan');
   const liveJobs = useLiveVersion('jobs');
   const [data, setData] = useState<LibraryData | null>(null);
@@ -115,17 +118,28 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
     setPoolId(current => current || result.pools[0]?.id || '');
   }
 
+  /**
+   * 複製視頻ID至剪貼版
+   *
+   * @param {Video} video
+   */
   async function copyVideoId(video: Video) {
     try {
       await navigator.clipboard.writeText(video.id);
       setCopiedId(video.id);
       setCopyFailedId('');
+
+      notify.success(t('library.copiedId'));
+
       window.setTimeout(() => {
         setCopiedId(current => current === video.id ? '' : current);
       }, 2000);
     } catch {
       setCopiedId('');
       setCopyFailedId(video.id);
+
+      notify.error(t('library.copyFailed'))
+      
       window.setTimeout(() => {
         setCopyFailedId(current => current === video.id ? '' : current);
       }, 2000);

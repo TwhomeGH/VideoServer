@@ -9,6 +9,7 @@ import { Monitor } from './Monitor';
 import { I18nProvider, useI18n } from './i18n';
 import { LiveProvider } from './live';
 import { pages, usePage, type Page } from './navigation';
+import { NotificationProvider } from './notifications';
 
 const ApiDocs = lazy(() => import('./ApiDocs'));
 
@@ -200,4 +201,12 @@ function App() {
   </main>;
 }
 
-createRoot(document.getElementById('root')!).render(<I18nProvider><App /></I18nProvider>);
+
+createRoot(document.getElementById('root')!).render(
+  <I18nProvider>
+    <NotificationProvider>
+      <App></App>
+    </NotificationProvider>
+  </I18nProvider>
+
+)

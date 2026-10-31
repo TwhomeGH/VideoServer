@@ -234,3 +234,61 @@ body:has(dialog[open]) { overflow:hidden; }
 .category-list { list-style:none; margin:0; padding:0; display:grid; gap:8px; }
 .category-list li { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
 .category-list input { flex:1 1 200px; }
+
+/* 通知小卡片 */
+.toast-stack {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 50;
+  display: grid;
+  gap: 8px;
+  width: min(360px,calc(100vw - 32px));
+}
+
+/* 通知小卡片本體 */
+.toast {
+  display: flex;
+  align-items: center; /* 文字與關閉垂直置中 */
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 8px 24px rgb(0 0 0/20%);
+
+}
+
+.toast > span {
+  flex:1;
+  min-width: 0;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.toast button {
+  flex:0 0 auto;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 1.1rem;
+  line-height: 1;
+} 
+
+.toast button:hover {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* 通知卡片顏色 */
+.toast-success { border-color: #2f9e72;}
+.toast-error { border-color: #d06b6b;}
+.toast-info { border-color: #5b8def;}

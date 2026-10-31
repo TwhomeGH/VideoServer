@@ -2,6 +2,40 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.31 21:00 全域通知與 Learn 2
+
+**類型**: 功能／教學
+
+**檔案**:
+
+- `web/admin/src/notifications.tsx`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/main.tsx`
+- `web/admin/src/style.css`
+- `Docs/development/tutorial/02-global-notifications.md`
+
+### 問題
+
+- 複製 ID 只有按鈕文字回饋，使用者視線不在按鈕時像沒反應
+- 缺少可重用的跨頁通知元件
+
+### 修改
+
+- 新增 `NotificationProvider`／`useNotify`：success、error、info。
+- 成功／一般通知 3 秒、錯誤 5 秒；可堆疊、可手動關閉、卸載清 timer。
+- `main.tsx` 只保留一個 root，Provider 包在 `I18nProvider` 內。
+- 複製成功／失敗接到 toast；按鈕文字回饋保留。
+- 右下角 toast，`role=status/alert`、`aria-live=polite`。
+- 新增 Learn 2 tutorial。
+
+### 驗證
+
+- toast 實測 `360×54`、關閉鈕 `28×28`、`align-items:center`。
+- 3.2 秒後自動消失；390px 無水平溢出。
+- `build:admin`、`lang:check`、`check:testing` 通過；image `45e4554566b0`。
+
+---
+
 ## 2026.10.29 05:30 開發密碼與 Level 1 tutorial
 
 **類型**: 文件／開發體驗
