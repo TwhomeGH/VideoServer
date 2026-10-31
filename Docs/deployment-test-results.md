@@ -81,6 +81,14 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 
 2026-10-27 在 `dvn-testing` 重建後，未按「重新讀取影片資訊」即出現「已排程缺少技術資訊的影片」日誌；每 10 秒最多排一筆，4 部完成後缺少技術資訊由 176 降至 172，後續背景持續處理。單元測試另驗證一次只排一筆、既有 `video_media` 或 reprobe 記錄不重排，以及離線、大小/修改時間不符的來源會跳過。
 
+## dev/testing cookie 隔離與密碼顯示
+
+2026-10-31：
+
+- dev 使用 `dvn_session-dev`，testing HTTPS 使用 `dvn_session`，避免同主機 Secure cookie 衝突。
+- 登入頁可切換顯示／隱藏密碼。
+- `internal/auth`、`internal/runtime` 測試與 `build:admin` 通過。
+
 ## 初始密碼檔案化
 
 2026-10-31 驗證：

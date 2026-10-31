@@ -10,6 +10,7 @@ export function Login({ service, version, onAuthenticated }: {
 }) {
   const { t } = useI18n();
   const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -32,8 +33,8 @@ export function Login({ service, version, onAuthenticated }: {
     <p className="muted">{t('login.hint1')}</p>
     <p className="muted">{t('login.hint2')}</p>
     <form onSubmit={event => { event.preventDefault(); void submit(); }}>
-      <label>{t('login.password')}<input type="password" autoFocus autoComplete="current-password" required
-        value={password} onChange={event => setPassword(event.target.value)} /></label>
+      <label>{t('login.password')}<span className="password-field"><input type={showPassword ? 'text' : 'password'} autoFocus autoComplete="current-password" required
+        value={password} onChange={event => setPassword(event.target.value)} /><button type="button" className="password-toggle" aria-pressed={showPassword} onClick={() => setShowPassword(current => !current)}>{showPassword ? t('login.hidePassword') : t('login.showPassword')}</button></span></label>
       {error && <p role="alert">{error}</p>}
       {error && <p className="muted">{t('login.retryHint')}</p>}
       {import.meta.env.DEV && <p className="muted">{t('login.devHint')}</p>}

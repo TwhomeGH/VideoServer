@@ -29,7 +29,6 @@ const (
 	hashLength      = 32
 	secretLength    = 32
 	passwordMinimum = 12
-	cookieName      = "dvn_session"
 
 	// sessionIdleLifetime 是無操作後失效時間；有效請求會刷新。
 	sessionIdleLifetime = 7 * 24 * time.Hour
@@ -38,6 +37,9 @@ const (
 	// sessionRefreshWindow 在剩餘時間低於一半時刷新 cookie，避免每個請求都寫入。
 	sessionRefreshWindow = sessionIdleLifetime / 2
 )
+
+// cookieName 可由 DVN_COOKIE_SUFFIX 隔離開發與 testing 的 cookie，避免同名 Secure cookie 衝突。
+var cookieName = "dvn_session" + strings.TrimSpace(os.Getenv("DVN_COOKIE_SUFFIX"))
 
 // Session 是通過簽章驗證後的有效期限資訊。
 type Session struct {

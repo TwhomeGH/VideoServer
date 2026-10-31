@@ -2,6 +2,36 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.10.31 22:00 修正 dev/testing Secure cookie 衝突與密碼顯示
+
+**類型**: 修正／UX
+
+**檔案**:
+
+- `internal/auth/auth.go`
+- `scripts/dev.mjs`
+- `web/admin/src/Login.tsx`
+- `web/admin/src/style.css`
+
+### 問題
+
+- testing HTTPS 在 `192.168.0.102` 留下 Secure 的 `dvn_session`；改用同主機 HTTP dev 時，瀏覽器不會送出 Secure cookie，新的非 Secure cookie 也無法蓋過它，造成登入後仍 401。
+- 登入密碼欄位不能切換顯示，打錯時難以判斷。
+
+### 修改
+
+- `DVN_COOKIE_SUFFIX` 可隔離 cookie 名稱；`npm run dev` 自動設定 `-dev`，使用 `dvn_session-dev`。
+- 登入頁新增顯示／隱藏密碼按鈕。
+- 更新登入文案指向 `initial-password.txt`（先前已修正檔案化）。
+
+### 驗證
+
+- `internal/auth`、`internal/runtime` 測試通過。
+- `lang:check`、`build:admin` 通過。
+- 需重啟 dev 後以 `dvn_session-dev` 登入；testing 仍使用 `dvn_session`。
+
+---
+
 ## 2026.10.31 21:30 初始管理密碼改寫入 0600 檔案
 
 **類型**: 安全性

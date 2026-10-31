@@ -167,6 +167,7 @@ function prepareDevPassword() {
 
 try {
   workspace = ensureWorkspace('development');
+  if (!process.env.DVN_COOKIE_SUFFIX) process.env.DVN_COOKIE_SUFFIX = '-dev';
   prepareDevPassword();
   console.log(`[dev] 工作區：${workspace.directory}；設定路徑與資料目錄可在「服務資訊」查看。`);
   mkdirSync('bin', { recursive: true });

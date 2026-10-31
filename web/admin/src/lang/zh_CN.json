@@ -560,5 +560,7 @@
   "settings.errScanOrder": "扫描间隔需依序为热 ≤ 暖 ≤ 暖后段 ≤ 冷",
   "login.retryHint": "请确认密码后再试；若持续失败，请稍后再试。",
   "login.devHint": "开发模式：请看 npm run dev 输出的「[dev] 管理密码」，或 local/development/dev-password.txt。",
-  "notifications.dismiss": "关闭通知"
+  "notifications.dismiss": "关闭通知",
+  "login.showPassword": "显示",
+  "login.hidePassword": "隐藏"
 }

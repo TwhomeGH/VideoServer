@@ -79,7 +79,7 @@ Docker 預設可能使用 UTC；Compose 已預設 `TZ=Asia/Taipei`，也可用�
 
 第一次啟動且沒有 `DVN_ADMIN_PASSWORD` 時，服務產生隨機管理員密碼，寫入 `<dataDirectory>/initial-password.txt`（權限 0600），日誌只顯示檔案路徑；首次成功登入或變更密碼後會刪除該檔。之後可在「設定」頁用目前密碼變更。設定 `DVN_ADMIN_PASSWORD` 時，該值是啟動時的管理密碼；若與已保存的不同，會更新憑證並讓既有 session 失效。憑證保存在 `<dataDirectory>/auth.json`，使用 PBKDF2-HMAC-SHA256 雜湊與隨機 session secret，檔案權限為 0600。
 
-登入成功後只設定 `dvn_session` cookie：HttpOnly、SameSite=Strict，JavaScript 無法讀取，不會在 localStorage 保存 token。使用中的 API 請求會在閒置期限剩餘一半時自動續期；閒置期限 7 天，絕對上限 90 天，超過任一期限需重新登入。登出或變更密碼會輪替 session secret，讓所有裝置的既有 session 失效。登入失敗每個來源連續 5 次會暫停 30 秒。
+登入成功後只設定 `dvn_session` cookie（開發模式為 `dvn_session-dev`，避免與 testing 的 HTTPS cookie 衝突）：HttpOnly、SameSite=Strict，JavaScript 無法讀取，不會在 localStorage 保存 token。使用中的 API 請求會在閒置期限剩餘一半時自動續期；閒置期限 7 天，絕對上限 90 天，超過任一期限需重新登入。登出或變更密碼會輪替 session secret，讓所有裝置的既有 session 失效。登入失敗每個來源連續 5 次會暫停 30 秒。
 
 `GET /api/v1/status`、`GET /healthz`、`/api/v1/auth/session` 與 `/api/v1/auth/login` 保持公開；其他 `/api/v1/*` 需要有效 cookie。API 用戶端請先 `POST /api/v1/auth/login` 並保存回傳的 cookie。瀏覽器 cookie 以主機名稱區分、不以端口區分；同一主機名稱下同時跑多個實例時，切換實例可能需要重新登入，開發與測試可用不同主機名稱區隔。
 

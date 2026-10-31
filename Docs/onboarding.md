@@ -59,6 +59,7 @@ npm run dev
 
 - Go 會建置並啟動 `bin/video-node.exe`（Linux 無 `.exe`），Vite 啟動在 `http://localhost:5173`。
 - 第一次開啟會要求管理登入。`npm run dev` 會自動建立／沿用 `local/development/dev-password.txt`，並在終端機印出 `[dev] 管理密碼`；也可先用環境變數 `DVN_ADMIN_PASSWORD` 覆寫。此密碼只供本機開發，檔案在 `.gitignore` 內。
+- dev 使用 `dvn_session-dev` cookie，避免與 testing HTTPS 的 `dvn_session` 同名 Secure cookie 衝突；同一台主機同時開 dev 與 testing 時不需要清 cookie。
 - Vite 的 `/api` 會代理到本次實際啟動的 Go 端口，日誌會列出實際網址；不要假設一定是 18610。
 - 修改前端會熱更新；修改 Go 後需按 Ctrl+C 重新執行 `npm run dev`。
 - 設定自動放在 `local/development/config/`，資料放在 `local/development/data/`（若偵測到舊 `data/library.sqlite` 則沿用 `data/`）；第一次啟動會建立缺少的檔案，不覆蓋既有設定。
