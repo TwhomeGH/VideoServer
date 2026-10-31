@@ -2,7 +2,7 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
-## 2026.10.31 22:00 修正 dev/testing Secure cookie 衝突與密碼顯示
+## 2026.10.31 22:10 不再記錄初始密碼檔路徑\n\n**類型**: 安全性\n\n**檔案**:\n\n- `internal/runtime/server.go`\n\n### 問題\n\n- CodeQL 仍把 `WriteInitialPassword` 回傳的檔案路徑視為敏感資料；日誌記錄該變數會觸發 clear-text logging。\n\n### 修改\n\n- 日誌不再記錄回傳路徑，只寫固定的 `initial-password.txt` 提示。\n- 檔案位置由文件與資料目錄慣例提供。\n\n### 驗證\n\n- `go test ./...`、`go vet ./...` 通過。\n\n---\n\n## 2026.10.31 22:00 修正 dev/testing Secure cookie 衝突與密碼顯示
 
 **類型**: 修正／UX
 
