@@ -49,7 +49,7 @@
   "common.noRecord": "无记录",
   "common.overriddenCount": "{count} 个",
   "login.title": "管理登录",
-  "login.hint1": "第一次启动的管理员密码会显示在服务日志；登录后可于设置页变更。",
+  "login.hint1": "第一次启动的管理员密码会写入数据目录的 initial-password.txt；登录后会删除，之后可在设置页变更。",
   "login.hint2": "登录状态会在使用中自动延长；长时间未使用或超过上限时需重新登录。",
   "login.password": "管理密码",
   "login.submit": "登录",

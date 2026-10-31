@@ -49,7 +49,7 @@
   "common.noRecord": "無記錄",
   "common.overriddenCount": "{count} 個",
   "login.title": "管理登入",
-  "login.hint1": "第一次啟動的管理員密碼會顯示在服務日誌；登入後可於設定頁變更。",
+  "login.hint1": "第一次啟動的管理員密碼會寫入資料目錄的 initial-password.txt；登入後會刪除，之後可在設定頁變更。",
   "login.hint2": "登入狀態會在使用中自動延長；長時間未使用或超過上限時需重新登入。",
   "login.password": "管理密碼",
   "login.submit": "登入",

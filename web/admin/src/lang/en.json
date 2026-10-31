@@ -49,7 +49,7 @@
   "common.noRecord": "No record",
   "common.overriddenCount": "{count}",
   "login.title": "Admin sign-in",
-  "login.hint1": "The first admin password is shown once in the service log. You can change it in Settings after signing in.",
+  "login.hint1": "The first administrator password is written to initial-password.txt in the data directory, then removed after sign-in. You can change it later in Settings.",
   "login.hint2": "Your sign-in is extended while you use the app. You will need to sign in again after a long idle period or the maximum lifetime.",
   "login.password": "Admin password",
   "login.submit": "Sign in",
@@ -560,5 +560,5 @@
   "settings.errScanOrder": "Scan intervals must be ordered hot ≤ warm ≤ late warm ≤ cold",
   "login.retryHint": "Check the password and try again; if it keeps failing, wait a moment before retrying.",
   "login.devHint": "Development: see the “[dev] 管理密碼” line from npm run dev, or local/development/dev-password.txt.",
-  "notifications.dismiss":"Dissmiss notification"
+  "notifications.dismiss": "Dissmiss notification"
 }
