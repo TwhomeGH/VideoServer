@@ -2,7 +2,33 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
-## 2026.10.31 22:45 標註 CodeQL 路徑誤報與管理員能力\n\n**類型**: 安全性\n\n**檔案**:\n\n- `internal/library/jobs.go`\n- `internal/library/store.go`\n\n### 問題\n\n- CodeQL #1 無法辨識 `resolve()` 已限制 pool root，將 `os.Stat` 標為 path injection。\n- CodeQL #2 將管理員註冊任意絕對目錄的 `AddPool` 標為 path injection。\n\n### 修改\n\n- 在 sink 加上 `// codeql[go/path-injection]`，註明 `resolve()` 或管理員能力。\n- `supportedLocalVideo` 的 `os.Open` 也標註由呼叫端 resolve 驗證。\n\n### 驗證\n\n- `go test ./...`、`go vet ./...` 通過。\n- 這是誤報／設計能力標註，不是關閉整條查詢。\n\n---\n\n## 2026.10.31 22:30 移除 media 的 path-based TS 嗅探
+## 2026.10.31 22:45 標註 CodeQL 路徑誤報與管理員能力
+
+**類型**: 安全性
+
+**檔案**:
+
+- `internal/library/jobs.go`
+- `internal/library/store.go`
+
+### 問題
+
+- CodeQL #1 無法辨識 `resolve()` 已限制 pool root，將 `os.Stat` 標為 path injection。
+- CodeQL #2 將管理員註冊任意絕對目錄的 `AddPool` 標為 path injection。
+
+### 修改
+
+- 在 sink 加上 `// codeql[go/path-injection]`，註明 `resolve()` 或管理員能力。
+- `supportedLocalVideo` 的 `os.Open` 也標註由呼叫端 resolve 驗證。
+
+### 驗證
+
+- `go test ./...`、`go vet ./...` 通過。
+- 這是誤報／設計能力標註，不是關閉整條查詢。
+
+---
+
+## 2026.10.31 22:30 移除 media 的 path-based TS 嗅探
 
 **類型**: 安全性
 
@@ -35,7 +61,30 @@
 
 ---
 
-## 2026.10.31 22:10 不再記錄初始密碼檔路徑\n\n**類型**: 安全性\n\n**檔案**:\n\n- `internal/runtime/server.go`\n\n### 問題\n\n- CodeQL 仍把 `WriteInitialPassword` 回傳的檔案路徑視為敏感資料；日誌記錄該變數會觸發 clear-text logging。\n\n### 修改\n\n- 日誌不再記錄回傳路徑，只寫固定的 `initial-password.txt` 提示。\n- 檔案位置由文件與資料目錄慣例提供。\n\n### 驗證\n\n- `go test ./...`、`go vet ./...` 通過。\n\n---\n\n## 2026.10.31 22:00 修正 dev/testing Secure cookie 衝突與密碼顯示
+## 2026.10.31 22:10 不再記錄初始密碼檔路徑
+
+**類型**: 安全性
+
+**檔案**:
+
+- `internal/runtime/server.go`
+
+### 問題
+
+- CodeQL 仍把 `WriteInitialPassword` 回傳的檔案路徑視為敏感資料；日誌記錄該變數會觸發 clear-text logging。
+
+### 修改
+
+- 日誌不再記錄回傳路徑，只寫固定的 `initial-password.txt` 提示。
+- 檔案位置由文件與資料目錄慣例提供。
+
+### 驗證
+
+- `go test ./...`、`go vet ./...` 通過。
+
+---
+
+## 2026.10.31 22:00 修正 dev/testing Secure cookie 衝突與密碼顯示
 
 **類型**: 修正／UX
 
