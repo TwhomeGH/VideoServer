@@ -39,6 +39,7 @@ ARG DIRTY=true
 ARG BUILD_TIME=unknown
 ARG SOURCE_DIGEST=unknown
 COPY --from=backend /out/central /app/service
+COPY --from=web /src/web/admin/dist/ /app/web/
 COPY deployments/docker/central.json /app/config.json
 LABEL org.opencontainers.image.title="DVN" \
       org.opencontainers.image.version=$VERSION \
@@ -58,6 +59,7 @@ ARG DIRTY=true
 ARG BUILD_TIME=unknown
 ARG SOURCE_DIGEST=unknown
 COPY --from=backend /out/transcode-worker /app/service
+COPY --from=web /src/web/admin/dist/ /app/web/
 COPY deployments/docker/transcode-worker.json /app/config.json
 LABEL org.opencontainers.image.title="DVN" \
       org.opencontainers.image.version=$VERSION \
@@ -80,6 +82,7 @@ ARG DIRTY=true
 ARG BUILD_TIME=unknown
 ARG SOURCE_DIGEST=unknown
 COPY --from=backend /out/video-node /app/service
+COPY --from=web /src/web/admin/dist/ /app/web/
 COPY deployments/docker/video-node.json /app/config.json
 LABEL org.opencontainers.image.title="DVN" \
       org.opencontainers.image.version=$VERSION \

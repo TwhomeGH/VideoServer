@@ -289,7 +289,7 @@
   "library.scanAutoOff": "自動檢查已停用，可手動掃描。",
   "library.scanNext": "下次自動掃描：約 {duration}後。",
   "library.scanStable": "新增檔案需連續觀察穩定至少 {duration}才匯入。",
-  "library.scanBackoff": "分級掃描：熱 {hot}、暖 1–6 小時 {warm}、6–24 小時 {warmSlow}、冷 1–7 天（{cold} 起，逐段降低）、休眠 {dormant}。",
+  "library.scanBackoff": "分級掃描：熱 {hot}、暖 1–6 小時 {warm}、6–24 小時 {warmSlow}、冷 1–7 天（{cold}起，逐段降低）、休眠 {dormant}。",
   "library.scanPool": "掃描此池",
   "library.poolScanLabel": "掃描",
   "library.poolScanNext": "下次約 {duration}後（間隔 {interval}）",
