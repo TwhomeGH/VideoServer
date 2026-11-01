@@ -18,6 +18,7 @@ npm run test:images
 ```
 
 `all` 會依序建置三個 target；也可只指定 `video-node`、`central` 或 `transcode-worker`。
+Dockerfile 把 `apk`／`npm`／`go mod` 依賴放在 BuildKit cache mount，並把會變動的建置標籤移到各服務的最後階段；同一個基底與依賴不變時，重複建置不會重新下載 ffmpeg 等套件。
 這個 npm 入口只用 Node 標準庫呼叫 Docker，不需要先 npm install。它會注入目前 commit、dirty 狀態、建置時間與來源摘要，產生 `dvn/video-node:local` 等本機標籤，不推送任何 registry。
 建置時間與來源摘要也會寫入 image 標籤和容器環境變數，服務資訊頁可看到「鏡像建置時間」；來源摘要用於判斷 image 是否由目前工作目錄建置。
 不想安裝 Node，也可直接：

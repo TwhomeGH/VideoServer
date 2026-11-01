@@ -2,6 +2,33 @@
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。
 
+## 2026.11.01 16:45 Docker 建置快取修正
+
+**類型**: 建置
+
+**檔案**:
+
+- `Dockerfile`
+- `Docs/deployment-reference.md`
+
+### 問題
+
+- 每次 `testing:up` 都重新下載 apk 套件（含 ffmpeg）。
+- runtime stage 的 build args／labels 每次變動，連帶讓 `apk add` 層失效。
+
+### 修改
+
+- 新增不含可變標籤的 `runtime-base`。
+- `apk`、`npm`、`go mod` 使用 BuildKit cache mount。
+- 建置時間、commit、來源摘要的 LABEL／ENV 移到各服務最後階段。
+
+### 驗證
+
+- 連續兩次 `npm run image -- video-node`，第二次 apk／ffmpeg 層顯示 CACHED。
+- `npm run testing:up` 三服務 healthy，`check:testing` 相符。
+
+---
+
 ## 2026.11.02 10:00 冷池改為小時分段並顯示掃描頻率
 
 **類型**: 改善
