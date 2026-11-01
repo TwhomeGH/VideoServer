@@ -12,7 +12,7 @@ type MonitorData = {  service: string; startedAt: string; sampledAt: string; upt
   requests: number; inFlight: number; errors5xx: number; receivedBytes: number; sentBytes: number;
   receiveBytesPerSecond: number; sendBytesPerSecond: number; requestsPerSecond: number; tasksError?: string;
   tasks: { jobs: { counts: Record<string, number>; active: ImportJob[] }; scan: {
-    automatic: boolean; running: boolean; queued: boolean; intervalSeconds: number; idleMaxSeconds: number;
+    automatic: boolean; running: boolean; queued: boolean; intervalSeconds: number; warmSeconds: number; warmSlowSeconds: number; coldSeconds: number; idleMaxSeconds: number;
     nextRunAt?: string; nextRunInSeconds?: number;
     pools?: { poolId: string; name?: string; tier?: string; backoffSeconds: number; quiet: number; lastActivityAt?: string; nextRunAt?: string; nextRunInSeconds: number }[];
     last: { completedAt: string; enqueued: number; failed: number; pending: number; changed: number; deleted: number; renamed: number; offlinePools: number } | null;

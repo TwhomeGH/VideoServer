@@ -3459,6 +3459,15 @@
             "items": {
               "$ref": "#/components/schemas/PoolScanStatus"
             }
+          },
+          "warmSeconds": {
+            "type": "integer"
+          },
+          "warmSlowSeconds": {
+            "type": "integer"
+          },
+          "coldSeconds": {
+            "type": "integer"
           }
         },
         "required": [
@@ -3469,7 +3478,10 @@
           "queued",
           "last",
           "nextRunInSeconds",
-          "idleMaxSeconds"
+          "idleMaxSeconds",
+          "warmSeconds",
+          "warmSlowSeconds",
+          "coldSeconds"
         ]
       },
       "Pagination": {

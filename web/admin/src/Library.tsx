@@ -24,7 +24,7 @@ type PoolScanStatus = {
   lastActivityAt?: string; nextRunAt?: string; nextRunInSeconds: number;
 };
 type ScanStatus = {
-  automatic: boolean; intervalSeconds: number; idleMaxSeconds: number; stableSeconds: number; running: boolean; queued: boolean;
+  automatic: boolean; intervalSeconds: number; warmSeconds: number; warmSlowSeconds: number; coldSeconds: number; idleMaxSeconds: number; stableSeconds: number; running: boolean; queued: boolean;
   nextRunAt?: string; nextRunInSeconds?: number; pools?: PoolScanStatus[];
   last: { completedAt: string; imported: number; enqueued: number; pending: number; changed: number; deleted: number; failed: number; offlinePools: number; errors: string[] } | null;
 };
@@ -256,7 +256,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
           {data?.scan && <>
             <p>{data.scan.automatic ? t('library.scanAutoOn', { duration: formatDuration(data.scan.intervalSeconds, t) }) : t('library.scanAutoOff')}</p>
             <p className="muted">{t('library.scanStable', { duration: formatDuration(data.scan.stableSeconds, t) })}</p>
-            <p className="muted">{t('library.scanBackoff', { hot: formatDuration(data.scan.intervalSeconds, t), dormant: formatDuration(data.scan.idleMaxSeconds || 0, t) })}</p>
+            <p className="muted">{t('library.scanBackoff', { hot: formatDuration(data.scan.intervalSeconds, t), warm: formatDuration(data.scan.warmSeconds, t), warmSlow: formatDuration(data.scan.warmSlowSeconds, t), cold: formatDuration(data.scan.coldSeconds, t), dormant: formatDuration(data.scan.idleMaxSeconds || 0, t) })}</p>
             {data.scan.automatic && !data.scan.running && <p className="muted">{t('library.scanNext', { duration: formatDuration(data.scan.nextRunInSeconds || 0, t) })}</p>}
           </>}
           <div className="button-row">

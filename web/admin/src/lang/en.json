@@ -289,7 +289,7 @@
   "library.scanAutoOff": "Automatic check is off; you can scan manually.",
   "library.scanNext": "Next automatic scan in about {duration}.",
   "library.scanStable": "New files must remain stable for at least {duration} before import.",
-  "library.scanBackoff": "Tiered scan: hot {hot}, warm 1–6h 5m, 6–24h 15m, cold 30m, dormant {dormant}.",
+  "library.scanBackoff": "Tiered scan: hot {hot}, warm 1–6 h {warm}, 6–24 h {warmSlow}, cold 1–7 d (starts at {cold}, then backs off), dormant {dormant}.",
   "library.scanPool": "Scan this pool",
   "library.poolScanLabel": "Scan",
   "library.poolScanNext": "Next in about {duration} (interval {interval})",

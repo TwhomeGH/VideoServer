@@ -45,6 +45,9 @@ type PoolScanStatus struct {
 type ScanStatus struct {
 	Automatic        bool             `json:"automatic"`
 	IntervalSeconds  int              `json:"intervalSeconds"`
+	WarmSeconds      int              `json:"warmSeconds"`
+	WarmSlowSeconds  int              `json:"warmSlowSeconds"`
+	ColdSeconds      int              `json:"coldSeconds"`
 	IdleMaxSeconds   int              `json:"idleMaxSeconds"`
 	StableSeconds    int              `json:"stableSeconds"`
 	Running          bool             `json:"running"`
@@ -101,7 +104,7 @@ func NewScanner(store *Store, automatic bool, interval, stable time.Duration, lo
 		store: store, logger: logger, interval: interval, warm: 5 * time.Minute, warmSlow: 15 * time.Minute, cold: time.Hour, idleMax: 24 * time.Hour,
 		stable: stable, requests: make(chan struct{}, 1), observed: map[string]observation{},
 		states: map[string]poolScanState{}, forcePool: map[string]bool{},
-		status: ScanStatus{Automatic: automatic, IntervalSeconds: int(interval / time.Second), IdleMaxSeconds: 21600, StableSeconds: int(stable / time.Second)},
+		status: ScanStatus{Automatic: automatic, IntervalSeconds: int(interval / time.Second), WarmSeconds: 300, WarmSlowSeconds: 900, ColdSeconds: 3600, IdleMaxSeconds: 86400, StableSeconds: int(stable / time.Second)},
 	}
 	store.scanner = scanner
 	return scanner
@@ -160,6 +163,9 @@ func (s *Scanner) SetTierIntervals(warm, warmSlow, cold time.Duration) {
 		cold = warmSlow
 	}
 	s.warm, s.warmSlow, s.cold = warm, warmSlow, cold
+	s.status.WarmSeconds = int(warm / time.Second)
+	s.status.WarmSlowSeconds = int(warmSlow / time.Second)
+	s.status.ColdSeconds = int(cold / time.Second)
 }
 
 // Request 要求掃描所有池；已有排程或執行中的掃描時回傳 false。
