@@ -191,7 +191,8 @@
 
 ### 問題
 
-- testing HTTPS 在 `192.168.0.102` 留下 Secure 的 `dvn_session`；改用同主機 HTTP dev 時，瀏覽器不會送出 Secure cookie，新的非 Secure cookie 也無法蓋過它，造成登入後仍 401。
+- testing HTTPS 在 `192.168.0.102` 留下 Secure 的 `dvn_session`。
+- 改用同主機 HTTP dev 時，瀏覽器不會送出 Secure cookie；新的非 Secure cookie 也無法蓋過它，造成登入後仍 401。
 - 登入密碼欄位不能切換顯示，打錯時難以判斷。
 
 ### 修改
