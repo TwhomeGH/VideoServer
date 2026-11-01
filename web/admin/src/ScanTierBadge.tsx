@@ -72,11 +72,14 @@ type ScanCadence = {
 /** ScanTierLegend 以目前實際設定呈現分級門檻；避免設定改了但圖例仍是舊值。 */
 export function ScanTierLegend({ scan }: { scan?: ScanCadence }) {
   const { t } = useI18n();
-  return <div className="muted scan-tier-legend">
+  return <div className="muted scan-tier-info">
+    <div className="scan-tier-legend">
     <span><b className="tier-text hot">{t('scanTier.hot')}</b> {t('scanTier.legendHotRest', { duration: formatDuration(scan?.intervalSeconds ?? 30, t) })}</span>
     <span><b className="tier-text warm">{t('scanTier.warm')}</b> {t('scanTier.legendWarmRest', { warm: formatDuration(scan?.warmSeconds ?? 300, t), warmSlow: formatDuration(scan?.warmSlowSeconds ?? 900, t) })}</span>
     <span><b className="tier-text cold">{t('scanTier.cold')}</b> {t('scanTier.legendColdRest', { cold: formatDuration(scan?.coldSeconds ?? 3600, t) })}</span>
     <span><b className="tier-text dormant">{t('scanTier.dormant')}</b> {t('scanTier.legendDormantRest', { dormant: formatDuration(scan?.idleMaxSeconds ?? 86400, t) })}</span>
+    </div>
+    <details className="scan-tier-help"><summary>{t('scanTier.detailsTitle')}</summary><p>{t('scanTier.detailsBody')}</p></details>
   </div>;
 }
 

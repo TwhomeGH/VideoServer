@@ -1,3 +1,37 @@
+## 2026.11.01 17:05 掃描提升改為混合規則
+
+**類型**: 改善
+
+**檔案**:
+
+- `internal/library/scanner.go`
+- `web/admin/src/ScanTierBadge.tsx`
+- `web/admin/src/Library.tsx`
+- `web/admin/src/Monitor.tsx`
+- `web/admin/src/style.css`
+- `Docs/configuration.md`
+
+### 問題
+
+- 冷池只要有一個 changed／deleted 就直接跳回熱，會連續高頻掃描。
+- 分級圖例與實際設定值可能不一致。
+- 掃描提升規則沒有可展開的說明。
+
+### 修改
+
+- 新檔、待穩定、手動掃描、watcher 或失敗：回到熱。
+- changed／deleted：只往上提升一級，下一次沒有活動就回原分級。
+- 分級圖例改用 `ScanStatus` 的實際熱／暖／冷／休眠值。
+- 新增可折疊的「分級與提升規則」說明。
+
+### 驗證
+
+- 提升一級的單元測試通過。
+- `go test ./...`、`go vet ./...`、`build:admin`、`lang:check` 通過。
+- testing image 重建後三服務 healthy。
+
+---
+
 # ChangeHistory
 
 > 格式：問題／修改／驗證各自成段；多項內容使用清單，避免單行長段落。行長上限 120 字元，超過時優先拆成多個清單項目。每個變更項目重複使用這三個標題是刻意的，MD024 以 `siblings_only` 允許不同變更項目下的同名標題。

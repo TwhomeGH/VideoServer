@@ -64,10 +64,19 @@ type observation struct {
 	since    time.Time
 }
 
+type scanActivity int
+
+const (
+	activityNone scanActivity = iota
+	activityPromote
+	activityHot
+)
+
 type poolScanState struct {
 	name         string
 	tier         string
 	lastActivity time.Time
+	scanActivity time.Time
 	next         time.Time
 	interval     time.Duration
 }
@@ -314,7 +323,7 @@ func (s *Scanner) runDue(ctx context.Context) {
 	s.mu.Unlock()
 	s.store.publish("scan")
 
-	result, active := s.scanPools(ctx, now, pools, due)
+	result, activity := s.scanPools(ctx, now, pools, due)
 	result.CompletedAt = time.Now()
 	for _, pool := range pools {
 		if pool.Enabled && !pool.Online {
@@ -335,17 +344,41 @@ func (s *Scanner) runDue(ctx context.Context) {
 		if lastActivity.IsZero() {
 			lastActivity = now
 		}
-		if forceAll || forcePool[id] || active[id] {
+		scanActivity := state.scanActivity
+		if scanActivity.IsZero() {
+			scanActivity = lastActivity
+		}
+		act := activity[id]
+		if forceAll || forcePool[id] {
+			act = activityHot
+		}
+		previousTier, previousInterval := state.tier, state.interval
+		promoted := false
+		switch act {
+		case activityHot:
+			// 新檔、待穩定檔、手動掃描與失敗：回到熱，讓後續掃描盡快跟進。
 			lastActivity = now
+			scanActivity = now
+			if err := s.store.touchPoolActivity(id, now); err != nil {
+				s.logger.Error("更新儲存池活動時間失敗", "poolId", id, "error", err)
+			}
+		case activityPromote:
+			// 變更／刪除只上升一級；lastActivity 記真實時間，掃描時鐘不變。
+			lastActivity = now
+			state.tier, state.interval = s.promotedTier(previousTier, previousInterval)
+			promoted = true
 			if err := s.store.touchPoolActivity(id, now); err != nil {
 				s.logger.Error("更新儲存池活動時間失敗", "poolId", id, "error", err)
 			}
 		}
-		state.tier, state.interval = scanTier(now, lastActivity, s.interval, s.warm, s.warmSlow, s.cold, s.idleMax)
+		if !promoted {
+			state.tier, state.interval = scanTier(now, scanActivity, s.interval, s.warm, s.warmSlow, s.cold, s.idleMax)
+		}
 		if byID[id].Provider == "webdav" && state.interval < 5*time.Minute {
 			state.interval = 5 * time.Minute
 		}
 		state.lastActivity = lastActivity
+		state.scanActivity = scanActivity
 		state.next = now.Add(state.interval)
 		s.states[id] = state
 	}
@@ -407,6 +440,32 @@ func shouldExcludeSystemPath(relative string) bool {
 		}
 	}
 	return false
+}
+
+// promotedScanActivity 回傳「往上一個掃描級別」的排程時鐘；不改變真實 lastActivity。
+func (s *Scanner) promotedTier(tier string, interval time.Duration) (string, time.Duration) {
+	switch tier {
+	case "dormant":
+		return "cold", min(s.cold*12, s.idleMax)
+	case "cold":
+		switch {
+		case interval >= s.cold*9:
+			return "cold", min(s.cold*6, s.idleMax)
+		case interval >= s.cold*4:
+			return "cold", min(s.cold*3, s.idleMax)
+		case interval >= s.cold*2:
+			return "cold", min(s.cold, s.idleMax)
+		default:
+			return "warm", s.warmSlow
+		}
+	case "warm":
+		if interval >= s.warmSlow {
+			return "warm", s.warm
+		}
+		return "hot", s.interval
+	default:
+		return "hot", s.interval
+	}
 }
 
 func scanTier(now, lastActivity time.Time, base, warm, slowerWarm, cold, idleMax time.Duration) (string, time.Duration) {
@@ -534,18 +593,18 @@ func (s *Scanner) scan(ctx context.Context, now time.Time) ScanResult {
 }
 
 // scanWebDAVPool 只為遠端 WebDAV 池建立 discovery；ETag 可辨識唯一 rename。
-func (s *Scanner) scanWebDAVPool(ctx context.Context, pool Pool, now time.Time, result *ScanResult, active map[string]bool) {
+func (s *Scanner) scanWebDAVPool(ctx context.Context, pool Pool, now time.Time, result *ScanResult, activity map[string]scanActivity) {
 	before := *result
 	entries, err := s.store.listWebDAV(ctx, pool)
 	if err != nil {
 		result.failure(err)
-		active[pool.ID] = true
+		activity[pool.ID] = activityHot
 		return
 	}
 	existing, err := s.store.discoveredIdentities(ctx, pool.ID)
 	if err != nil {
 		result.failure(err)
-		active[pool.ID] = true
+		activity[pool.ID] = activityHot
 		return
 	}
 	for oldPath, newPath := range remoteRenameMap(existing, entries) {
@@ -571,18 +630,21 @@ func (s *Scanner) scanWebDAVPool(ctx context.Context, pool Pool, now time.Time, 
 	if err := s.store.markDiscoveredMissing(ctx, pool.ID, seen); err != nil {
 		result.failure(err)
 	}
-	if result.Discovered > before.Discovered || result.Renamed > before.Renamed || result.Failed > before.Failed || len(result.Errors) > len(before.Errors) {
-		active[pool.ID] = true
+	switch {
+	case result.Discovered > before.Discovered || result.Failed > before.Failed || len(result.Errors) > len(before.Errors):
+		activity[pool.ID] = activityHot
+	case result.Renamed > before.Renamed:
+		activity[pool.ID] = activityPromote
 	}
 }
 
-func (s *Scanner) scanPools(ctx context.Context, now time.Time, pools []Pool, only map[string]bool) (ScanResult, map[string]bool) {
+func (s *Scanner) scanPools(ctx context.Context, now time.Time, pools []Pool, only map[string]bool) (ScanResult, map[string]scanActivity) {
 	result := ScanResult{StartedAt: now, Errors: []string{}}
-	active := map[string]bool{}
+	activity := map[string]scanActivity{}
 	catalog, importJobs, err := s.catalog(ctx)
 	if err != nil {
 		result.failure(err)
-		return result, active
+		return result, activity
 	}
 	next := map[string]observation{}
 	for _, pool := range pools {
@@ -601,7 +663,7 @@ func (s *Scanner) scanPools(ctx context.Context, now time.Time, pools []Pool, on
 			continue
 		}
 		if pool.Provider == "webdav" {
-			s.scanWebDAVPool(ctx, pool, now, &result, active)
+			s.scanWebDAVPool(ctx, pool, now, &result, activity)
 			continue
 		}
 		root, err := s.store.poolPath(pool.ID)
@@ -744,12 +806,14 @@ func (s *Scanner) scanPools(ctx context.Context, now time.Time, pools []Pool, on
 				}
 			}
 		}
-		if result.Imported > before.Imported || result.Enqueued > before.Enqueued || result.Pending > before.Pending || result.Discovered > before.Discovered ||
-			result.Changed > before.Changed || result.Deleted > before.Deleted || result.Failed > before.Failed ||
-			len(result.Errors) > len(before.Errors) {
-			active[pool.ID] = true
+		switch {
+		case result.Imported > before.Imported || result.Enqueued > before.Enqueued || result.Pending > before.Pending ||
+			result.Discovered > before.Discovered || result.Failed > before.Failed || len(result.Errors) > len(before.Errors):
+			activity[pool.ID] = activityHot
+		case result.Changed > before.Changed || result.Deleted > before.Deleted || result.Renamed > before.Renamed:
+			activity[pool.ID] = activityPromote
 		}
 	}
 	s.observed = next
-	return result, active
+	return result, activity
 }

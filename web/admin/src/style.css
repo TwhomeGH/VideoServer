@@ -60,6 +60,11 @@ dd { margin:0; overflow-wrap:anywhere; }
 .tier-badge.dormant { color:var(--muted); }
 .scan-tier-legend { display:flex; flex-wrap:wrap; gap:4px 14px; margin:10px 0 0; font-size:.78rem; }
 .scan-tier-legend span { white-space:nowrap; }
+.scan-tier-info { display:grid; gap:8px; margin-top:10px; }
+.scan-tier-info .scan-tier-legend { margin:0; }
+.scan-tier-help { font-size:.78rem; }
+.scan-tier-help summary { cursor:pointer; color:var(--muted); }
+.scan-tier-help p { margin:6px 0 0; line-height:1.5; color:var(--muted); }
 .tier-text { font-weight:600; }
 .tier-text.hot { color:var(--tier-hot); }
 .tier-text.warm { color:var(--tier-warm); }

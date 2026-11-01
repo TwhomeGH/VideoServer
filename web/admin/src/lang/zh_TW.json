@@ -564,5 +564,7 @@
   "login.showPassword": "顯示",
   "login.hidePassword": "隱藏",
   "scanFrequency.perHour": "每小時約 {count} 次",
-  "scanFrequency.perDay": "每天約 {count} 次"
+  "scanFrequency.perDay": "每天約 {count} 次",
+  "scanTier.detailsTitle": "分級與提升規則",
+  "scanTier.detailsBody": "新檔、待穩定檔、手動掃描或掃描失敗會回到熱；只有變更或刪除會往上提升一級。實際分級在該池下一次掃描時判定。"
 }

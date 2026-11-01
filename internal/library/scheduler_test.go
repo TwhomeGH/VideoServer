@@ -80,6 +80,7 @@ func TestScannerTierAndPoolScan(t *testing.T) {
 		scanner.mu.Lock()
 		state = scanner.states[pool.ID]
 		state.lastActivity = time.Now().Add(-age)
+		state.scanActivity = state.lastActivity
 		state.next = time.Now().Add(-time.Second)
 		scanner.states[pool.ID] = state
 		scanner.mu.Unlock()
@@ -109,6 +110,7 @@ func TestScannerTierAndPoolScan(t *testing.T) {
 	scanner.mu.Lock()
 	state = scanner.states[pool.ID]
 	state.lastActivity = time.Now().Add(-8 * 24 * time.Hour)
+	state.scanActivity = state.lastActivity
 	state.next = time.Now().Add(-time.Second)
 	scanner.states[pool.ID] = state
 	scanner.mu.Unlock()

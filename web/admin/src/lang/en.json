@@ -564,5 +564,7 @@
   "login.showPassword": "Show",
   "login.hidePassword": "Hide",
   "scanFrequency.perHour": "about {count}×/hour",
-  "scanFrequency.perDay": "about {count}×/day"
+  "scanFrequency.perDay": "about {count}×/day",
+  "scanTier.detailsTitle": "Tier and promotion rules",
+  "scanTier.detailsBody": "New files, pending files, manual scans, or scan failures return to hot; only changes or deletions move up one tier. The actual tier is evaluated on the pool's next scan."
 }

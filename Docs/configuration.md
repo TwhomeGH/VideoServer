@@ -47,7 +47,7 @@ Windows 原生模式會在註冊時記錄磁碟區 GUID 與相對於掛載點的
 
 ## 自動排程與背景負載
 
-`autoScan` 控制目錄 metadata 掃描（`WalkDir`／`Stat`），不讀影片內容；`scanIntervalSeconds` 是熱池的基礎間隔。每個儲存池依最後活動時間分級：熱（1 小時內）用基礎間隔、暖前段（1–6 小時）5 分鐘、暖後段（6–24 小時）15 分鐘；冷池（1–7 天）1 小時起，2–3 天 3 小時、3–5 天 6 小時、5–7 天 12 小時；休眠（超過 7 天）用 `scanIdleMaxSeconds`（預設 86400 秒／24 小時）。有新檔／變更／待穩定檔案、手動掃描或 watcher 事件時回到熱；只掃描到期的池，不會因為一個池活躍就讓全部池一直付出完整 traversal。`last_activity_at` 存在資料庫，重啟後仍保留分級；掃描狀態本身在記憶體。
+`autoScan` 控制目錄 metadata 掃描（`WalkDir`／`Stat`），不讀影片內容；`scanIntervalSeconds` 是熱池的基礎間隔。每個儲存池依最後活動時間分級：熱（1 小時內）用基礎間隔、暖前段（1–6 小時）5 分鐘、暖後段（6–24 小時）15 分鐘；冷池（1–7 天）1 小時起，2–3 天 3 小時、3–5 天 6 小時、5–7 天 12 小時；休眠（超過 7 天）用 `scanIdleMaxSeconds`（預設 86400 秒／24 小時）。新檔、待穩定檔案、手動掃描、watcher 事件或掃描失敗會回到熱；只有 changed／deleted 會往上提升一級（例如冷 → 暖後段），下一次掃描若沒有新活動就回到原本分級。只掃描到期的池，不會因為一個池活躍就讓全部池一直付出完整 traversal。`last_activity_at` 存在資料庫，重啟後仍保留分級；提升時鐘本身在記憶體，重啟後依 `last_activity_at` 重建。
 
 檔案監聽第一版自動啟用，使用 `fsnotify` 只做新檔提示，事件 debounce 後觸發該池掃描；不會直接改 catalog 或匯入。整碟池與 9p 掛載（Docker Desktop 常見）會跳過監聽、保留輪詢；其他監聽失敗也會顯示 fallback。Monitor 的「檔案監聽」列會顯示 active pools、事件數與降級原因。目前沒有 per-pool watch 開關或 file identity rename。
 
