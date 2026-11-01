@@ -1,4 +1,5 @@
 import { useI18n } from './i18n';
+import { formatDuration } from './format';
 
 type Tier = 'hot' | 'warm' | 'cold' | 'dormant';
 type Translate = (key: string, params?: Record<string, string | number>) => string;
@@ -27,7 +28,7 @@ function formatTime(value: string, locale: string): string {
 }
 
 /** scanTierActivity 回傳上次活動與預估降級時間，供 badge tooltip 與監看列使用。 */
-export function scanTierActivity(tier: string | undefined, lastActivityAt: string | undefined, t: Translate, locale: string): string {
+export function scanTierActivity(tier: string | undefined, lastActivityAt: string | undefined, t: Translate, locale: string, warmSlowSeconds = 900): string {
   if (tier !== 'hot' && tier !== 'warm' && tier !== 'cold' && tier !== 'dormant') return '';
   if (!lastActivityAt) return t('scanTier.noActivity');
   const last = new Date(lastActivityAt);
@@ -36,7 +37,7 @@ export function scanTierActivity(tier: string | undefined, lastActivityAt: strin
   if (tier === 'warm') {
     const warmStep = new Date(last.getTime() + 6 * hour);
     if (Date.now() < warmStep.getTime()) {
-      parts.push(t('scanTier.warmStep', { time: formatTime(warmStep.toISOString(), locale) }));
+      parts.push(t('scanTier.warmStep', { time: formatTime(warmStep.toISOString(), locale), duration: formatDuration(warmSlowSeconds, t) }));
     }
   }
   const next = transition(tier);
@@ -54,20 +55,28 @@ export function scanTierActivity(tier: string | undefined, lastActivityAt: strin
 }
 
 /** ScanTierBadge 將掃描分級獨立成有色標籤，避免和上線狀態混在一起。 */
-export function ScanTierBadge({ tier, lastActivityAt }: { tier?: string; lastActivityAt?: string }) {
+export function ScanTierBadge({ tier, lastActivityAt, warmSlowSeconds }: { tier?: string; lastActivityAt?: string; warmSlowSeconds?: number }) {
   const { t, locale } = useI18n();
   if (tier !== 'hot' && tier !== 'warm' && tier !== 'cold' && tier !== 'dormant') return null;
-  return <span className={`tier-badge ${tier}`} title={scanTierActivity(tier, lastActivityAt, t, locale)}>{tierLabel(tier, t)}</span>;
+  return <span className={`tier-badge ${tier}`} title={scanTierActivity(tier, lastActivityAt, t, locale, warmSlowSeconds)}>{tierLabel(tier, t)}</span>;
 }
 
-/** ScanTierLegend 以短項目呈現門檻；只有分級字上色。 */
-export function ScanTierLegend() {
+type ScanCadence = {
+  intervalSeconds?: number;
+  warmSeconds?: number;
+  warmSlowSeconds?: number;
+  coldSeconds?: number;
+  idleMaxSeconds?: number;
+};
+
+/** ScanTierLegend 以目前實際設定呈現分級門檻；避免設定改了但圖例仍是舊值。 */
+export function ScanTierLegend({ scan }: { scan?: ScanCadence }) {
   const { t } = useI18n();
   return <div className="muted scan-tier-legend">
-    <span><b className="tier-text hot">{t('scanTier.hot')}</b> {t('scanTier.legendHotRest')}</span>
-    <span><b className="tier-text warm">{t('scanTier.warm')}</b> {t('scanTier.legendWarmRest')}</span>
-    <span><b className="tier-text cold">{t('scanTier.cold')}</b> {t('scanTier.legendColdRest')}</span>
-    <span><b className="tier-text dormant">{t('scanTier.dormant')}</b> {t('scanTier.legendDormantRest')}</span>
+    <span><b className="tier-text hot">{t('scanTier.hot')}</b> {t('scanTier.legendHotRest', { duration: formatDuration(scan?.intervalSeconds ?? 30, t) })}</span>
+    <span><b className="tier-text warm">{t('scanTier.warm')}</b> {t('scanTier.legendWarmRest', { warm: formatDuration(scan?.warmSeconds ?? 300, t), warmSlow: formatDuration(scan?.warmSlowSeconds ?? 900, t) })}</span>
+    <span><b className="tier-text cold">{t('scanTier.cold')}</b> {t('scanTier.legendColdRest', { cold: formatDuration(scan?.coldSeconds ?? 3600, t) })}</span>
+    <span><b className="tier-text dormant">{t('scanTier.dormant')}</b> {t('scanTier.legendDormantRest', { dormant: formatDuration(scan?.idleMaxSeconds ?? 86400, t) })}</span>
   </div>;
 }
 

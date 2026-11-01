@@ -296,7 +296,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
                   ? <code className="volume-id" title={pool.volumeId}>{pool.volumeId}</code>
                   : pool.volumeStatus === 'unsupported' ? t('library.volumeNotApplicable')
                     : pool.volumeStatus === 'unbound' ? t('library.volumeUnbound') : t('common.notProvided')}</dd></div>
-                <div><dt>{t('library.poolScanLabel')}</dt><dd>{scanInfo && <><ScanTierBadge tier={scanInfo.tier} lastActivityAt={scanInfo.lastActivityAt} /> </>}{scanLabel}{scanFrequency ? t('common.dot') + scanFrequency : ''}</dd></div>
+                <div><dt>{t('library.poolScanLabel')}</dt><dd>{scanInfo && <><ScanTierBadge tier={scanInfo.tier} lastActivityAt={scanInfo.lastActivityAt} warmSlowSeconds={data.scan?.warmSlowSeconds} /> </>}{scanLabel}{scanFrequency ? t('common.dot') + scanFrequency : ''}</dd></div>
               </dl>
               <details className="pool-advanced">
                 <summary>{pool.scanExcludeSystem ? t('library.safeScan') : t('library.fullScan')}{t('common.dot')}{pool.indexOnly ? t('library.indexOnlyOn') : t('library.autoImportOn')}</summary>
@@ -331,7 +331,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
               </div>
             </li>;
           })}</ul>
-          <ScanTierLegend />
+          <ScanTierLegend scan={data?.scan || undefined} />
         </section>
         <dialog ref={addDialog} className="modal add-pool-modal" aria-label={t('library.addPoolTitle')}
           onClick={event => { if (event.target === event.currentTarget) addDialog.current?.close(); }}>

@@ -138,30 +138,30 @@ export function Monitor() {
           </section>
           <div className="monitor-side">
             <section><div className="section-heading"><h2>{t('monitor.scanTitle')}</h2><a href="#pools">{t('monitor.managePools')}</a></div>
-              <p>{data.tasks.scan.running ? t('monitor.scanRunning') : data.tasks.scan.queued ? t('monitor.scanQueued') : t('monitor.scanIdle')}{t('common.dot')}{data.tasks.scan.automatic ? t('monitor.scanEvery', { duration: formatDuration(data.tasks.scan.intervalSeconds, t) }) : t('monitor.scanDisabled')}</p>
-              {data.tasks.scan.automatic && <p className="muted">{t('monitor.scanIdleMax', { duration: formatDuration(data.tasks.scan.idleMaxSeconds, t) })}</p>}
-              {data.tasks.scan.automatic && !data.tasks.scan.running && <p className="muted">{t('monitor.scanNext', { duration: formatDuration(data.tasks.scan.nextRunInSeconds || 0, t) })}</p>}
-              {data.tasks.scan.last && <p className="muted">{t('monitor.scanLast', {
-                time: new Date(data.tasks.scan.last.completedAt).toLocaleString(locale),
-                enqueued: data.tasks.scan.last.enqueued,
-                pending: data.tasks.scan.last.pending,
-                changed: data.tasks.scan.last.changed || 0,
-                deleted: data.tasks.scan.last.deleted || 0,
-                renamed: data.tasks.scan.last.renamed || 0,
-                failed: data.tasks.scan.last.failed,
-                offline: data.tasks.scan.last.offlinePools,
+              <p>{data?.tasks?.scan.running ? t('monitor.scanRunning') : data?.tasks?.scan.queued ? t('monitor.scanQueued') : t('monitor.scanIdle')}{t('common.dot')}{data?.tasks?.scan.automatic ? t('monitor.scanEvery', { duration: formatDuration(data?.tasks?.scan.intervalSeconds, t) }) : t('monitor.scanDisabled')}</p>
+              {data?.tasks?.scan.automatic && <p className="muted">{t('monitor.scanIdleMax', { duration: formatDuration(data?.tasks?.scan.idleMaxSeconds, t) })}</p>}
+              {data?.tasks?.scan.automatic && !data?.tasks?.scan.running && <p className="muted">{t('monitor.scanNext', { duration: formatDuration(data?.tasks?.scan.nextRunInSeconds || 0, t) })}</p>}
+              {data?.tasks?.scan.last && <p className="muted">{t('monitor.scanLast', {
+                time: new Date(data?.tasks?.scan.last.completedAt).toLocaleString(locale),
+                enqueued: data?.tasks?.scan.last.enqueued,
+                pending: data?.tasks?.scan.last.pending,
+                changed: data?.tasks?.scan.last.changed || 0,
+                deleted: data?.tasks?.scan.last.deleted || 0,
+                renamed: data?.tasks?.scan.last.renamed || 0,
+                failed: data?.tasks?.scan.last.failed,
+                offline: data?.tasks?.scan.last.offlinePools,
               })}</p>}
               {data.tasks.watch && <p className="muted">{t('monitor.watchStatus', { pools: data.tasks.watch.activePools, events: data.tasks.watch.events })}{data.tasks.watch.fallbackReasons?.length ? t('common.dot') + t('monitor.watchFallback', { reasons: data.tasks.watch.fallbackReasons.join('、') }) : ''}</p>}
               <ul className="monitor-scans">
-                {data.tasks.scan.pools?.length
-                  ? data.tasks.scan.pools.map(item => <li key={item.poolId}>
-                    <div className="monitor-scan-head"><strong>{item.name || item.poolId}</strong><ScanTierBadge tier={item.tier} lastActivityAt={item.lastActivityAt} /></div>
+                {data?.tasks?.scan.pools?.length
+                  ? data?.tasks?.scan.pools.map(item => <li key={item.poolId}>
+                    <div className="monitor-scan-head"><strong>{item.name || item.poolId}</strong><ScanTierBadge tier={item.tier} lastActivityAt={item.lastActivityAt} warmSlowSeconds={data?.tasks?.scan.warmSlowSeconds} /></div>
                     <span className="monitor-scan-meta"><span>{t('monitor.scanPoolNext', { duration: formatDuration(item.nextRunInSeconds, t) })}</span><span className="muted">{t('common.dot')}{t('monitor.scanPoolBackoff', { duration: formatDuration(item.backoffSeconds, t) })} {formatScanFrequency(item.backoffSeconds, t) || ''}</span></span>
-                    <span className="monitor-scan-activity muted">{scanTierActivity(item.tier, item.lastActivityAt, t, locale)}</span>
+                    <span className="monitor-scan-activity muted">{scanTierActivity(item.tier, item.lastActivityAt, t, locale, data?.tasks?.scan.warmSlowSeconds)}</span>
                   </li>)
                   : <li className="muted">{t('monitor.scanNoPools')}</li>}
               </ul>
-              <ScanTierLegend />
+              <ScanTierLegend scan={data?.tasks?.scan} />
             </section>
             <section><h2>{t('monitor.backfillTitle')}</h2>
               {data.tasks.backfill.enabled
