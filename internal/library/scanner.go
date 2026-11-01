@@ -98,7 +98,7 @@ func NewScanner(store *Store, automatic bool, interval, stable time.Duration, lo
 		stable = 0
 	}
 	scanner := &Scanner{
-		store: store, logger: logger, interval: interval, warm: 5 * time.Minute, warmSlow: 15 * time.Minute, cold: 30 * time.Minute, idleMax: 6 * time.Hour,
+		store: store, logger: logger, interval: interval, warm: 5 * time.Minute, warmSlow: 15 * time.Minute, cold: time.Hour, idleMax: 24 * time.Hour,
 		stable: stable, requests: make(chan struct{}, 1), observed: map[string]observation{},
 		states: map[string]poolScanState{}, forcePool: map[string]bool{},
 		status: ScanStatus{Automatic: automatic, IntervalSeconds: int(interval / time.Second), IdleMaxSeconds: 21600, StableSeconds: int(stable / time.Second)},
@@ -430,7 +430,22 @@ func scanTier(now, lastActivity time.Time, base, warm, slowerWarm, cold, idleMax
 		return "warm", warm
 	}
 	if now.Sub(lastActivity) < 7*24*time.Hour {
-		return "cold", cold
+		age := now.Sub(lastActivity)
+		interval := cold
+		switch {
+		case age < 48*time.Hour:
+			interval = cold
+		case age < 72*time.Hour:
+			interval = cold * 3
+		case age < 120*time.Hour:
+			interval = cold * 6
+		default:
+			interval = cold * 12
+		}
+		if interval > dormant {
+			interval = dormant
+		}
+		return "cold", interval
 	}
 	return "dormant", dormant
 }

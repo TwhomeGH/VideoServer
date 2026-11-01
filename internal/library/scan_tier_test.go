@@ -11,7 +11,7 @@ func TestScanTierUsesConfiguredIntervals(t *testing.T) {
 	warm := 10 * time.Minute
 	warmSlow := 20 * time.Minute
 	cold := 40 * time.Minute
-	dormant := 3 * time.Hour
+	dormant := 24 * time.Hour
 	cases := []struct {
 		age      time.Duration
 		tier     string
@@ -20,7 +20,10 @@ func TestScanTierUsesConfiguredIntervals(t *testing.T) {
 		{time.Minute, "hot", base},
 		{2 * time.Hour, "warm", warm},
 		{7 * time.Hour, "warm", warmSlow},
-		{2 * 24 * time.Hour, "cold", cold},
+		{24 * time.Hour, "cold", cold},
+		{2*24*time.Hour + time.Hour, "cold", cold * 3},
+		{4 * 24 * time.Hour, "cold", cold * 6},
+		{6 * 24 * time.Hour, "cold", cold * 12},
 		{8 * 24 * time.Hour, "dormant", dormant},
 	}
 	for _, item := range cases {

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNotify } from './notifications';
 import { api } from './api';
 import { useI18n } from './i18n';
-import { formatDuration } from './format';
+import { formatDuration, formatScanFrequency } from './format';
 import { Discovered } from './Discovered';
 import { ScanTierBadge, ScanTierLegend } from './ScanTierBadge';
 import { useLiveVersion } from './live';
@@ -282,6 +282,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
               : !pool.online ? t('library.poolScanOffline')
                 : scanInfo ? t('library.poolScanNext', { duration: formatDuration(scanInfo.nextRunInSeconds, t), interval: formatDuration(scanInfo.backoffSeconds, t) })
                   : t('library.poolScanWaiting');
+            const scanFrequency = scanInfo ? formatScanFrequency(scanInfo.backoffSeconds, t) : null;
             return <li key={pool.id} className="pool-card">
               <div className="pool-head">
                 <strong>{pool.name}</strong>
@@ -295,7 +296,7 @@ export function Library({ page, onNodeId }: { page: Page; onNodeId?: (nodeId: st
                   ? <code className="volume-id" title={pool.volumeId}>{pool.volumeId}</code>
                   : pool.volumeStatus === 'unsupported' ? t('library.volumeNotApplicable')
                     : pool.volumeStatus === 'unbound' ? t('library.volumeUnbound') : t('common.notProvided')}</dd></div>
-                <div><dt>{t('library.poolScanLabel')}</dt><dd>{scanInfo && <><ScanTierBadge tier={scanInfo.tier} lastActivityAt={scanInfo.lastActivityAt} /> </>}{scanLabel}</dd></div>
+                <div><dt>{t('library.poolScanLabel')}</dt><dd>{scanInfo && <><ScanTierBadge tier={scanInfo.tier} lastActivityAt={scanInfo.lastActivityAt} /> </>}{scanLabel}{scanFrequency ? t('common.dot') + scanFrequency : ''}</dd></div>
               </dl>
               <details className="pool-advanced">
                 <summary>{pool.scanExcludeSystem ? t('library.safeScan') : t('library.fullScan')}{t('common.dot')}{pool.indexOnly ? t('library.indexOnlyOn') : t('library.autoImportOn')}</summary>

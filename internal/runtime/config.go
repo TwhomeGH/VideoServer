@@ -67,7 +67,7 @@ func LoadConfig(path string, port int, service ...string) (Config, error) {
 			}
 		}
 	}
-	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, ScanWarmSeconds: 300, ScanWarmSlowSeconds: 900, ScanColdSeconds: 1800, ScanIdleMaxSeconds: 21600, FileStableSeconds: 10, AutoBackfill: false, AutoCover: false, CoverIntervalSeconds: 60, BackfillIntervalSeconds: 60, BackfillDailyLimit: 50, BackfillDailyGiB: 20, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", FFmpegPath: "ffmpeg", ProbeTimeoutSeconds: 60}
+	c := Config{Host: "0.0.0.0", PreferredPort: port, FallbackPorts: []int{port + 1, port + 2, port + 3}, WebDirectory: "web/admin/dist", DataDirectory: dataDirectory, AutoScan: true, ScanIntervalSeconds: 30, ScanWarmSeconds: 300, ScanWarmSlowSeconds: 900, ScanColdSeconds: 3600, ScanIdleMaxSeconds: 86400, FileStableSeconds: 10, AutoBackfill: false, AutoCover: false, CoverIntervalSeconds: 60, BackfillIntervalSeconds: 60, BackfillDailyLimit: 50, BackfillDailyGiB: 20, HashLimitMiBps: 64, RememberLastSuccessfulPort: true, FFprobePath: "ffprobe", FFmpegPath: "ffmpeg", ProbeTimeoutSeconds: 60}
 	if path != "" {
 		file, err := os.Open(path)
 		if err != nil {

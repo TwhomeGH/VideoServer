@@ -1,5 +1,16 @@
 type Translate = (key: string, params?: Record<string, string | number>) => string;
 
+/** formatScanFrequency 將掃描間隔換算成每小時／每天的約略次數。 */
+export function formatScanFrequency(seconds: number, t: Translate): string | null {
+  if (!Number.isFinite(seconds) || seconds <= 0) return null;
+  const perDay = seconds >= 30 * 60;
+  const count = Math.round((perDay ? 86400 / seconds : 3600 / seconds) * 10) / 10;
+  return perDay
+    ? t('scanFrequency.perDay', { count })
+    : t('scanFrequency.perHour', { count });
+}
+
+
 /** formatDuration 將秒數轉成人類可讀的在地化字串；最多顯示兩個單位。 */
 export function formatDuration(value: number, t: Translate): string {
   if (!Number.isFinite(value) || value < 0) return t('common.notProvided');

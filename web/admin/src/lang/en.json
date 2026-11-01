@@ -458,8 +458,8 @@
   "scanTier.warmStep": "interval becomes 15m around {time}",
   "scanTier.legendHotRest": "<1h",
   "scanTier.legendWarmRest": "1–6h 5m, 6–24h 15m",
-  "scanTier.legendColdRest": "1–7d 30m",
-  "scanTier.legendDormantRest": ">7d",
+  "scanTier.legendColdRest": "1–7 days · starts at 1 hour, then backs off",
+  "scanTier.legendDormantRest": "> 7 days · about once a day",
   "settings.liveChanged": "Settings changed in another tab; this form has unsaved edits.",
   "settings.liveReload": "Reload settings",
   "library.scanPolicy": "Scan policy",
@@ -562,5 +562,7 @@
   "login.devHint": "Development: see the “[dev] 管理密碼” line from npm run dev, or local/development/dev-password.txt.",
   "notifications.dismiss": "Dissmiss notification",
   "login.showPassword": "Show",
-  "login.hidePassword": "Hide"
+  "login.hidePassword": "Hide",
+  "scanFrequency.perHour": "about {count}×/hour",
+  "scanFrequency.perDay": "about {count}×/day"
 }

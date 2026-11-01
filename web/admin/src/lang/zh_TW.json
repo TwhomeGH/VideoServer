@@ -458,8 +458,8 @@
   "scanTier.warmStep": "約 {time} 間隔改 15 分",
   "scanTier.legendHotRest": "<1 小時",
   "scanTier.legendWarmRest": "1–6 小時 5 分、6–24 小時 15 分",
-  "scanTier.legendColdRest": "1–7 天 30 分",
-  "scanTier.legendDormantRest": ">7 天",
+  "scanTier.legendColdRest": "1–7 天 · 1 小時起，逐段降低",
+  "scanTier.legendDormantRest": "> 7 天 · 每天約 1 次",
   "settings.liveChanged": "設定已在其他分頁更新；目前表單有未儲存變更。",
   "settings.liveReload": "重新載入設定",
   "library.scanPolicy": "掃描政策",
@@ -562,5 +562,7 @@
   "login.devHint": "開發模式：請看 npm run dev 輸出的「[dev] 管理密碼」，或 local/development/dev-password.txt。",
   "notifications.dismiss": "關閉通知",
   "login.showPassword": "顯示",
-  "login.hidePassword": "隱藏"
+  "login.hidePassword": "隱藏",
+  "scanFrequency.perHour": "每小時約 {count} 次",
+  "scanFrequency.perDay": "每天約 {count} 次"
 }

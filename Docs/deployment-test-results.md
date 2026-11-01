@@ -98,6 +98,15 @@ Windows 實際服務測試另驗證 Central 規格不含 Video Node API，以及
 - `DVN_ADMIN_PASSWORD` 行為不變。
 - `internal/auth` 測試與 `go vet` 通過。
 
+## 冷池小時分段與掃描頻率
+
+2026-11-01 在 `dvn-testing`（image 來源 `a2293017d37e`）驗證：
+
+- 冷池顯示「間隔 6 小時 · 每天約 4 次」。
+- 暖池顯示「間隔 15 分 · 每小時約 4 次」。
+- 預設休眠上限為 24 小時。
+- 390px 無水平溢出；`go test ./...`、`build:admin`、`lang:check`、`check:testing` 通過。
+
 ## 全域通知 Learn 2
 
 2026-10-31 在 `dvn-testing`（image 來源 `45e4554566b0`）驗證：

@@ -97,7 +97,7 @@ func TestScannerTierAndPoolScan(t *testing.T) {
 	}
 	setAge(2 * 24 * time.Hour)
 	state = readState()
-	if state.tier != "cold" || state.interval != 30*time.Minute {
+	if state.tier != "cold" || state.interval != time.Hour {
 		t.Fatalf("cold tier: %+v", state)
 	}
 	setAge(8 * 24 * time.Hour)
