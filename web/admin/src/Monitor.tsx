@@ -3,7 +3,7 @@ import { api, jsonRequest } from './api';
 import { useI18n } from './i18n';
 import { useLiveVersion } from './live';
 import { formatDuration, formatScanFrequency } from './format';
-import { ScanTierBadge, ScanTierLegend, scanTierActivity } from './ScanTierBadge';
+import { ScanTierBadge, ScanTierLegend, scanTierActivityParts } from './ScanTierBadge';
 import type { ImportJob } from './ImportJobs';
 import { JobProgress } from './JobProgress';
 
@@ -157,7 +157,7 @@ export function Monitor() {
                   ? data?.tasks?.scan.pools.map(item => <li key={item.poolId}>
                     <div className="monitor-scan-head"><strong>{item.name || item.poolId}</strong><ScanTierBadge tier={item.tier} lastActivityAt={item.lastActivityAt} warmSlowSeconds={data?.tasks?.scan.warmSlowSeconds} nextBackoffAt={item.nextBackoffAt} nextBackoffSeconds={item.nextBackoffSeconds} /></div>
                     <span className="monitor-scan-meta"><span>{t('monitor.scanPoolNext', { duration: formatDuration(item.nextRunInSeconds, t) })}</span><span className="muted">{t('common.dot')}{t('monitor.scanPoolBackoff', { duration: formatDuration(item.backoffSeconds, t) })} {formatScanFrequency(item.backoffSeconds, t) || ''}</span></span>
-                    <span className="monitor-scan-activity muted">{scanTierActivity(item.tier, item.lastActivityAt, t, locale, data?.tasks?.scan.warmSlowSeconds, item.nextBackoffAt, item.nextBackoffSeconds)}</span>
+                    <div className="monitor-scan-activity muted">{scanTierActivityParts(item.tier, item.lastActivityAt, t, locale, data?.tasks?.scan.warmSlowSeconds, item.nextBackoffAt, item.nextBackoffSeconds).map((part, index) => <span key={index}>{part}</span>)}</div>
                   </li>)
                   : <li className="muted">{t('monitor.scanNoPools')}</li>}
               </ul>

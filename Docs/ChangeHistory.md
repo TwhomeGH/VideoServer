@@ -1,3 +1,29 @@
+## 2026.11.04 18:12 監看掃描活動改為分段顯示
+
+**類型**: 改善
+
+**檔案**:
+
+- `web/admin/src/ScanTierBadge.tsx`
+- `web/admin/src/Monitor.tsx`
+- `web/admin/src/style.css`
+
+### 問題
+
+- 上次活動、下一個間隔變化、轉休眠與判定說明全部擠在同一行，容易自動換行且不易閱讀。
+
+### 修改
+
+- 抽出 `scanTierActivityParts`，監看頁每個資訊各自一行。
+- badge tooltip 仍使用單行組合版本。
+
+### 驗證
+
+- OpenList Video5 顯示四行：上次活動、間隔改 3 小時、轉休眠、判定說明。
+- 390px 無水平溢出；`build:admin`、`lang:check` 通過。
+
+---
+
 ## 2026.11.04 18:05 顯示下一個掃描間隔變化
 
 **類型**: 改善

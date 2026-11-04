@@ -229,7 +229,7 @@ body:has(dialog[open]) { overflow:hidden; }
 .monitor-scan-head { display:flex; align-items:center; gap:8px; min-width:0; }
 .monitor-scan-head strong { overflow-wrap:anywhere; }
 .monitor-scan-meta { display:flex; align-items:center; justify-content:flex-start; gap:8px; flex-wrap:wrap; text-align:left; }
-.monitor-scan-activity { grid-column:1/-1; font-size:.76rem; }
+.monitor-scan-activity { grid-column:1/-1; font-size:.76rem; display:grid; gap:1px; }
 .monitor-scans .monitor-scan-activity { text-align:left; }
 @media(min-width:1000px) { .monitor-grid { grid-template-columns:repeat(4,minmax(0,1fr)); } }
 @media(max-width:900px) { .monitor-dashboard { grid-template-columns:1fr; } }

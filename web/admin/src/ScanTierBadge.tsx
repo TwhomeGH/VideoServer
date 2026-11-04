@@ -28,11 +28,11 @@ function formatTime(value: string, locale: string): string {
 }
 
 /** scanTierActivity 回傳上次活動與預估降級時間，供 badge tooltip 與監看列使用。 */
-export function scanTierActivity(tier: string | undefined, lastActivityAt: string | undefined, t: Translate, locale: string, warmSlowSeconds = 900, nextBackoffAt?: string, nextBackoffSeconds?: number): string {
-  if (tier !== 'hot' && tier !== 'warm' && tier !== 'cold' && tier !== 'dormant') return '';
-  if (!lastActivityAt) return t('scanTier.noActivity');
+export function scanTierActivityParts(tier: string | undefined, lastActivityAt: string | undefined, t: Translate, locale: string, warmSlowSeconds = 900, nextBackoffAt?: string, nextBackoffSeconds?: number): string[] {
+  if (tier !== 'hot' && tier !== 'warm' && tier !== 'cold' && tier !== 'dormant') return [];
+  if (!lastActivityAt) return [t('scanTier.noActivity')];
   const last = new Date(lastActivityAt);
-  if (Number.isNaN(last.getTime())) return t('scanTier.noActivity');
+  if (Number.isNaN(last.getTime())) return [t('scanTier.noActivity')];
   const parts = [t('scanTier.lastActivity', { time: formatTime(lastActivityAt, locale) })];
   if (tier === 'warm') {
     const warmStep = new Date(last.getTime() + 6 * hour);
@@ -57,7 +57,12 @@ export function scanTierActivity(tier: string | undefined, lastActivityAt: strin
   } else {
     parts.push(t('scanTier.stayDormant'));
   }
-  return parts.join(t('common.dot'));
+  return parts;
+}
+
+/** scanTierActivity 將分段組成單行，供 badge tooltip 使用。 */
+export function scanTierActivity(tier: string | undefined, lastActivityAt: string | undefined, t: Translate, locale: string, warmSlowSeconds = 900, nextBackoffAt?: string, nextBackoffSeconds?: number): string {
+  return scanTierActivityParts(tier, lastActivityAt, t, locale, warmSlowSeconds, nextBackoffAt, nextBackoffSeconds).join(t('common.dot'));
 }
 
 /** ScanTierBadge 將掃描分級獨立成有色標籤，避免和上線狀態混在一起。 */
