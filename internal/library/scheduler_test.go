@@ -167,3 +167,36 @@ func TestScannerExposesNextRun(t *testing.T) {
 		time.Sleep(20 * time.Millisecond)
 	}
 }
+
+func TestNonVideoFilesDoNotResetScanActivity(t *testing.T) {
+	_, scanner, pool := scannerFixture(t)
+	scanner.SetTierIntervals(5*time.Minute, 15*time.Minute, time.Hour)
+	scanner.SetIdleMax(24 * time.Hour)
+	for _, name := range []string{"cover.png", "notes.txt", "metadata.json"} {
+		if err := os.WriteFile(filepath.Join(pool.Path, name), []byte("not a video"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	lastActivity := time.Now().Add(-24 * time.Hour)
+	scanner.mu.Lock()
+	state := scanner.states[pool.ID]
+	state.tier = "cold"
+	state.interval = time.Hour
+	state.lastActivity = lastActivity
+	state.scanActivity = lastActivity
+	state.next = time.Now().Add(-time.Second)
+	scanner.states[pool.ID] = state
+	scanner.mu.Unlock()
+
+	scanner.runDue(context.Background())
+
+	scanner.mu.Lock()
+	state = scanner.states[pool.ID]
+	scanner.mu.Unlock()
+	if state.tier != "cold" || state.interval != time.Hour {
+		t.Fatalf("non-video files changed tier: %+v", state)
+	}
+	if !state.lastActivity.Equal(lastActivity) || !state.scanActivity.Equal(lastActivity) {
+		t.Fatalf("non-video files reset activity: last=%s scan=%s", state.lastActivity, state.scanActivity)
+	}
+}
