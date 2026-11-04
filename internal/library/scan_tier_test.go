@@ -21,9 +21,10 @@ func TestScanTierUsesConfiguredIntervals(t *testing.T) {
 		{2 * time.Hour, "warm", warm},
 		{7 * time.Hour, "warm", warmSlow},
 		{24 * time.Hour, "cold", cold},
-		{2*24*time.Hour + time.Hour, "cold", cold * 3},
-		{4 * 24 * time.Hour, "cold", cold * 6},
-		{6 * 24 * time.Hour, "cold", cold * 12},
+		{2*24*time.Hour + time.Hour, "cold", cold * 2},
+		{3*24*time.Hour + time.Hour, "cold", cold * 4},
+		{4*24*time.Hour + time.Hour, "cold", cold * 8},
+		{5*24*time.Hour + time.Hour, "cold", cold * 16},
 		{8 * 24 * time.Hour, "dormant", dormant},
 	}
 	for _, item := range cases {
@@ -43,12 +44,13 @@ func TestPromotedTierMovesOneStep(t *testing.T) {
 		want     time.Duration
 	}{
 		{"cold", time.Hour, "warm", 15 * time.Minute},
-		{"cold", 3 * time.Hour, "cold", time.Hour},
-		{"cold", 6 * time.Hour, "cold", 3 * time.Hour},
-		{"cold", 12 * time.Hour, "cold", 6 * time.Hour},
+		{"cold", 2 * time.Hour, "cold", time.Hour},
+		{"cold", 4 * time.Hour, "cold", 2 * time.Hour},
+		{"cold", 8 * time.Hour, "cold", 4 * time.Hour},
+		{"cold", 16 * time.Hour, "cold", 8 * time.Hour},
 		{"warm", 15 * time.Minute, "warm", 5 * time.Minute},
 		{"warm", 5 * time.Minute, "hot", 30 * time.Second},
-		{"dormant", 24 * time.Hour, "cold", 12 * time.Hour},
+		{"dormant", 24 * time.Hour, "cold", 16 * time.Hour},
 	}
 	for _, tc := range cases {
 		tier, interval := scanner.promotedTier(tc.tier, tc.interval)

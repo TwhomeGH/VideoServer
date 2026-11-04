@@ -473,11 +473,13 @@ func (s *Scanner) nextBackoff(now, scanActivity time.Time, tier string) (time.Ti
 	case "cold":
 		switch {
 		case age < 48*time.Hour:
-			return scanActivity.Add(48 * time.Hour), min(s.cold*3, s.idleMax), true
+			return scanActivity.Add(48 * time.Hour), min(s.cold*2, s.idleMax), true
 		case age < 72*time.Hour:
-			return scanActivity.Add(72 * time.Hour), min(s.cold*6, s.idleMax), true
+			return scanActivity.Add(72 * time.Hour), min(s.cold*4, s.idleMax), true
+		case age < 96*time.Hour:
+			return scanActivity.Add(96 * time.Hour), min(s.cold*8, s.idleMax), true
 		case age < 120*time.Hour:
-			return scanActivity.Add(120 * time.Hour), min(s.cold*12, s.idleMax), true
+			return scanActivity.Add(120 * time.Hour), min(s.cold*16, s.idleMax), true
 		case age < 168*time.Hour:
 			return scanActivity.Add(168 * time.Hour), s.idleMax, true
 		}
@@ -485,18 +487,20 @@ func (s *Scanner) nextBackoff(now, scanActivity time.Time, tier string) (time.Ti
 	return time.Time{}, 0, false
 }
 
-// promotedScanActivity 回傳「往上一個掃描級別」的排程時鐘；不改變真實 lastActivity。
+// promotedTier 回傳往上一個掃描級別；不改變真實 lastActivity。
 func (s *Scanner) promotedTier(tier string, interval time.Duration) (string, time.Duration) {
 	switch tier {
 	case "dormant":
-		return "cold", min(s.cold*12, s.idleMax)
+		return "cold", min(s.cold*16, s.idleMax)
 	case "cold":
 		switch {
-		case interval >= s.cold*9:
-			return "cold", min(s.cold*6, s.idleMax)
-		case interval >= s.cold*4:
-			return "cold", min(s.cold*3, s.idleMax)
-		case interval >= s.cold*2:
+		case interval >= s.cold*12:
+			return "cold", min(s.cold*8, s.idleMax)
+		case interval >= s.cold*6:
+			return "cold", min(s.cold*4, s.idleMax)
+		case interval >= s.cold*3:
+			return "cold", min(s.cold*2, s.idleMax)
+		case interval >= s.cold*3/2:
 			return "cold", min(s.cold, s.idleMax)
 		default:
 			return "warm", s.warmSlow
@@ -544,11 +548,13 @@ func scanTier(now, lastActivity time.Time, base, warm, slowerWarm, cold, idleMax
 		case age < 48*time.Hour:
 			interval = cold
 		case age < 72*time.Hour:
-			interval = cold * 3
+			interval = cold * 2
+		case age < 96*time.Hour:
+			interval = cold * 4
 		case age < 120*time.Hour:
-			interval = cold * 6
+			interval = cold * 8
 		default:
-			interval = cold * 12
+			interval = cold * 16
 		}
 		if interval > dormant {
 			interval = dormant
