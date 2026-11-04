@@ -1,3 +1,33 @@
+## 2026.11.04 18:05 顯示下一個掃描間隔變化
+
+**類型**: 改善
+
+**檔案**:
+
+- `internal/library/scanner.go`
+- `pkg/protocol/openapi.json`
+- `web/admin/src/ScanTierBadge.tsx`
+- `web/admin/src/Monitor.tsx`
+- `Docs/monitoring.md`
+
+### 問題
+
+- 冷池只顯示目前間隔與 7 天後轉休眠，看不出 2 天後改 3 小時、3 天後改 6 小時等階段。
+- 使用者只能看到最後一個轉級時間，無法預期下一個降頻點。
+
+### 修改
+
+- `PoolScanStatus` 新增 `nextBackoffAt` 與 `nextBackoffSeconds`。
+- 依目前掃描時鐘計算下一個間隔變化，顯示「約 … 間隔改 …」。
+- 7 天轉休眠仍為固定門檻；實際轉級在該池下一次掃描時判定。
+
+### 驗證
+
+- 監看頁顯示「約 11/05 03:19 間隔改 3 小時 · 約 11/10 03:19 轉休眠」。
+- `go test ./...`、`go vet ./...`、`build:admin`、`lang:check`、`check:testing` 通過。
+
+---
+
 ## 2026.11.01 17:05 掃描提升改為混合規則
 
 **類型**: 改善

@@ -566,5 +566,6 @@
   "scanFrequency.perHour": "每小时约 {count} 次",
   "scanFrequency.perDay": "每天约 {count} 次",
   "scanTier.detailsTitle": "分级与提升规则",
-  "scanTier.detailsBody": "新档、待稳定档、手动扫描或扫描失败会回到热；只有变更或删除会往上提升一级。实际分级在该池下一次扫描时判定。"
+  "scanTier.detailsBody": "新档、待稳定档、手动扫描或扫描失败会回到热；只有变更或删除会往上提升一级。实际分级在该池下一次扫描时判定。",
+  "scanTier.nextBackoff": "约 {time} 间隔改 {duration}"
 }

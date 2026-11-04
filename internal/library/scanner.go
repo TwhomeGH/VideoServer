@@ -31,14 +31,16 @@ type ScanResult struct {
 }
 
 type PoolScanStatus struct {
-	PoolID           string `json:"poolId"`
-	Name             string `json:"name,omitempty"`
-	Tier             string `json:"tier"`
-	BackoffSeconds   int    `json:"backoffSeconds"`
-	Quiet            int    `json:"quiet"`
-	LastActivityAt   string `json:"lastActivityAt,omitempty"`
-	NextRunAt        string `json:"nextRunAt,omitempty"`
-	NextRunInSeconds int    `json:"nextRunInSeconds"`
+	PoolID             string `json:"poolId"`
+	Name               string `json:"name,omitempty"`
+	Tier               string `json:"tier"`
+	BackoffSeconds     int    `json:"backoffSeconds"`
+	Quiet              int    `json:"quiet"`
+	LastActivityAt     string `json:"lastActivityAt,omitempty"`
+	NextBackoffAt      string `json:"nextBackoffAt,omitempty"`
+	NextBackoffSeconds int    `json:"nextBackoffSeconds,omitempty"`
+	NextRunAt          string `json:"nextRunAt,omitempty"`
+	NextRunInSeconds   int    `json:"nextRunInSeconds"`
 }
 
 // ScanStatus 提供排程設定、執行狀態、每池退避與最近掃描結果。
@@ -139,13 +141,24 @@ func (s *Scanner) Status() ScanStatus {
 	defer s.mu.Unlock()
 	status := s.status
 	status.Pools = make([]PoolScanStatus, 0, len(s.states))
+	now := time.Now()
 	for id, state := range s.states {
 		remaining := max(int(time.Until(state.next).Seconds()), 0)
-		status.Pools = append(status.Pools, PoolScanStatus{
+		scanActivity := state.scanActivity
+		if scanActivity.IsZero() {
+			scanActivity = state.lastActivity
+		}
+		nextBackoffAt, nextBackoff, hasNextBackoff := s.nextBackoff(now, scanActivity, state.tier)
+		item := PoolScanStatus{
 			PoolID: id, Name: state.name, Tier: state.tier, BackoffSeconds: int(state.interval / time.Second),
 			LastActivityAt: state.lastActivity.UTC().Format(time.RFC3339Nano),
 			NextRunAt:      state.next.UTC().Format(time.RFC3339Nano), NextRunInSeconds: remaining,
-		})
+		}
+		if hasNextBackoff {
+			item.NextBackoffAt = nextBackoffAt.UTC().Format(time.RFC3339Nano)
+			item.NextBackoffSeconds = int(nextBackoff / time.Second)
+		}
+		status.Pools = append(status.Pools, item)
 	}
 	sort.Slice(status.Pools, func(i, j int) bool { return status.Pools[i].PoolID < status.Pools[j].PoolID })
 	if status.NextRunAt != "" {
@@ -440,6 +453,36 @@ func shouldExcludeSystemPath(relative string) bool {
 		}
 	}
 	return false
+}
+
+// nextBackoff 依掃描時鐘估算下一個間隔變化的時間；實際仍在下一次掃描才套用。
+func (s *Scanner) nextBackoff(now, scanActivity time.Time, tier string) (time.Time, time.Duration, bool) {
+	age := now.Sub(scanActivity)
+	switch tier {
+	case "hot":
+		if age < time.Hour {
+			return scanActivity.Add(time.Hour), s.warm, true
+		}
+	case "warm":
+		if age < 6*time.Hour {
+			return scanActivity.Add(6 * time.Hour), s.warmSlow, true
+		}
+		if age < 24*time.Hour {
+			return scanActivity.Add(24 * time.Hour), s.cold, true
+		}
+	case "cold":
+		switch {
+		case age < 48*time.Hour:
+			return scanActivity.Add(48 * time.Hour), min(s.cold*3, s.idleMax), true
+		case age < 72*time.Hour:
+			return scanActivity.Add(72 * time.Hour), min(s.cold*6, s.idleMax), true
+		case age < 120*time.Hour:
+			return scanActivity.Add(120 * time.Hour), min(s.cold*12, s.idleMax), true
+		case age < 168*time.Hour:
+			return scanActivity.Add(168 * time.Hour), s.idleMax, true
+		}
+	}
+	return time.Time{}, 0, false
 }
 
 // promotedScanActivity 回傳「往上一個掃描級別」的排程時鐘；不改變真實 lastActivity。

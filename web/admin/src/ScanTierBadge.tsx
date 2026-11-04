@@ -28,7 +28,7 @@ function formatTime(value: string, locale: string): string {
 }
 
 /** scanTierActivity 回傳上次活動與預估降級時間，供 badge tooltip 與監看列使用。 */
-export function scanTierActivity(tier: string | undefined, lastActivityAt: string | undefined, t: Translate, locale: string, warmSlowSeconds = 900): string {
+export function scanTierActivity(tier: string | undefined, lastActivityAt: string | undefined, t: Translate, locale: string, warmSlowSeconds = 900, nextBackoffAt?: string, nextBackoffSeconds?: number): string {
   if (tier !== 'hot' && tier !== 'warm' && tier !== 'cold' && tier !== 'dormant') return '';
   if (!lastActivityAt) return t('scanTier.noActivity');
   const last = new Date(lastActivityAt);
@@ -38,6 +38,12 @@ export function scanTierActivity(tier: string | undefined, lastActivityAt: strin
     const warmStep = new Date(last.getTime() + 6 * hour);
     if (Date.now() < warmStep.getTime()) {
       parts.push(t('scanTier.warmStep', { time: formatTime(warmStep.toISOString(), locale), duration: formatDuration(warmSlowSeconds, t) }));
+    }
+  }
+  if (nextBackoffAt && nextBackoffSeconds) {
+    const at = new Date(nextBackoffAt);
+    if (!Number.isNaN(at.getTime())) {
+      parts.push(t('scanTier.nextBackoff', { time: formatTime(nextBackoffAt, locale), duration: formatDuration(nextBackoffSeconds, t) }));
     }
   }
   const next = transition(tier);
@@ -55,10 +61,10 @@ export function scanTierActivity(tier: string | undefined, lastActivityAt: strin
 }
 
 /** ScanTierBadge 將掃描分級獨立成有色標籤，避免和上線狀態混在一起。 */
-export function ScanTierBadge({ tier, lastActivityAt, warmSlowSeconds }: { tier?: string; lastActivityAt?: string; warmSlowSeconds?: number }) {
+export function ScanTierBadge({ tier, lastActivityAt, warmSlowSeconds, nextBackoffAt, nextBackoffSeconds }: { tier?: string; lastActivityAt?: string; warmSlowSeconds?: number; nextBackoffAt?: string; nextBackoffSeconds?: number }) {
   const { t, locale } = useI18n();
   if (tier !== 'hot' && tier !== 'warm' && tier !== 'cold' && tier !== 'dormant') return null;
-  return <span className={`tier-badge ${tier}`} title={scanTierActivity(tier, lastActivityAt, t, locale, warmSlowSeconds)}>{tierLabel(tier, t)}</span>;
+  return <span className={`tier-badge ${tier}`} title={scanTierActivity(tier, lastActivityAt, t, locale, warmSlowSeconds, nextBackoffAt, nextBackoffSeconds)}>{tierLabel(tier, t)}</span>;
 }
 
 type ScanCadence = {

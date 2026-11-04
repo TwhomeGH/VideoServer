@@ -4260,6 +4260,13 @@
           "lastActivityAt": {
             "type": "string",
             "format": "date-time"
+          },
+          "nextBackoffAt": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "nextBackoffSeconds": {
+            "type": "integer"
           }
         },
         "required": [

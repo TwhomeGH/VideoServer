@@ -14,7 +14,7 @@ type MonitorData = {  service: string; startedAt: string; sampledAt: string; upt
   tasks: { jobs: { counts: Record<string, number>; active: ImportJob[] }; scan: {
     automatic: boolean; running: boolean; queued: boolean; intervalSeconds: number; warmSeconds: number; warmSlowSeconds: number; coldSeconds: number; idleMaxSeconds: number;
     nextRunAt?: string; nextRunInSeconds?: number;
-    pools?: { poolId: string; name?: string; tier?: string; backoffSeconds: number; quiet: number; lastActivityAt?: string; nextRunAt?: string; nextRunInSeconds: number }[];
+    pools?: { poolId: string; name?: string; tier?: string; backoffSeconds: number; quiet: number; lastActivityAt?: string; nextBackoffAt?: string; nextBackoffSeconds?: number; nextRunAt?: string; nextRunInSeconds: number }[];
     last: { completedAt: string; enqueued: number; failed: number; pending: number; changed: number; deleted: number; renamed: number; offlinePools: number } | null;
   }; watch?: { enabled: boolean; mode: string; activePools: number; events: number; lastEventAt?: string; fallbackReasons?: string[] }; backfill: {
     enabled: boolean; intervalSeconds: number; nextCheckAt?: string; nextCheckInSeconds: number;
@@ -155,9 +155,9 @@ export function Monitor() {
               <ul className="monitor-scans">
                 {data?.tasks?.scan.pools?.length
                   ? data?.tasks?.scan.pools.map(item => <li key={item.poolId}>
-                    <div className="monitor-scan-head"><strong>{item.name || item.poolId}</strong><ScanTierBadge tier={item.tier} lastActivityAt={item.lastActivityAt} warmSlowSeconds={data?.tasks?.scan.warmSlowSeconds} /></div>
+                    <div className="monitor-scan-head"><strong>{item.name || item.poolId}</strong><ScanTierBadge tier={item.tier} lastActivityAt={item.lastActivityAt} warmSlowSeconds={data?.tasks?.scan.warmSlowSeconds} nextBackoffAt={item.nextBackoffAt} nextBackoffSeconds={item.nextBackoffSeconds} /></div>
                     <span className="monitor-scan-meta"><span>{t('monitor.scanPoolNext', { duration: formatDuration(item.nextRunInSeconds, t) })}</span><span className="muted">{t('common.dot')}{t('monitor.scanPoolBackoff', { duration: formatDuration(item.backoffSeconds, t) })} {formatScanFrequency(item.backoffSeconds, t) || ''}</span></span>
-                    <span className="monitor-scan-activity muted">{scanTierActivity(item.tier, item.lastActivityAt, t, locale, data?.tasks?.scan.warmSlowSeconds)}</span>
+                    <span className="monitor-scan-activity muted">{scanTierActivity(item.tier, item.lastActivityAt, t, locale, data?.tasks?.scan.warmSlowSeconds, item.nextBackoffAt, item.nextBackoffSeconds)}</span>
                   </li>)
                   : <li className="muted">{t('monitor.scanNoPools')}</li>}
               </ul>
